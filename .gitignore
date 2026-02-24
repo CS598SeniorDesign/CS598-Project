@@ -1,1 +1,6 @@
+# Backend
 .venv
+__pycache__
+
+# Database
+*.sqlite3
