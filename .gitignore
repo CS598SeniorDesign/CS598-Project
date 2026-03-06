@@ -1,6 +1,7 @@
 # Backend
 .venv
 __pycache__
+.env
 
 # Database
 *.sqlite3
