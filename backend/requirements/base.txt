@@ -12,9 +12,14 @@ django==6.0.2
     # via
     #   -r base.in
     #   django-cors-headers
+    #   django-csp
     #   djangorestframework
     #   djangorestframework-simplejwt
 django-cors-headers==4.9.0
+    # via -r base.in
+django-csp==4.0
+    # via -r base.in
+django-environ==0.13.0
     # via -r base.in
 djangorestframework==3.16.1
     # via
@@ -22,6 +27,8 @@ djangorestframework==3.16.1
     #   djangorestframework-simplejwt
 djangorestframework-simplejwt==5.5.1
     # via -r base.in
+packaging==26.0
+    # via django-csp
 psycopg2-binary==2.9.11
     # via -r base.in
 pyjwt==2.11.0
