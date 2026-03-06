@@ -56,6 +56,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'csp.middleware.CSPMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -125,6 +126,7 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+# Established default authentication and permission classes if one is not specified
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -133,6 +135,8 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     ),
 }
+
+# Established JWT settings
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=10),
@@ -145,11 +149,43 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
+# Whitelists addresses
 CORS_ALLOWED_ORIGINS = env('CORS_ALLOWED_ORIGINS')
 CORS_ALLOW_CREDENTIALS = env('CORS_ALLOW_CREDENTIALS', default=True)
 
+# Prevents browsers from MIME-sniffing a response away from the declared content-type
+SECURE_CONTENT_TYPE_NOSNIFF = True
+
+# For browser's built-in XSS filter
+SECURE_BROWSER_XSS_FILTER = True
+
+# Prevents site from being loaded in an iframe
+X_FRAME_OPTIONS = 'DENY'
+
+# Forces HTTPS
 SECURE_SSL_REDIRECT = True
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
 SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+
+# Ensures cookies can't be read by JS
+SESSION_COOKIE_SECURE = True
+SESSION_COOKIE_HTTPONLY = True
+CSRF_COOKIE_SECURE = True
+CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_AGE = 31449600
+CSRF_COOKIE_NAME = 'csrf_token'
+
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:3000',
+]
+
+# Only allow resources from own backend and frontend
+CSP_DEFAULT_SRC = ("'self'",)
+CSP_SCRIPT_SRC = ("'self'",)
+CSP_STYLE_SRC = ("'self'", "'unsafe-inline'")
+CSP_IMG_SRC = ("'self'", "data:", "https:")
+CSP_FONT_SRC = ("'self'",)
+CSP_CONNECT_SRC = ("'self'", env('LOCAL_URL'))
+CSP_FRAME_ANCESTORS = ("'none'",)
