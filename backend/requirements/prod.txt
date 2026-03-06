@@ -5,10 +5,26 @@
 #    pip-compile --output-file=prod.txt prod.in
 #
 asgiref==3.11.1
-    # via django
+    # via
+    #   django
+    #   django-cors-headers
 django==6.0.2
+    # via
+    #   -r base.in
+    #   django-cors-headers
+    #   djangorestframework
+    #   djangorestframework-simplejwt
+django-cors-headers==4.9.0
+    # via -r base.in
+djangorestframework==3.16.1
+    # via
+    #   -r base.in
+    #   djangorestframework-simplejwt
+djangorestframework-simplejwt==5.5.1
     # via -r base.in
 psycopg2-binary==2.9.11
     # via -r base.in
+pyjwt==2.11.0
+    # via djangorestframework-simplejwt
 sqlparse==0.5.5
     # via django
