@@ -3,5 +3,8 @@
 __pycache__
 .env
 
+# Frontend
+.env.local
+
 # Database
 *.sqlite3
