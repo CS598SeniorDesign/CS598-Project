@@ -30,7 +30,7 @@ class Profile(models.Model):
         :returns: The display name associated with a user.
         """
 
-        return self.display_namename
+        return self.display_name
 
 
 class GameGroup(models.Model):
