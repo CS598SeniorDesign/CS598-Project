@@ -9,7 +9,7 @@ class Game(models.Model):
     """
     bgg_id = models.IntegerField(primary_key=True)
     name = models.CharField(max_length=255)
-    bgg_rank = models.IntegerField(null=True)
+    bgg_rank = models.IntegerField(null=True, blank=True)
     bgg_average_rating = models.FloatField(null=True, blank=True)
 
     def __str__(self):

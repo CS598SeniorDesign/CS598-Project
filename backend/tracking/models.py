@@ -19,12 +19,12 @@ class LibraryItem(models.Model):
 
     user = models.ForeignKey(to=settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     game = models.ForeignKey(to=Game, on_delete=models.CASCADE)
-    status = models.CharField(max_length=20, choices=LIBRARY_ENTRY_STATUSES)
+    status = models.CharField(max_length=20, choices=LIBRARY_ENTRY_STATUSES, default=UNPLAYED)
     house_rules = models.TextField(null=True, blank=True)
 
     def __str__(self):
         """
-        Returns the string representation of the LibraryItem.
+        Return the string representation of the LibraryItem.
 
         :returns: A string detailing the game and the user who owns it.
         """
