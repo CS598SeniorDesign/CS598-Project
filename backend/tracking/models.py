@@ -8,18 +8,18 @@ class LibraryItem(models.Model):
     """
     Track the ownership status and house rules of a game for a specific user.
     """
-    OWNED = "OWNED"
-    WISHLISTED = "WISHLISTED"
-    UNPLAYED = "UNPLAYED"
-    LIBRARY_ENTRY_STATUS = [
-        (OWNED, "Owned"),
-        (WISHLISTED, "Wishlisted"),
-        (UNPLAYED, "Unplayed")
+    OWNED = 'OWNED'
+    WISHLISTED = 'WISHLISTED'
+    UNPLAYED = 'UNPLAYED'
+    LIBRARY_ENTRY_STATUSES = [
+        (OWNED, 'Owned'),
+        (WISHLISTED, 'Wishlisted'),
+        (UNPLAYED, 'Unplayed')
     ]
 
     user = models.ForeignKey(to=settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     game = models.ForeignKey(to=Game, on_delete=models.CASCADE)
-    status = models.CharField(max_length=20)
+    status = models.CharField(max_length=20, choices=LIBRARY_ENTRY_STATUSES)
     house_rules = models.TextField(null=True, blank=True)
 
     def __str__(self):
@@ -65,7 +65,7 @@ class PlaySession(models.Model):
 
     def __str__(self):
         """
-        Return the string represenation of the PlaySession.
+        Return the string representation of the PlaySession.
 
         :returns: A string describing the group and the game played.
         """
