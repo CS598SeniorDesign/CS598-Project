@@ -23,3 +23,7 @@ export default function HomePage() {
     </section>
   )
 }
+
+<div className="bg-red-500 text-white p-10 mt-20">
+  Tailwind Test
+</div>

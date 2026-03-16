@@ -14,8 +14,8 @@ export default function SignupPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
-    // TEMPORARY: just redirect to login
-    router.push("/login")
+    // TEMPORARY: just redirect to MFA setup page
+    router.push("/mfa-setup")
   }
 
   return (
@@ -23,11 +23,12 @@ export default function SignupPage() {
       <div className="w-full max-w-md bg-gray-900 p-8 rounded-xl">
         <h1 className="text-3xl font-bold mb-6">Create Account</h1>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit} autoComplete="off" className="flex flex-col gap-4">
 
           <input
             type="email"
             placeholder="Email"
+            autoComplete="off"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="p-3 rounded bg-gray-800 border border-gray-700"
@@ -37,20 +38,12 @@ export default function SignupPage() {
           <input
             type="password"
             placeholder="Password"
+            autoComplete="new-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="p-3 rounded bg-gray-800 border border-gray-700"
             required
           />
-
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={mfa}
-              onChange={(e) => setMfa(e.target.checked)}
-            />
-            Enable Multi-Factor Authentication (MFA)
-          </label>
 
           <select
             value={privacy}
@@ -70,6 +63,14 @@ export default function SignupPage() {
           </button>
 
         </form>
+
+        {/* Link to Login */}
+        <p className="text-sm text-gray-400 mt-6 text-center">
+          Already have an account?{" "}
+          <a href="/login" className="text-indigo-400 hover:underline">
+           Login
+          </a>
+        </p>
       </div>
     </div>
   )

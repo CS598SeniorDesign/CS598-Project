@@ -1,3 +1,4 @@
+import WinRateChart from "@/components/stats/WinRateChart";
 export default function Dashboard() {
   return (
     <div className="flex min-h-screen bg-[#0F172A] text-[#F8FAFC]">
@@ -75,4 +76,4 @@ export default function Dashboard() {
       </main>
     </div>
   );
-}
+} 

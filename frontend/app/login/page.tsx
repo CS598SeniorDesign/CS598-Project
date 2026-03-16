@@ -5,17 +5,19 @@ export default function LoginPage() {
 
         <h1 className="text-3xl font-bold mb-6">Login</h1>
 
-        <form className="flex flex-col gap-4">
+        <form autoComplete="off" className="flex flex-col gap-4">
 
           <input
             type="email"
             placeholder="Email"
+            autoComplete="off"
             className="p-3 rounded bg-gray-800 border border-gray-700"
           />
 
           <input
             type="password"
             placeholder="Password"
+            autoComplete="new-password"
             className="p-3 rounded bg-gray-800 border border-gray-700"
           />
 
@@ -27,6 +29,14 @@ export default function LoginPage() {
           </button>
 
         </form>
+
+        {/* Link to Signup */}
+        <p className="text-sm text-gray-400 mt-6 text-center">
+          Don't have an account? {" "}
+          < a href="/signup" className="text-indigo-400 hover:underline">
+           Sign Up
+          </a>
+        </p>
 
       </div>
     </div>
