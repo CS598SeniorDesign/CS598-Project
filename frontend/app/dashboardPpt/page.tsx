@@ -1,3 +1,5 @@
+import Link from "next/link";
+import WinRateChart from "@/components/stats/WinRateChart";
 export default function Page() {
   type Game = {
     name: string;
@@ -16,6 +18,8 @@ export default function Page() {
   type CommunityItem = {
     name: string;
     img: string;
+    user:string;
+    time:string;
   };
 
   const games: Game[] = [
@@ -31,7 +35,7 @@ export default function Page() {
       name: "Terraforming Mars",
       img: "/images/terraforming.webp",
       result: "Won",
-      players: 3,
+      players: 2,
       time: "90 min",
       date: "Feb 22",
     },
@@ -54,15 +58,16 @@ export default function Page() {
   ];
 
   const community: CommunityItem[] = [
-    { name: "Terraforming Mars", img: "/images/terraforming.webp" },
-    { name: "Catan", img: "/images/catan.webp" },
-    { name: "Everdell", img: "/images/everdell.webp" },
+    { name: "Terraforming Mars", img: "/images/terraforming.webp", user: "Brandon", time: "2hrs ago" },
+    { name: "Catan", img: "/images/catan.webp", user: "Sydney", time: "5hrs ago" },
+    { name: "Everdell", img: "/images/everdell.webp", user:"Jennifer", time:"1d ago" },
+    { name: "Botany", img: "/images/botany.webp", user:"Supriya", time:"2ds ago" },
   ];
 
   const days: string[] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
   return (
-    <div className="min-h-screen bg-[#0F172A] text-[#F8FAFC]">
+    <div className=" min-h-screen bg-[#0F172A] text-[#F8FAFC]">
       {/* NAVBAR */}
       <div className="flex justify-between items-center px-8 py-4 bg-gradient-to-r from-[#1E293B] to-[#0F172A] shadow-xl">
         <h1 className="text-xl font-bold">QuestLog</h1>
@@ -71,9 +76,11 @@ export default function Page() {
           <p className="border-b-2 border-[#4F46E5] pb-1 cursor-pointer">
             Game Library
           </p>
+        <Link href="/games/search">
           <p className="hover:text-white cursor-pointer transition">
             Recommendations for you
           </p>
+        </Link>
           <p className="hover:text-white cursor-pointer transition">
             Weeple
           </p>
@@ -84,34 +91,35 @@ export default function Page() {
           <p>MeepleTeam</p>
         </div>
       </div>
-
+    
       <div className="p-8">
         {/* TITLE */}
-        <h1 className="text-3xl font-bold">Welcome to QuestLog by the Meeple</h1>
+        <h1 className="text-3xl font-bold">Welcome to QuestLog</h1>
         <p className="text-gray-400 mb-6">Your shared activity hub</p>
 
         {/* TOP ROW */}
         <div className="grid grid-cols-3 gap-6">
           {/* RECENT GROUP GAMES */}
-          <div className="col-span-2 bg-[#1E293B]/70 p-5 rounded-2xl shadow-lg hover:shadow-xl transition">
-            <h2 className="mb-4 text-gray-300">Recent Group Games</h2>
+          <div className="col-span-2 bg-[#1E293B]/70 p-5 rounded-2xl shadow-lg transition duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-indigo-500/10">
+            <h2 className="mb-4 text-gray-300">Recently Played</h2>
 
             <div className="flex gap-5">
               {games.map((game, i) => (
-                <div key={i} className="w-44">
-                  <img
-                    src={game.img}
-                    className="rounded-xl mb-2 h-40 w-full object-cover hover:scale-105 hover:shadow-[0_0_20px_rgba(79,70,229,0.4)] transition"
-                  />
-                  <p className="text-sm font-semibold">{game.name}</p>
-                  <div className="text-[#FFBF00] text-sm">★★★★★</div>
-                </div>
-              ))}
-            </div>
+               <Link key={i} href={`/games/${game.name}`}>
+                <div className="w-44 cursor-pointer">
+                 <img
+                  src={game.img}
+                  className="rounded-xl mb-2 h-40 w-full object-cover transition duration-300 hover:scale-105 hover:shadow-[0_0_20px_rgba(79,70,229,0.4)]"
+                 />
+                   <p className="text-sm font-semibold">{game.name}</p>
+                   <div className="text-[#FFBF00] text-sm">★★★★★</div>
+               </div>
+             </Link>
+            ))}
           </div>
-
+        </div>
           {/* CALENDAR */}
-          <div className="bg-[#1E293B]/70 p-5 rounded-2xl shadow-lg">
+          <div className="bg-[#1E293B]/70 p-5 rounded-2xl shadow-lg transition duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-indigo-500/10">
             <h2 className="mb-2 text-gray-300">Calendar</h2>
             <h3 className="text-center mb-3 font-semibold tracking-wide">
               FEBRUARY
@@ -134,7 +142,7 @@ export default function Page() {
                   {i + 1}
 
                   {(i === 9 || i === 22) && (
-                    <div className="absolute bottom-1 text-[9px] bg-[#10B981] px-1 rounded">
+                    <div className="absolute bottom-1 text-[10px] bg-[#10B981] text-indigo-300 px-2 rounded">
                       Game
                     </div>
                   )}
@@ -147,8 +155,8 @@ export default function Page() {
         {/* MIDDLE ROW */}
         <div className="grid grid-cols-3 gap-6 mt-6">
           {/* RECENT PLAYS */}
-          <div className="bg-[#1E293B]/70 p-5 rounded-2xl shadow-lg">
-            <h2 className="mb-3">Recently Played</h2>
+          <div className="bg-[#1E293B]/70 p-5 rounded-2xl shadow-lg transition duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-indigo-500/10">
+            <h2 className="mb-3">Recent Plays</h2>
 
             {recentPlays.map((play, i) => (
               <div
@@ -181,27 +189,32 @@ export default function Page() {
           </div>
 
           {/* STATS */}
-          <div className="bg-[#1E293B]/70 p-5 rounded-2xl text-center shadow-lg">
+          <div className="bg-[#1E293B]/70 p-5 rounded-2xl text-center shadow-lg transition duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-indigo-500/10">
             <h2 className="mb-4">Your Stats</h2>
 
-            <div className="flex justify-around">
+            <div className="flex justify-around mb-6">
               <div>
-                <p className="text-gray-400 text-3xl font-bold">Total Plays</p>
-                <p className="text-2xl font-bold">58</p>
+                <p className="text-gray-400 font-bold text-3xl">Total Plays</p>
+                <p className="text-2xl font-bold text-indigo-400">58</p>
+                <p className="text-xs text-green-400">+11 this month</p>
               </div>
               <div>
-                <p className="text-gray-400 text-3xl font-bold">Win Rate</p>
-                <p className="text-2xl font-bold text-[#10B981]">71%</p>
+                <p className="text-gray-400 font-bold text-3xl">Win Rate</p>
+                <p className="text-2xl font-bold text-indigo-400">71%</p>
+                <p className="text-xs text-green-400">+6% improvement</p>
               </div>
               <div>
-                <p className="text-gray-400 text-3xl font-bold">Owned</p>
-                <p className="text-2xl font-bold">19</p>
+                <p className="text-gray-400 font-bold text-3xl">Owned</p>
+                <p className="text-2xl font-bold text-indigo-400">24</p>
+                <p className="text-xs text-green-400">+2 new</p>
               </div>
             </div>
+            <div className="mt-4"></div>
+              <WinRateChart />
           </div>
 
           {/* COMMUNITY */}
-          <div className="bg-[#1E293B]/70 p-5 rounded-2xl shadow-lg">
+          <div className="bg-[#1E293B]/70 p-5 rounded-2xl shadow-lg transition duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-indigo-500/10">
             <h2 className="mb-3">Weeple Community Feed</h2>
 
             {community.map((item, i) => (
@@ -209,8 +222,18 @@ export default function Page() {
                 key={i}
                 className="flex items-center gap-3 bg-[#0F172A] p-2 rounded-lg mb-2"
               >
-                <img src={item.img} className="w-10 h-10 rounded" />
-                <span className="text-sm">{item.name}</span>
+                <div className="flex items-center gap-2">
+                 <div className="w-8 h-8 bg-gray-500 rounded-full" />
+                 <img src={item.img} className="w-10 h-10 rounded" />
+                </div>
+                <div className="flex flex-col">
+                 <span className="text-sm font-semibold">
+                  {item.user} • {item.time}
+                 </span>
+                 <span className="text-xs text-gray-400">
+                  Played {item.name}
+                  </span>
+               </div>
                 <span className="ml-auto text-xs bg-[#4F46E5] px-2 py-1 rounded">
                   Game Night
                 </span>
@@ -222,7 +245,7 @@ export default function Page() {
         {/* BOTTOM ROW */}
         <div className="grid grid-cols-2 gap-6 mt-6">
           {/* MEMBERS */}
-          <div className="bg-[#1E293B]/70 p-5 rounded-2xl shadow-lg">
+          <div className="bg-[#1E293B]/70 p-5 rounded-2xl shadow-lg transition duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-indigo-500/10">
             <h2 className="mb-3">Members</h2>
 
             {["Brandon", "Jennifer", "Sydney", "Supriya"].map((m) => (
@@ -237,7 +260,7 @@ export default function Page() {
           </div>
 
           {/* DONUT */}
-          <div className="bg-[#1E293B]/70 p-5 rounded-2xl shadow-lg flex flex-col items-center">
+          <div className="bg-[#1E293B]/70 p-5 rounded-2xl shadow-lg flex flex-col items-center transition duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-indigo-500/10">
             <h2 className="mb-3">Game Types</h2>
 
             <div
