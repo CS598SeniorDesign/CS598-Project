@@ -1,0 +1,17 @@
+#macOS system files
+.DS_Store
+
+#Node modules (do not commit this)
+node_modules/
+
+#Personal notes
+all-code.txt
+
+#optional: log files
+*.log
+
+#environment files
+.env
+.env.local
+
+
