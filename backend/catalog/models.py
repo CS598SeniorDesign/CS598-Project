@@ -127,3 +127,5 @@ class BoardGame(models.Model):
         :return: A string containing the name and publication year for a board game.
         """
         return f"{self.primary_name} ({self.year_published})"
+
+# skibidi doo dah grimes, you guys actually reading this PR?
