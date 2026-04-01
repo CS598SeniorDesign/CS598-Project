@@ -57,13 +57,23 @@ export default function Page() {
         <button className="bg-[#4F46E5] px-6 rounded-xl hover:bg-indigo-500 transition">
           Search
         </button>
+
+        {/* Clear button */}
+        {query && (
+          <button 
+          onClick={() => setQuery("")}
+          className="bg-gray-700 px-4 rounded-xl hover:bg-gray-600 transition"
+          >
+            Clear
+          </button>
+        )}
       </div>
 
       {/* RESULTS */}
       {filteredGames.length > 0 ? (
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 ">
           {filteredGames.map((game) => (
-            <Link key={game.id} href={`/games/${game.name}`}>
+            <Link key={game.id} href={`/games/${game.id}`}>
               <div className="bg-gray-900 p-4 rounded-2xl shadow-lg cursor-pointer
                               transition duration-300 hover:scale-105 hover:shadow-indigo-500/20">
 
@@ -83,7 +93,7 @@ export default function Page() {
         </div>
       ) : (
         <p className="text-center mt-10 text-gray-400">
-          No results found 😢
+          No results found for "{query}"
         </p>
       )}
     </div>
