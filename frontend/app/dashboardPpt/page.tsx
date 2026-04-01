@@ -209,8 +209,10 @@ export default function Page() {
                 <p className="text-xs text-green-400">+2 new</p>
               </div>
             </div>
-            <div className="mt-4"></div>
-              <WinRateChart />
+            <div className="bg-slate-800 p-4 rounded-xl w-full h-[300px] mt-4">
+             <h2 className="text-lg font-semibold mb-2">Win Rate</h2>
+              <WinRateChart className="w-full h-full" />
+             </div>
           </div>
 
           {/* COMMUNITY */}

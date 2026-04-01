@@ -1,35 +1,36 @@
 "use client";
 
-import {
-  PieChart,
-  Pie,
-  Cell,
-  Tooltip
-} from "recharts";
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 
-const data = [
-  { name: "Wins", value: 12 },
-  { name: "Losses", value: 8 }
-];
+type WinRateChartProps = {
+  className?: string; 
+  data?: { name: string; value: number }[];
+};
 
-export default function WinRateChart() {
+export default function WinRateChart({ className, data: customData }: WinRateChartProps) {
+  const chartData = customData || [
+    { name: "Wins", value: 12 },
+    { name: "Losses", value: 8 },
+  ];
 
   return (
-
-    <PieChart width={300} height={300}>
-
-      <Pie
-        data={data}
-        dataKey="value"
-        outerRadius={100}
-      >
-        <Cell fill="#10B981" />
-        <Cell fill="#EF4444" />
-      </Pie>
-
-      <Tooltip />
-
-    </PieChart>
-
+    <div className={className}>
+      {/* ResponsiveContainer makes the chart scale automatically */}
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart>
+          <Pie
+            data={chartData}
+            dataKey="value"
+            outerRadius={80}
+            innerRadius={40}
+            paddingAngle={2}
+          >
+            <Cell fill="#10B981" />
+            <Cell fill="#EF4444" />
+          </Pie>
+          <Tooltip />
+        </PieChart>
+      </ResponsiveContainer>
+    </div>
   );
 }
