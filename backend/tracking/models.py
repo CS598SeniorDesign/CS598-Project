@@ -22,7 +22,7 @@ class LibraryItem(models.Model):
     status = models.CharField(max_length=20, choices=LIBRARY_ENTRY_STATUSES, default=UNPLAYED)
     house_rules = models.TextField(null=True, blank=True)
 
-    def __str__(self):
+    def __str__(self) -> str:
         """
         Return the string representation of the LibraryItem.
 
@@ -45,7 +45,7 @@ class Rating(models.Model):
     class Meta:
         unique_together = ['user', 'game']
 
-    def __str__(self):
+    def __str__(self) -> str:
         """
         Return the string representation of the Rating.
 
@@ -63,7 +63,7 @@ class PlaySession(models.Model):
     play_date = models.DateField()
     play_time_minutes = models.IntegerField()
 
-    def __str__(self):
+    def __str__(self) -> str:
         """
         Return the string representation of the PlaySession.
 
@@ -81,7 +81,7 @@ class SessionPlayer(models.Model):
     score = models.FloatField()
     is_winner = models.BooleanField()
 
-    def __str__(self):
+    def __str__(self) -> str:
         """
         Return the string representation of the SessionPlayer.
 
