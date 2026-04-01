@@ -17,7 +17,7 @@ class BGGAttribute(models.Model):
     class Meta:
         abstract = True
 
-    def __str__(self):
+    def __str__(self) -> str:
         """
         Returns the string representation of the attribute.
 
@@ -120,7 +120,7 @@ class BoardGame(models.Model):
     average_rating = models.DecimalField(max_digits=5, decimal_places=3, null=True, blank=True)
     bgg_rank = models.IntegerField(null=True, blank=True)
 
-    def __str__(self):
+    def __str__(self) -> str:
         """
         Return the string representation of a boardgame's name and year of publication
 

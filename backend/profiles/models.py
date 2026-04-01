@@ -23,7 +23,7 @@ class Profile(models.Model):
     privacy_level = models.CharField(max_length=10, choices=PRIVACY_LEVEL_CHOICES, default=PUBLIC)
     friends = models.ManyToManyField(to='self', blank=True)
 
-    def __str__(self):
+    def __str__(self) -> str:
         """
         Return the string representation of the user's Profile.
 
@@ -44,7 +44,7 @@ class GameGroup(models.Model):
                                    related_name='created_groups')
     members = models.ManyToManyField(to=settings.AUTH_USER_MODEL, related_name='group_memberships')
 
-    def __str__(self):
+    def __str__(self) -> str:
         """
         Return the string representation of the game group.
 
@@ -73,7 +73,7 @@ class PlayerTag(models.Model):
     class Meta:
         unique_together = ('assigning_user', 'target_user', 'tag_type')
 
-    def __str__(self):
+    def __str__(self) -> str:
         """
         Return the string representation of the PlayerTag.
 
