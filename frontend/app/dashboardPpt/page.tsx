@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 import WinRateChart from "@/components/stats/WinRateChart";
 import CollapsiblePanel from "@/components/ui/CollapsiblePanel";
@@ -66,7 +69,9 @@ export default function Page() {
   ];
 
   const days: string[] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
+   
+  const [openChart, setOpenChart] = useState<null | "winrate">(null);
+  
   return (
     <div className=" min-h-screen bg-[#0F172A] text-[#F8FAFC]">
       {/* NAVBAR */}
@@ -249,7 +254,10 @@ export default function Page() {
        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
 
        {/* WIN RATE */}
-       <div className="bg-slate-800 p-4 rounded-xl h-[300px] flex flex-col">
+       <div 
+          onClick={() => setOpenChart("winrate")}
+          className="bg-slate-800 p-4 rounded-xl h-[300px] flex flex-col cursor-pointer hover:scale-[1.02] transition"
+       >
         <h2 className="mb-2 text-center">Win Rate</h2>
 
        <div className="flex-1 flex items-center justify-center">
@@ -299,6 +307,32 @@ export default function Page() {
 
         </div>
       </div>
+      {openChart === "winrate" && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+    
+          <div className="bg-[#1E293B] p-6 rounded-2xl w-[600px] h-[450px] relative shadow-xl">
+
+          {/* CLOSE BUTTON */}
+          <button
+          onClick={() => setOpenChart(null)}
+          className="absolute top-3 right-3 bg-gray-700 px-3 py-1 rounded-lg hover:bg-gray-600 transition"
+        >
+          ✕
+         </button>
+
+         {/* TITLE */}
+          <h2 className="text-center mb-4 text-lg font-semibold">
+            Win Rate Details
+          </h2>
+
+         {/* BIG CHART */}
+          <div className="w-full h-[350px]">
+          <WinRateChart className="w-full h-full" />
+          </div>
+
+          </div>
+       </div>
+      )}
     </div>
   );
 }
