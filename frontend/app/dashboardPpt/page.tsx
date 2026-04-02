@@ -1,9 +1,23 @@
 "use client";
-
+import Image from "next/image";
 import { useState } from "react";
 import Link from "next/link";
 import WinRateChart from "@/components/stats/WinRateChart";
 import CollapsiblePanel from "@/components/ui/CollapsiblePanel";
+//for avatars
+import brandonAvatar from "@/public/avatars/brandon.webp";
+import sydneyAvatar from "@/public/avatars/sydney.webp";
+import jenniferAvatar from "@/public/avatars/jennifer.webp";
+import supriyaAvatar from "@/public/avatars/supriya.webp";
+
+import { StaticImageData} from "next/image";
+
+//for game images
+import terraformImg from "@/public/images/terraforming.webp";
+import catanImg from "@/public/images/catan.webp";
+import everdellImg from "@/public/images/everdell.webp";
+import botanyImg from "@/public/images/botany.webp";
+
 export default function Page() {
   type Game = {
     name: string;
@@ -20,11 +34,13 @@ export default function Page() {
   };
 
   type CommunityItem = {
-    name: string;
-    img: string;
-    user:string;
-    time:string;
-  };
+  name: string; // game name
+  img: string | StaticImageData; // game image
+  user: string;
+  time: string;
+  result: "Won" | "Lost";
+  avatar?: string | StaticImageData;
+};
 
   const games: Game[] = [
     { name: "Botany", img: "/images/botany.webp" },
@@ -61,12 +77,12 @@ export default function Page() {
     },
   ];
 
-  const community: CommunityItem[] = [
-    { name: "Terraforming Mars", img: "/images/terraforming.webp", user: "Brandon", time: "2hrs ago" },
-    { name: "Catan", img: "/images/catan.webp", user: "Sydney", time: "5hrs ago" },
-    { name: "Everdell", img: "/images/everdell.webp", user:"Jennifer", time:"1d ago" },
-    { name: "Botany", img: "/images/botany.webp", user:"Supriya", time:"2ds ago" },
-  ];
+ const community: CommunityItem[] = [
+  { user: "Brandon", time: "2hrs ago", result: "Won", avatar: brandonAvatar, name: "Terraforming Mars", img: terraformImg },
+  { user: "Sydney", time: "5hrs ago", result: "Lost", avatar: sydneyAvatar, name: "Catan", img: catanImg },
+  { user: "Jennifer", time: "1d ago", result: "Won", avatar: jenniferAvatar, name: "Everdell", img: everdellImg },
+  { user: "Supriya", time: "2d ago", result: "Lost", avatar: supriyaAvatar, name: "Botany", img: botanyImg },
+];
 
   const days: string[] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
    
@@ -203,10 +219,23 @@ export default function Page() {
                 key={i}
                 className="flex items-center gap-3 bg-[#0F172A] p-2 rounded-lg mb-2"
               >
-                <div className="flex items-center gap-2">
-                 <div className="w-8 h-8 bg-gray-500 rounded-full" />
-                 <img src={item.img} className="w-10 h-10 rounded" />
-                </div>
+                 {/* Avatar */}
+                  <Image
+                  src={item.avatar!}
+                  alt={item.user}
+                  width={40}
+                  height={40}
+                  className="w-10 h-10 rounded-full object-cover"
+               />
+                {/* Game Image */}
+                <Image
+                src={item.img}
+                alt={item.name}
+                width={50}
+               height={50}
+               className="rounded-lg object-cover"
+               />
+
                 <div className="flex flex-col">
                  <span className="text-sm font-semibold">
                   {item.user} • {item.time}
@@ -215,6 +244,16 @@ export default function Page() {
                   Played {item.name}
                   </span>
                </div>
+                {/* Result */}
+               {item.result && (
+               <span
+               className={`ml-auto text-xs px-2 py-1 rounded font-semibold ${
+               item.result === "Won" ? "bg-green-600 text-white" : "bg-red-600 text-white"
+               }`}
+               >
+               {item.result}
+              </span>
+               )}
                 <span className="ml-auto text-xs bg-[#4F46E5] px-2 py-1 rounded">
                   Game Night
                 </span>
