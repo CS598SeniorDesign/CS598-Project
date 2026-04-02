@@ -18,6 +18,7 @@ export const metadata: Metadata = {
   description: "We keep the score.. you bring out the drama.",
 };
 
+<html lang="en" suppressHydrationWarning> </html>
 export default function RootLayout({
   children,
 }: Readonly<{
