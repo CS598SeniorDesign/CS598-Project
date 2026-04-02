@@ -70,7 +70,7 @@ export default function Page() {
 
   const days: string[] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
    
-  const [openChart, setOpenChart] = useState<null | "winrate">(null);
+  const [openChart, setOpenChart] = useState<null | "winrate" | "donut">(null);
   
   return (
     <div className=" min-h-screen bg-[#0F172A] text-[#F8FAFC]">
@@ -266,7 +266,10 @@ export default function Page() {
        </div>
 
        {/* DONUT */}
-       <div className="bg-slate-800 p-4 rounded-xl flex flex-col items-center justify-center">
+       <div
+         onClick={() => setOpenChart("donut")}
+         className="bg-slate-800 p-4 rounded-xl h-[300px] flex flex-col items-center justify-center cursor-pointer hover:scale-[1.02] transition"
+        >
         <h2 className="mb-3">Game Types</h2>
 
         <div
@@ -333,6 +336,47 @@ export default function Page() {
           </div>
        </div>
       )}
-    </div>
+      {openChart === "donut" && (
+      <div
+        onClick={() => setOpenChart(null)}
+        className="fixed inset-0 bg-black/70 flex items-center justify-center z-50"
+       >
+       <div
+         onClick={(e) => e.stopPropagation()}
+        className="bg-[#1E293B] p-6 rounded-2xl w-[600px] h-[450px] relative shadow-xl"
+       >
+       {/* CLOSE BUTTON */}
+        <button
+        onClick={() => setOpenChart(null)}
+        className="absolute top-3 right-3 bg-gray-700 px-3 py-1 rounded-lg hover:bg-gray-600 transition"
+        >
+        ✕
+        </button>
+
+        {/* TITLE */}
+       <h2 className="text-center mb-4 text-lg font-semibold">
+         Game Types Details
+        </h2>
+
+        {/* BIG DONUT */}
+        <div className="w-full h-[350px] flex items-center justify-center">
+         <div
+          className="w-64 h-64 rounded-full relative"
+          style={{
+            background:
+              "conic-gradient(#4F46E5 40%, #10B981 25%, #FFBF00 20%, #EF4444 15%)",
+          }}
+        >
+          <div className="absolute inset-12 bg-[#0F172A] rounded-full" />
+        </div>
+      </div>
+
+       <p className="text-gray-400 text-sm mt-2 text-center">
+        Strategy • Party • Co-op • Family
+        </p>
+       </div>
+       </div>
+       )}
+      </div>
   );
 }
