@@ -53,7 +53,7 @@ export default function Page() {
           className="w-full p-4 rounded-2xl bg-gray-900 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-[#4F46E5]"
         />
 
-        <button className="bg-[#4F46E5] px-6 rounded-xl hover:bg-indigo-500 transition">
+        <button className="bg-[#4F46E5] px-6 rounded-xl hover:bg-indigo-500 transition duration-300">
           Search
         </button>
 
