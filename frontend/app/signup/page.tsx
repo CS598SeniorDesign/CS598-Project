@@ -14,7 +14,10 @@ export default function SignupPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
-    // TEMPORARY: just redirect to MFA setup page
+    //temporary: store the user info
+    console.log({ email, password, privacy})
+
+    // reidrect to mfa
     router.push("/mfa-setup")
   }
 

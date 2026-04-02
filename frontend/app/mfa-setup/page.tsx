@@ -29,11 +29,17 @@ export default function MFASetup() {
 
         <div className="flex gap-4 justify-center">
 
-          <button className="bg-indigo-600 px-6 py-2 rounded-lg">
+          <button
+             className="bg-indigo-600 px-6 py-2 rounded-lg hover:opacity-90 transition"
+             onClick={handleEnable}
+          >
             Enable MFA
           </button>
 
-          <button className="border border-gray-600 px-6 py-2 rounded-lg">
+          <button 
+             className="border border-gray-600 px-6 py-2 rounded-lg"
+             onClick={handleSkip}   
+          >
             Skip
           </button>
 

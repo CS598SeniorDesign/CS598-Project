@@ -88,6 +88,10 @@ export default function Page() {
    
   const [openChart, setOpenChart] = useState<null | "winrate" | "donut">(null);
   
+  // get the avatar saved by the user in Avatar Picker
+const userAvatar =
+  typeof window !== "undefined" ? localStorage.getItem("userAvatar") : null;
+
   return (
     <div className=" min-h-screen bg-[#0F172A] text-[#F8FAFC]">
       {/* NAVBAR */}
@@ -109,7 +113,15 @@ export default function Page() {
         </div>
 
         <div className="flex items-center gap-3">
+           {userAvatar ? (
+            <img 
+              src={userAvatar}
+              alt="User Avatar"
+              className="w-8 h-8 rounded-full object-cover"
+              />
+           ) : (
           <div className="w-8 h-8 bg-gray-500 rounded-full" />
+           )}
           <p>MeepleTeam</p>
         </div>
       </div>
