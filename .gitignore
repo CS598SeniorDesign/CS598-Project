@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 #macOS system files
 .DS_Store
 
@@ -15,3 +16,15 @@ all-code.txt
 .env.local
 
 
+=======
+# Backend
+.venv
+__pycache__
+.env
+
+# Frontend
+.env.local
+
+# Database
+*.sqlite3
+>>>>>>> origin/main

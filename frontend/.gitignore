@@ -40,4 +40,12 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# prisma generated files
 /app/generated/prisma
+
+# frontend build artifacts (from my branch)
+frontend/.next/
+frontend/node_modules/
+
+# avatars
+/public/avatars/
