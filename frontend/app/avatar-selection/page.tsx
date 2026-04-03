@@ -1,6 +1,7 @@
 "use client"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import "../../style/auth.css" // use the same CSS
 
 const avatars = [
   "/avatars/brandon.webp",
@@ -11,7 +12,7 @@ const avatars = [
   "/avatars/avatar2.webp",
   "/avatars/avatar3.webp",
   "/avatars/avatar4.webp",
-  "/avatars/avatar5.webpp",
+  "/avatars/avatar5.webp", 
 ]
 
 export default function AvatarSelectionPage() {
@@ -20,24 +21,24 @@ export default function AvatarSelectionPage() {
 
   const handleConfirm = () => {
     if (selectedAvatar) {
-      // TEMP: store avatar (maybe in context or localStorage)
-      localStorage.setItem("userAvatar", selectedAvatar)
-      router.push("/dashboardPpt") // final step
+      localStorage.setItem("userAvatar", selectedAvatar) //store the avatar in localStorage
+      router.push("/dashboardPpt")
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black text-white">
-      <div className="w-full max-w-md bg-gray-900 p-8 rounded-xl">
-        <h1 className="text-3xl font-bold mb-6">Pick Your Avatar</h1>
-        <div className="grid grid-cols-2 gap-4 mb-6">
+    <div className="auth-page-container">
+      <div className="auth-card">
+        <h1 className="auth-title">Pick Your Avatar</h1>
+
+        <div className="avatar-grid">
           {avatars.map((avt) => (
             <img
               key={avt}
               src={avt}
               alt="avatar"
-              className={`w-20 h-20 rounded-full cursor-pointer border-4 ${
-                selectedAvatar === avt ? "border-indigo-500" : "border-gray-700"
+              className={`avatar-image ${
+                selectedAvatar === avt ? "avatar-selected" : ""
               }`}
               onClick={() => setSelectedAvatar(avt)}
             />
@@ -47,7 +48,7 @@ export default function AvatarSelectionPage() {
         <button
           onClick={handleConfirm}
           disabled={!selectedAvatar}
-          className="bg-primary py-2 rounded-lg hover:opacity-90 w-full disabled:opacity-50"
+          className="auth-button w-full"
         >
           Confirm → Dashboard
         </button>
