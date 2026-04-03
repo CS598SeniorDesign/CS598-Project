@@ -22,7 +22,7 @@ export default function AvatarSelectionPage() {
     if (selectedAvatar) {
       // TEMP: store avatar (maybe in context or localStorage)
       localStorage.setItem("userAvatar", selectedAvatar)
-      router.push("/dashboard") // final step
+      router.push("/dashboardPpt") // final step
     }
   }
 
