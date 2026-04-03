@@ -1,0 +1,229 @@
+/* Container */
+.signup-page-container {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #0F172A; /* Deep Slate background from palette */
+  color: #F8FAFC; /* Light Gray text */
+}
+
+/* Card */
+.signup-card {
+  width: 100%;
+  max-width: 28rem; /* ~448px */
+  background-color: #1f1f1f;
+  padding: 2rem;
+  border-radius: 1rem;
+}
+
+/* Title */
+.signup-title {
+  font-size: 1.875rem; /* 3xl */
+  font-weight: bold;
+  margin-bottom: 1.5rem; /* 6 */
+}
+
+/* Form */
+.signup-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem; /* 4 */
+}
+
+/* Inputs / Select */
+.signup-input {
+  padding: 0.75rem; /* 3 */
+  border-radius: 0.375rem;
+  background-color: #2d2d2d;
+  border: 1px solid #3f3f3f;
+  color: #F8FAFC; /* Light Gray text */
+}
+
+/* Button */
+.signup-button {
+  background-color: #4F46E5; /* Muted Indigo - primary */
+  color: #F8FAFC; /* Light Gray text */
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.signup-button:hover {
+  background-color: #6366F1; /* lighter indigo on hover */
+  transform: translateY(-1px);
+}
+
+.signup-button:active {
+  background-color: #4338CA; /* darker indigo when clicked */
+  transform: translateY(0);
+}
+
+/* Login link */
+.signup-login-text {
+  font-size: 0.875rem;
+  color: #9ca3af;
+  margin-top: 1.5rem;
+  text-align: center;
+}
+
+.signup-login-link {
+  color: #4F46E5; /* Match primary color for consistency */
+  text-decoration: underline;
+}
+
+.signup-login-link:hover {
+  opacity: 0.9;
+}
+
+/*Login / Signup link text */
+/* Container */
+.signup-page-container {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #0F172A; /* Deep Slate background from palette */
+  color: #F8FAFC; /* Light Gray text */
+}
+
+/* Card */
+.signup-card {
+  width: 100%;
+  max-width: 28rem; /* ~448px */
+  background-color: #1f1f1f;
+  padding: 2rem;
+  border-radius: 1rem;
+}
+
+/* Title */
+.signup-title {
+  font-size: 1.875rem; /* 3xl */
+  font-weight: bold;
+  margin-bottom: 1.5rem; /* 6 */
+}
+
+/* Form */
+.signup-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem; /* 4 */
+}
+
+/* Inputs / Select */
+.signup-input {
+  padding: 0.75rem; /* 3 */
+  border-radius: 0.375rem;
+  background-color: #2d2d2d;
+  border: 1px solid #3f3f3f;
+  color: #F8FAFC; /* Light Gray text */
+}
+
+/* Button */
+.signup-button {
+  background-color: #4F46E5; /* Muted Indigo - primary */
+  color: #F8FAFC; /* Light Gray text */
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.signup-button:hover {
+  background-color: #6366F1; /* lighter indigo on hover */
+  transform: translateY(-1px);
+}
+
+.signup-button:active {
+  background-color: #4338CA; /* darker indigo when clicked */
+  transform: translateY(0);
+}
+
+.signup-button.login {
+  background-color: #4F46E5; /* same Muted Indigo */
+}
+
+.signup-button.login:hover {
+  background-color: #6366F1;
+}
+
+.signup-button.login:active {
+  background-color: #4338CA;
+}
+
+/* Login link */
+.signup-login-text {
+  font-size: 0.875rem;
+  color: #9ca3af;
+  margin-top: 1.5rem;
+  text-align: center;
+}
+
+.signup-login-link {
+  color: #4F46E5; /* Match primary color for consistency */
+  text-decoration: underline;
+}
+
+.signup-login-link:hover {
+  opacity: 0.9;
+}
+
+/* MFA specific tweaks */
+
+/* Text under MFA title */
+.mfa-text {
+  color: #9ca3af; /* Light Gray */
+  margin-bottom: 1.5rem;
+  font-size: 1rem;
+  text-align: center;
+}
+
+/* Buttons container */
+.mfa-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+/* Enable MFA button */
+.enable-mfa {
+  background-color: #4F46E5; /* Muted Indigo */
+  color: #F8FAFC;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.enable-mfa:hover {
+  background-color: #6366F1;
+  transform: translateY(-1px);
+}
+
+.enable-mfa:active {
+  background-color: #4338CA;
+  transform: translateY(0);
+}
+
+/* Skip MFA button */
+.skip-mfa {
+  background-color: transparent;
+  border: 1px solid #3f3f3f;
+  color: #F8FAFC;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.skip-mfa:hover {
+  opacity: 0.9;
+}
