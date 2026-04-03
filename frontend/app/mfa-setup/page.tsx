@@ -1,52 +1,39 @@
 "use client"
 
 import { useRouter } from "next/navigation"
+import "../../style/auth.css" // use same CSS
 
 export default function MFASetup() {
+  const router = useRouter()
 
-    const router = useRouter()
+  const handleEnable = () => {
+    // TODO: implement the MFA setup
+    router.push("/login")
+  }
 
-    const handleEnable = () => {
-        //later this would then setup MFA
-        router.push("/login")
-    }
+  const handleSkip = () => {
+    router.push("/login")
+  }
 
-    const handleSkip = () => {
-        router.push("/login")
-    }
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black text-white">
+    <div className="signup-page-container">
+      <div className="signup-card mfa-card">
+        <h1 className="signup-title">Secure Your Account</h1>
 
-      <div className="bg-gray-900 p-8 rounded-xl text-center max-w-md">
-
-        <h1 className="text-3xl font-bold mb-4">
-          Secure Your Account
-        </h1>
-
-        <p className="text-gray-400 mb-6">
+        <p className="mfa-text">
           You can enable Multi-Factor Authentication for additional security.
         </p>
 
-        <div className="flex gap-4 justify-center">
-
-          <button
-             className="bg-indigo-600 px-6 py-2 rounded-lg hover:opacity-90 transition"
-             onClick={handleEnable}
-          >
+        <div className="mfa-buttons">
+          <button className="signup-button enable-mfa" onClick={handleEnable}>
             Enable MFA
           </button>
 
-          <button 
-             className="border border-gray-600 px-6 py-2 rounded-lg"
-             onClick={handleSkip}   
-          >
+          <button className="signup-button skip-mfa" onClick={handleSkip}>
             Skip
           </button>
-
         </div>
-
       </div>
-
     </div>
   )
 }
