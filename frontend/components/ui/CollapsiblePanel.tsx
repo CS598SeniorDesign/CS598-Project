@@ -1,6 +1,6 @@
-// components/ui/CollapsiblePanel.tsx
 "use client";
 import React, { useState } from "react";
+import "@/style/auth.css"; // import the CSS
 
 interface CollapsiblePanelProps {
   title: string;
@@ -8,19 +8,19 @@ interface CollapsiblePanelProps {
 }
 
 export default function CollapsiblePanel({ title, children }: CollapsiblePanelProps) {
-  const [isOpen, setIsOpen] = useState(false); 
+  const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="bg-[#1E293B]/70 rounded-2xl shadow-lg mb-4 border border-gray-700">
+    <div className="collapsible-panel">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full text-left p-4 font-semibold flex justify-between items-center hover:bg-gray-800 transition"
+        className="collapsible-panel-button"
       >
-        {title} 
-        <span className="text-indigo-400">{isOpen ? "▲" : "▼"}</span>
+        {title}
+        <span className="collapsible-panel-arrow">{isOpen ? "▲" : "▼"}</span>
       </button>
 
-      {isOpen && <div className="mt-2 p-4">{children}</div>}
+      {isOpen && <div className="collapsible-panel-content">{children}</div>}
     </div>
   );
 }
