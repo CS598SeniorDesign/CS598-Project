@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-import "../../style/auth.css" // same CSS as signup
+import "../../style/auth.css" 
 
 export default function LoginPage() {
   const router = useRouter()
@@ -12,9 +12,9 @@ export default function LoginPage() {
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault()
 
-    // TODO: Replace with real authentication logic
+    // temporary auth placeholder
     if (email && password) {
-      router.push("/avatar-selection") // redirect to Avatar Picker
+      router.push("/avatar-selection") 
     } else {
       alert("Please enter email and password")
     }
