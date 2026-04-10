@@ -17,7 +17,7 @@ export default function SignupPage() {
     // TODO: remove temporary local storage logic after backend auth is implemented.
     console.log({ email, password, privacy })
 
-    // redirect to MFA
+    // redirect to MFA setup page
     router.push("/mfa-setup")
   }
 

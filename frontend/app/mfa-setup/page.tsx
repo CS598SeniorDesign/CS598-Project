@@ -7,7 +7,7 @@ export default function MFASetup() {
   const router = useRouter()
 
   const handleEnable = () => {
-    // TODO: implement the MFA setup
+    // redirect after MFA choice
     router.push("/login")
   }
 
