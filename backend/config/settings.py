@@ -28,6 +28,7 @@ env = environ.Env(
     FRONTEND_URL=(str, 'http://localhost:3000'),
     BACKEND_URL=(str, 'http://localhost:8000'),
     DATABASE_URL=(str, 'sqlite:///db.sqlite3'),
+    BACKEND_REDIS_URL=(str, 'redis://localhost:6379/0')
 )
 
 environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
@@ -99,6 +100,38 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 DATABASES = {
     'default': env.db('DATABASE_URL')
+}
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": env("REDIS_CACHE_URL"),
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient"
+        }
+    }
+}
+
+SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+SESSION_CACHE_ALIAS = "sessions"
+CACHES["sessions"] = {
+    "BACKEND": "django_redis.cache.RedisCache",
+    "LOCATION": env("REDIS_SESSION_URL"),
+    "OPTIONS": {
+        "CLIENT_CLASS": "django_redis.client.DefaultClient"
+    }
+}
+
+CELERY_BROKER_URL = env("REDIS_CELERY_URL")
+CELERY_RESULT_BACKEND = env("REDIS_CELERY_URL")
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": env("REDIS_CACHE_URL")
+        }
+    }
 }
 
 

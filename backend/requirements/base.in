@@ -1,7 +1,13 @@
+celery
+channels
+channels-redis
 django>=4.2
-psycopg2-binary
 djangorestframework
 djangorestframework-simplejwt
 django-cors-headers
-django-environ
 django-csp
+django-environ
+django-redis
+gunicorn
+redis
+psycopg2-binary
