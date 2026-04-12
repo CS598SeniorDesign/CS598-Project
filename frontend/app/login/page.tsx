@@ -12,6 +12,7 @@ export default function LoginPage() {
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault()
 
+    //TODO: replace with real authentication logic
     // temporary auth placeholder
     if (email && password) {
       router.push("/avatar-selection") 
@@ -30,7 +31,7 @@ export default function LoginPage() {
             type="email"
             placeholder="Email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(event) => setEmail(event.target.value)}
             className="signup-input"
             autoComplete="off"
             required
@@ -40,7 +41,7 @@ export default function LoginPage() {
             type="password"
             placeholder="Password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(event) => setPassword(event.target.value)}
             className="signup-input"
             autoComplete="new-password"
             required

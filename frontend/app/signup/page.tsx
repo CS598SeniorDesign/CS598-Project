@@ -32,7 +32,7 @@ export default function SignupPage() {
             placeholder="Email"
             autoComplete="off"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(event) => setEmail(event.target.value)}
             className="signup-input"
             required
           />
@@ -42,14 +42,14 @@ export default function SignupPage() {
             placeholder="Password"
             autoComplete="new-password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(event) => setPassword(event.target.value)}
             className="signup-input"
             required
           />
 
           <select
             value={privacy}
-            onChange={(e) => setPrivacy(e.target.value)}
+            onChange={(event) => setPrivacy(event.target.value)}
             className="signup-input"
           >
             <option value="public">Public</option>

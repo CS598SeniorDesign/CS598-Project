@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import "../../style/auth.css" // use same CSS
+import "../../style/auth.css" 
 
 export default function MFASetup() {
   const router = useRouter()
