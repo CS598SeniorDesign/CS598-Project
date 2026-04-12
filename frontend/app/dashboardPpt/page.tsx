@@ -5,7 +5,8 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import WinRateChart from "@/components/stats/WinRateChart";
 import CollapsiblePanel from "@/components/ui/CollapsiblePanel";
-import "../../style/auth.css"; // our plain CSS
+import "../../style/auth.css"; 
+
 
 // avatars
 import brandonAvatar from "@/public/avatars/brandon.webp";
@@ -20,41 +21,62 @@ import catanImg from "@/public/images/catan.webp";
 import everdellImg from "@/public/images/everdell.webp";
 import botanyImg from "@/public/images/botany.webp";
 
+type BaseGame = {
+  gameName: string;
+  gameImg: string | StaticImageData;
+ };
+
+ type GameResult = BaseGame & {
+  gameResult: "Won" | "Lost";
+  //TODO: extend to include score or draw in future
+ };
+
+ type Game = BaseGame;
+
+type Play = GameResult & {
+  playerCount: number;
+  playDuration: string;
+  playDate: string;
+ };
+
+type CommunityItem = GameResult & {
+  user: string;
+  timeAgo: string;
+  avatar?: string | StaticImageData;
+ }; 
+
+const days: string[] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
 export default function Page() {
-  type Game = { name: string; img: string };
-  type Play = { name: string; img: string; result: "Won" | "Lost"; players: number; time: string; date: string };
-  type CommunityItem = { name: string; img: string | StaticImageData; user: string; time: string; result: "Won" | "Lost"; avatar?: string | StaticImageData };
-
-  const games: Game[] = [
-    { name: "Botany", img: "/images/botany.webp" },
-    { name: "Stardew Valley", img: "/images/stardew.webp" },
-    { name: "Pandemic", img: "/images/pandemic.webp" },
-    { name: "Root", img: "/images/root.webp" },
-    { name: "Catan", img: "/images/catan.webp" },
-  ];
-
-  const recentPlays: Play[] = [
-    { name: "Terraforming Mars", img: "/images/terraforming.webp", result: "Won", players: 2, time: "90 min", date: "Feb 22" },
-    { name: "Catan", img: "/images/catan.webp", result: "Lost", players: 4, time: "60 min", date: "March 11" },
-    { name: "Azul", img: "/images/azul.webp", result: "Won", players: 3, time: "30 min", date: "January 21" },
-  ];
-
-  const community: CommunityItem[] = [
-    { user: "Brandon", time: "2hrs ago", result: "Won", avatar: brandonAvatar, name: "Terraforming Mars", img: terraformImg },
-    { user: "Sydney", time: "5hrs ago", result: "Lost", avatar: sydneyAvatar, name: "Catan", img: catanImg },
-    { user: "Jennifer", time: "1d ago", result: "Won", avatar: jenniferAvatar, name: "Everdell", img: everdellImg },
-    { user: "Supriya", time: "2d ago", result: "Lost", avatar: supriyaAvatar, name: "Botany", img: botanyImg },
-  ];
-
-  const days: string[] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   const [openChart, setOpenChart] = useState<null | "winrate" | "donut">(null);
-
   // state for avatar to fix hydration
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
   useEffect(() => {
     const avatar = localStorage.getItem("userAvatar");
     if (avatar) setUserAvatar(avatar);
   }, []);
+  
+  const games: Game[] = [
+    { gameName: "Botany", gameImg: "/images/botany.webp" },
+    { gameName: "Stardew Valley", gameImg: "/images/stardew.webp" },
+    { gameName: "Pandemic", gameImg: "/images/pandemic.webp" },
+    { gameName: "Root", gameImg: "/images/root.webp" },
+    { gameName: "Catan", gameImg: "/images/catan.webp" },
+   ];
+
+  const recentPlays: Play[] = [
+    { gameName: "Terraforming Mars", gameImg: "/images/terraforming.webp", gameResult:"Won", playerCount: 2, playDuration: "90 min", playDate: "Feb 22" },
+    { gameName: "Catan", gameImg: "/images/catan.webp", gameResult: "Lost", playerCount: 4, playDuration: "60 min", playDate: "March 11" },
+    { gameName: "Azul", gameImg: "/images/azul.webp", gameResult: "Won", playerCount: 3, playDuration: "30 min", playDate: "January 21" },
+   ];
+
+  const community: CommunityItem[] = [
+    { user: "Brandon", timeAgo: "2hrs ago", gameResult: "Won", avatar: brandonAvatar, gameName: "Terraforming Mars", gameImg: terraformImg },
+    { user: "Sydney", timeAgo: "5hrs ago", gameResult: "Lost", avatar: sydneyAvatar, gameName: "Catan", gameImg: catanImg },
+    { user: "Jennifer", timeAgo: "1d ago", gameResult: "Won", avatar: jenniferAvatar, gameName: "Everdell", gameImg: everdellImg },
+    { user: "Supriya", timeAgo: "2d ago", gameResult: "Lost", avatar: supriyaAvatar, gameName: "Botany", gameImg: botanyImg },
+   ];
+
 
   return (
     <div className="dashboard-page">
@@ -87,10 +109,10 @@ export default function Page() {
             <h2>Recently Played</h2>
             <div className="recent-games">
               {games.map((game, i) => (
-                <Link key={i} href={`/games/${game.name}`}>
+                <Link key={i} href={`/games/${game.gameName}`}>
                   <div className="card-inner cursor-pointer">
-                    <img src={game.img} alt={game.name} />
-                    <p>{game.name}</p>
+                    <Image src={game.gameImg} alt={game.gameName} width={90} height={90} />
+                    <p>{game.gameName}</p>
                     <div className="rating">★★★★★</div>
                   </div>
                 </Link>
@@ -123,12 +145,12 @@ export default function Page() {
             <h2>Recent Plays</h2>
             {recentPlays.map((play, i) => (
               <div key={i} className="card-inner">
-                <img src={play.img} alt={play.name} />
+                <Image src={play.gameImg} alt={play.gameName} width={60} height={60} />
                 <div>
-                  <p>{play.name}</p>
-                  <p>{play.date} | {play.players} Players | {play.time}</p>
+                  <p>{play.gameName}</p>
+                  <p>{play.playDate} | {play.playerCount} Players | {play.playDuration}</p>
                 </div>
-                <span className={play.result === "Won" ? "play-result-won" : "play-result-lost"}>{play.result}</span>
+                <span className={play.gameResult === "Won" ? "play-result-won" : "play-result-lost"}>{play.gameResult}</span>
               </div>
             ))}
           </div>
@@ -139,14 +161,14 @@ export default function Page() {
             {community.map((item, i) => (
               <div key={i} className="card-inner community-item">
                 <Image src={item.avatar!} alt={item.user} width={40} height={40} />
-                <Image src={item.img} alt={item.name} width={50} height={50} />
+                <Image src={item.gameImg} alt={item.gameName} width={50} height={50} />
                 <div>
-                  <span>{item.user} • {item.time}</span>
-                  <span>Played {item.name}</span>
+                  <span>{item.user} • {item.timeAgo}</span>
+                  <span>Played {item.gameName}</span>
                 </div>
-                {item.result && (
-                  <span className={item.result === "Won" ? "result-badge-won" : "result-badge-lost"}>
-                    {item.result}
+                {item.gameResult && (
+                  <span className={item.gameResult === "Won" ? "result-badge-won" : "result-badge-lost"}>
+                    {item.gameResult}
                   </span>
                 )}
                 <span className="game-night-badge">Game Night</span>
@@ -156,7 +178,7 @@ export default function Page() {
         </div>
 
         {/* COLLAPSIBLE ANALYTICS */}
-        <CollapsiblePanel title="View your analytics 📊">
+        <CollapsiblePanel sectionTitle="View your analytics 📊">
           <div className="card">
             <h2>Your Stats</h2>
             <div className="stats-row">

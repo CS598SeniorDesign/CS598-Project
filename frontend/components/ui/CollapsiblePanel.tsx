@@ -3,11 +3,11 @@ import React, { useState } from "react";
 import "@/style/auth.css"; // import the CSS
 
 interface CollapsiblePanelProps {
-  title: string;
+  sectionTitle: string;
   children: React.ReactNode;
 }
 
-export default function CollapsiblePanel({ title, children }: CollapsiblePanelProps) {
+export default function CollapsiblePanel({ sectionTitle, children }: CollapsiblePanelProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -16,7 +16,7 @@ export default function CollapsiblePanel({ title, children }: CollapsiblePanelPr
         onClick={() => setIsOpen(!isOpen)}
         className="collapsible-panel-button"
       >
-        {title}
+        {sectionTitle}
         <span className="collapsible-panel-arrow">{isOpen ? "▲" : "▼"}</span>
       </button>
 
