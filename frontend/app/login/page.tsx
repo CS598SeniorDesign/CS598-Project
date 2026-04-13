@@ -2,62 +2,59 @@
 
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-import "../../style/auth.css" 
 
 export default function LoginPage() {
-  const router = useRouter()
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
+    const router = useRouter()
+    const [email, setEmail] = useState("")
+    const [password, setPassword] = useState("")
 
-  const handleSubmit = (event: React.FormEvent) => {
-    event.preventDefault()
+    const handleSubmit = (event: React.FormEvent) => {
+     event.preventDefault()
+  
+      //TODO: Replace with real authentication logic
+      // temporary auth placeholder
+      if (email && password) {
+        router.push("/avatar-selection") 
+      } else {
+        alert("Please enter email and passowrd")
+      }
+    } 
 
-    //TODO: replace with real authentication logic
-    // temporary auth placeholder
-    if (email && password) {
-      router.push("/avatar-selection") 
-    } else {
-      alert("Please enter email and password")
-    }
-  }
+    return (
+    <div className="min-h-screen flex items-center justify-center bg-black text-white">
+      <div className="w-full max-w-md bg-gray-900 p-8 rounded-xl">
+        <h1 className="text-3xl font-bold mb-6">Login</h1>
 
-  return (
-    <div className="signup-page-container">
-      <div className="signup-card">
-        <h1 className="signup-title">Login</h1>
-
-        <form className="signup-form" onSubmit={handleSubmit} autoComplete="off">
+        <form autoComplete="off" className="flex flex-col gap-4">
           <input
             type="email"
             placeholder="Email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            className="signup-input"
             autoComplete="off"
-            required
+            className="p-3 rounded bg-gray-800 border border-gray-700"
           />
 
           <input
             type="password"
             placeholder="Password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            className="signup-input"
             autoComplete="new-password"
-            required
+            className="p-3 rounded bg-gray-800 border border-gray-700"
           />
 
-          <button type="submit" className="signup-button login">
+          <button
+            type="submit"
+            className="bg-primary py-2 rounded-lg hover:opacity-90"
+          >
             Sign In
           </button>
         </form>
 
-        <p className="signup-login-text">
-          Don't have an account?{" "}
-          <a href="/signup" className="signup-login-link">
-            Sign Up
+        <p className="text-sm text-gray-400 mt-6 text-center">
+          Don't have an account? {" "}
+          < a href="/signup" className="text-indigo-400 hover:underline">
+           Sign Up
           </a>
         </p>
+
       </div>
     </div>
   )
