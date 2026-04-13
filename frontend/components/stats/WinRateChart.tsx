@@ -3,26 +3,26 @@
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 
 type WinRateChartProps = {
-  className?: string; 
-  data?: { name: string; value: number }[];
+  className?: string;
+  data?: { label: string; value: number }[];
 };
 
 export default function WinRateChart({ className, data: customData }: WinRateChartProps) {
   const chartData = customData || [
-    { name: "Wins", value: 12 },
-    { name: "Losses", value: 8 },
+    { label: "Wins", value: 12 },
+    { label: "Losses", value: 8 },
   ];
 
   return (
     <div className={className}>
-      {/* ResponsiveContainer makes the chart scale automatically */}
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width={300} height={300}>
         <PieChart>
           <Pie
             data={chartData}
             dataKey="value"
-            outerRadius={80}
-            innerRadius={40}
+            nameKey="label"   
+            outerRadius={100}
+            innerRadius={60}
             paddingAngle={2}
           >
             <Cell fill="#10B981" />
