@@ -15,14 +15,14 @@ export default function WinRateChart({ className, data: customData }: WinRateCha
 
   return (
     <div className={className}>
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width={300} height={300}>
         <PieChart>
           <Pie
             data={chartData}
             dataKey="value"
-            nameKey="label"   // 👈 IMPORTANT
-            outerRadius={80}
-            innerRadius={40}
+            nameKey="label"   
+            outerRadius={100}
+            innerRadius={60}
             paddingAngle={2}
           >
             <Cell fill="#10B981" />
