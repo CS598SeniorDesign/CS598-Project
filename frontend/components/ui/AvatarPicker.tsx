@@ -7,7 +7,7 @@ type AvatarPickerProps = {
   selected?: string;
 };
 
-const avatars = [
+const AVATARS = [
   "/avatars/avatar1.webp",
   "/avatars/avatar2.webp",
   "/avatars/avatar3.webp",
@@ -22,7 +22,7 @@ const avatars = [
 export default function AvatarPicker({ onSelect, selected }: AvatarPickerProps) {
   return (
     <div className="flex gap-4">
-      {avatars.map((av) => (
+      {AVATARS.map((av) => (
         <div
           key={av}
           className={`cursor-pointer border-2 rounded-full p-1 ${

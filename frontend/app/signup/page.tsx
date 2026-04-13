@@ -11,13 +11,11 @@ export default function SignupPage() {
   const [mfa, setMfa] = useState(false)
   const [privacy, setPrivacy] = useState("public")
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-
-    //temporary: store the user info
-    console.log({ email, password, privacy})
-
-    // reidrect to mfa
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault()
+   
+    // TODO: remove temporary local storage logic after backend auth is implemented.
+    console.log({ email, password, privacy })
     router.push("/mfa-setup")
   }
 
@@ -33,7 +31,7 @@ export default function SignupPage() {
             placeholder="Email"
             autoComplete="off"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(event) => setEmail(event.target.value)}
             className="p-3 rounded bg-gray-800 border border-gray-700"
             required
           />
@@ -43,14 +41,14 @@ export default function SignupPage() {
             placeholder="Password"
             autoComplete="new-password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(event) => setPassword(event.target.value)}
             className="p-3 rounded bg-gray-800 border border-gray-700"
             required
           />
 
           <select
             value={privacy}
-            onChange={(e) => setPrivacy(e.target.value)}
+            onChange={(event) => setPrivacy(event.target.value)}
             className="p-3 rounded bg-gray-800 border border-gray-700"
           >
             <option value="public">Public</option>
@@ -64,10 +62,8 @@ export default function SignupPage() {
           >
             Sign Up
           </button>
-
         </form>
 
-        {/* Link to Login */}
         <p className="text-sm text-gray-400 mt-6 text-center">
           Already have an account?{" "}
           <a href="/login" className="text-indigo-400 hover:underline">
