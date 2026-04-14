@@ -18,7 +18,7 @@ class LibraryItem(models.Model):
     ]
 
     user = models.ForeignKey(to=settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    game = models.ForeignKey(to=Game, on_delete=models.CASCADE)
+    game = models.ForeignKey(to=BoardGame, on_delete=models.CASCADE)
     status = models.CharField(max_length=20, choices=LIBRARY_ENTRY_STATUSES, default=UNPLAYED)
     house_rules = models.TextField(null=True, blank=True)
 
@@ -36,7 +36,7 @@ class Rating(models.Model):
     Store a user's metrics and experience ratings for a game.
     """
     user = models.ForeignKey(to=settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    game = models.ForeignKey(to=Game, on_delete=models.CASCADE)
+    game = models.ForeignKey(to=BoardGame, on_delete=models.CASCADE)
     experience = models.FloatField()
     mechanics = models.FloatField()
     replayability = models.FloatField()
@@ -58,7 +58,7 @@ class PlaySession(models.Model):
     """
     Records an instance of a game group or user(s) playing a board game.
     """
-    game = models.ForeignKey(to=Game, on_delete=models.CASCADE)
+    game = models.ForeignKey(to=BoardGame, on_delete=models.CASCADE)
     group = models.ForeignKey(to=GameGroup, on_delete=models.CASCADE)
     play_date = models.DateField()
     play_time_minutes = models.IntegerField()
