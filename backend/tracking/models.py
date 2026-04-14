@@ -59,7 +59,7 @@ class PlaySession(models.Model):
     Records an instance of a game group or user(s) playing a board game.
     """
     game = models.ForeignKey(to=BoardGame, on_delete=models.CASCADE)
-    group = models.ForeignKey(to=GameGroup, on_delete=models.CASCADE)
+    group = models.ForeignKey(to=GameGroup, on_delete=models.CASCADE, null=True, blank=True)
     play_date = models.DateField()
     play_time_minutes = models.IntegerField()
 
