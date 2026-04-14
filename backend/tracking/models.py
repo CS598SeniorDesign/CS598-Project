@@ -1,6 +1,6 @@
 from django.db import models
 from django.conf import settings
-from catalog.models import Game
+from catalog.models import BoardGame
 from profiles.models import GameGroup
 
 
