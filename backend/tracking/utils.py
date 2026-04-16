@@ -1,9 +1,10 @@
 import requests
 import defusedxml.ElementTree as ElementTree
 from datetime import datetime
-from core.constants import VALID_STATUS_CODES, REQUEST_HEADERS
+from django.db import transaction
 
-from catalog.utils import get_bgg_board_game, get_existing_board_game
+from core.constants import VALID_STATUS_CODES, REQUEST_HEADERS
+from catalog.utils import get_existing_board_game
 
 
 def fetch_bgg_plays(user: str, bgg_username: str) -> tuple[bool, str]:
@@ -32,7 +33,7 @@ def fetch_bgg_plays(user: str, bgg_username: str) -> tuple[bool, str]:
         print(game_object_type)
         print(game_object_id)
 
-        # TODO: call get_or_fetch_board_game()
+        get_existing_board_game(game_object_id)
 
         # TODO: open a transaction block `with transaction.atomic():`
 

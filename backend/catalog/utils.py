@@ -1,7 +1,6 @@
 import requests
 import defusedxml.ElementTree as ElementTree
 from core.constants import VALID_STATUS_CODES, REQUEST_HEADERS
-from core.utils import get_attribute_value
 from catalog.models import BoardGame
 
 
@@ -21,14 +20,7 @@ def get_bgg_board_game(bgg_id: int) -> BoardGame:
     response_root: ElementTree.Element = ElementTree.fromstring(response.content)
 
     game_item = response_root.find('item')
-    # BoardGame.create_from_xml(game_item)
-    primary_name: str | None = get_attribute_value(element=game_item, xpath='name[@type="primary"]')
-    year_published: str | None = get_attribute_value(element=game_item, xpath='yearpublished')
-
-    print(primary_name)
-    print(year_published)
-    # board_game_record: BoardGame = BoardGame.objects.create(primary_name=primary_name, year_published=year_published)
-    # return board_game_record
+    return BoardGame.create_from_xml(game_item)
 
 
 def get_existing_board_game(bgg_id: int) -> BoardGame:
