@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import defusedxml.ElementTree as ElementTree
 import requests
 from django.contrib.auth.models import User
