@@ -18,7 +18,8 @@
 3. Build and start the Docker containers:
 
     ```bash
-      docker compose up --build
+      docker compose up --build # Initial run and when changes to code or the Docker files are made
+      docker compose up # Subsequent runs
     ```
 
 4. Run migrations:
@@ -26,12 +27,6 @@
     ```bash
       docker compose exec backend python manage.py migrate
     ```
-
-## Subsequent runs
-
-```bash
-docker compose up
-```
 
 ## Accessing Services
 
