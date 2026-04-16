@@ -1,10 +1,17 @@
 import requests
 import defusedxml.ElementTree as ElementTree
-from datetime import datetime
+from typing import TYPE_CHECKING
 from django.db import transaction
 
 from core.constants import VALID_STATUS_CODES, REQUEST_HEADERS
-from catalog.utils import get_existing_board_game
+from tracking.models import PlaySession
+
+if TYPE_CHECKING:
+    from xml.etree.ElementTree import Element
+
+
+def test():
+    fetch_bgg_plays('', 'ureia')
 
 
 def fetch_bgg_plays(user: str, bgg_username: str) -> tuple[bool, str]:
@@ -15,32 +22,13 @@ def fetch_bgg_plays(user: str, bgg_username: str) -> tuple[bool, str]:
         return False, f"Failed to reach BGG API. Status: {response.status_code}"
 
     # XML Root should be 'plays'
-    response_root: ElementTree.Element[str] = ElementTree.fromstring(response.content)
+    response_root: Element = ElementTree.fromstring(response.content)
 
     sessions_created: int = 0
+
     for play in response_root.findall('play'):
-        pass
-        extracted_date: datetime = datetime.strptime(play.attrib.get("date"), "%Y-%m-%d").date()
-        print(extracted_date)
-
-        length_in_minutes: int = int(play.attrib.get("length"))
-        print(length_in_minutes)
-
-        game_item: ElementTree.Element[str] = play.find("item")
-        game_object_type: str = game_item.attrib.get("objecttype")
-        game_object_id: int = int(game_item.attrib.get("objectid"))
-
-        print(game_object_type)
-        print(game_object_id)
-
-        get_existing_board_game(game_object_id)
-
-        # TODO: open a transaction block `with transaction.atomic():`
-
-        # TODO: create the PlaySession w/ null group
-
-        # TODO: find the <players> tag and loop loop through its <player> tags
-        # TODO: create the SessionPlayer linked to the PlaySession and the user
+        with transaction.atomic():
+            PlaySession.create_from_xml(play)
 
         sessions_created += 1
 

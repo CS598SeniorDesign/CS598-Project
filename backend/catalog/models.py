@@ -1,7 +1,9 @@
-import defusedxml.ElementTree as ElementTree
-from typing import Type
+from typing import Type, TYPE_CHECKING
 from django.db import models
 from core.utils import get_attribute_value
+
+if TYPE_CHECKING:
+    from xml.etree.ElementTree import Element
 
 
 class BGGAttribute(models.Model):
@@ -124,7 +126,7 @@ class BoardGame(models.Model):
     bgg_rank = models.IntegerField(null=True, blank=True)
 
     @classmethod
-    def create_from_xml(cls, xml_item: ElementTree.Element[str]):
+    def create_from_xml(cls, xml_item: Element):
         """
         Parses a BGG XML element to create or update a BoardGame instance.
 
@@ -132,7 +134,7 @@ class BoardGame(models.Model):
         record exists, or creates a new one if it does not.
 
         :param xml_item: The XML element representing a board game item.
-        :type xml_item: ElementTree.Element[str]
+        :type xml_item: xml.etree.ElementTree.Element
         :return: The persisted BoardGame instance.
         :rtype: BoardGame
         """
@@ -162,7 +164,7 @@ class BoardGame(models.Model):
         return instance
 
     @staticmethod
-    def _handle_links(instance: "BoardGame", xml_item: ElementTree.Element[str]):
+    def _handle_links(instance: "BoardGame", xml_item: Element):
         """
         Processes <link> tags from the XML and maps them to M2M relationships.
 
@@ -172,7 +174,7 @@ class BoardGame(models.Model):
         :param instance: The BoardGame model instance to associate metadata with.
         :type instance: BoardGame
         :param xml_item: The XML element containing the <link> nodes.
-        :type xml_item: ElementTree.Element[str]
+        :type xml_item: xml.etree.ElementTree.Element
         :return: None
         """
 

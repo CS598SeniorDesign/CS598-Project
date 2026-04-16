@@ -1,7 +1,12 @@
 import requests
 import defusedxml.ElementTree as ElementTree
+from typing import TYPE_CHECKING
+
 from core.constants import VALID_STATUS_CODES, REQUEST_HEADERS
 from catalog.models import BoardGame
+
+if TYPE_CHECKING:
+    from xml.etree.ElementTree import Element
 
 
 def test():
@@ -17,7 +22,7 @@ def get_bgg_board_game(bgg_id: int) -> BoardGame:
         return False, f"Failed to reach BGG API. Status: {response.status_code}"
 
     # XML Root should be 'items'
-    response_root: ElementTree.Element = ElementTree.fromstring(response.content)
+    response_root: Element = ElementTree.fromstring(response.content)
 
     game_item = response_root.find('item')
     return BoardGame.create_from_xml(game_item)
