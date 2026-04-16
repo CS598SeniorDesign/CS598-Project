@@ -6,11 +6,6 @@ from core.constants import VALID_STATUS_CODES, REQUEST_HEADERS
 from catalog.utils import get_bgg_board_game, get_existing_board_game
 
 
-def test():
-    id = 246900
-    get_bgg_board_game(id)
-
-
 def fetch_bgg_plays(user: str, bgg_username: str) -> tuple[bool, str]:
     fetch_url: str = f"https://boardgamegeek.com/xmlapi2/plays?username={bgg_username}"
     response: requests.Response = requests.get(url=fetch_url, headers=REQUEST_HEADERS)

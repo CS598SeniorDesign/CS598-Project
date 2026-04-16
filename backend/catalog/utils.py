@@ -1,7 +1,13 @@
 import requests
 import xml.etree.ElementTree as ElementTree
 from core.constants import VALID_STATUS_CODES, REQUEST_HEADERS
+from core.utils import get_attribute_value
 from catalog.models import BoardGame
+
+
+def test():
+    id = 246900
+    get_bgg_board_game(id)
 
 
 def get_bgg_board_game(bgg_id: int) -> BoardGame:
@@ -15,17 +21,20 @@ def get_bgg_board_game(bgg_id: int) -> BoardGame:
     response_root: ElementTree.Element = ElementTree.fromstring(response.content)
 
     game_item = response_root.find('item')
-    primary_name: ElementTree.Element[str] = game_item.find('name[@type="primary"]')
-    year_published: ElementTree.Element[str] = game_item.find('yearpublished')
+    BoardGame.create_from_xml(game_item)
+    primary_name: str | None = get_attribute_value(element=game_item, xpath='name[@type="primary"]')
+    year_published: str | None = get_attribute_value(element=game_item, xpath='yearpublished')
 
-    board_game_record: BoardGame = BoardGame.objects.create(primary_name=primary_name, year_published=year_published)
-    return board_game_record
+    print(primary_name)
+    print(year_published)
+    # board_game_record: BoardGame = BoardGame.objects.create(primary_name=primary_name, year_published=year_published)
+    # return board_game_record
 
 
 def get_existing_board_game(bgg_id: int) -> BoardGame:
-    existing_board_game: BoardGame = BoardGame.objects.get(bgg_id=bgg_id)
+    existing_board_game: BoardGame = BoardGame.objects.filter(bgg_id=bgg_id).first()
 
     if existing_board_game:
         return existing_board_game
     else:
-        get_bgg_board_game(bgg_id=bgg_id)
+        return get_bgg_board_game(bgg_id=bgg_id)
