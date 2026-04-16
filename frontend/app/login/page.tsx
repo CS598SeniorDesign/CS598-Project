@@ -25,10 +25,16 @@ export default function LoginPage() {
       <div className="w-full max-w-md bg-gray-900 p-8 rounded-xl">
         <h1 className="text-3xl font-bold mb-6">Login</h1>
 
-        <form autoComplete="off" className="flex flex-col gap-4">
+        <form
+         onSubmit={handleSubmit}
+         autoComplete="off"
+         className="flex flex-col gap-4"
+        >
           <input
             type="email"
             placeholder="Email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
             autoComplete="off"
             className="p-3 rounded bg-gray-800 border border-gray-700"
           />
@@ -37,6 +43,8 @@ export default function LoginPage() {
             type="password"
             placeholder="Password"
             autoComplete="new-password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
             className="p-3 rounded bg-gray-800 border border-gray-700"
           />
 
@@ -50,7 +58,7 @@ export default function LoginPage() {
 
         <p className="text-sm text-gray-400 mt-6 text-center">
           Don't have an account? {" "}
-          < a href="/signup" className="text-indigo-400 hover:underline">
+          <a href="/signup" className="text-indigo-400 hover:underline">
            Sign Up
           </a>
         </p>
