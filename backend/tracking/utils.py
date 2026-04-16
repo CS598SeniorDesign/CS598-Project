@@ -1,7 +1,7 @@
-import requests
 import defusedxml.ElementTree as ElementTree
-from typing import TYPE_CHECKING
+import requests
 from django.db import transaction
+from typing import TYPE_CHECKING
 
 from core.constants import VALID_STATUS_CODES, REQUEST_HEADERS
 from tracking.models import PlaySession

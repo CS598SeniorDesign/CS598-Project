@@ -5,9 +5,9 @@ from django.contrib.auth import get_user_model
 from typing import TYPE_CHECKING
 
 from catalog.models import BoardGame
-from profiles.models import GameGroup
-from core.utils import get_attribute
 from catalog.utils import get_existing_board_game
+from core.utils import get_attribute
+from profiles.models import GameGroup
 
 if TYPE_CHECKING:
     from xml.etree.ElementTree import Element

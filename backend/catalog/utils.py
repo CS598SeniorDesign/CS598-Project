@@ -1,9 +1,9 @@
-import requests
 import defusedxml.ElementTree as ElementTree
+import requests
 from typing import TYPE_CHECKING
 
-from core.constants import VALID_STATUS_CODES, REQUEST_HEADERS
 from catalog.models import BoardGame
+from core.constants import VALID_STATUS_CODES, REQUEST_HEADERS
 
 if TYPE_CHECKING:
     from xml.etree.ElementTree import Element

@@ -1,5 +1,6 @@
-from typing import Type, TYPE_CHECKING
 from django.db import models
+from typing import Type, TYPE_CHECKING
+
 from core.utils import get_attribute_value
 
 if TYPE_CHECKING:
