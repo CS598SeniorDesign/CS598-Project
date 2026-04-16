@@ -11,7 +11,7 @@ const avatars = [
   "/avatars/avatar2.webp",
   "/avatars/avatar3.webp",
   "/avatars/avatar4.webp",
-  "/avatars/avatar5.webpp",
+  "/avatars/avatar5.webp",
 ]
 
 export default function AvatarSelectionPage() {
