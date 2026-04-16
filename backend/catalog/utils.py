@@ -11,12 +11,21 @@ if TYPE_CHECKING:
     from xml.etree.ElementTree import Element
 
 
-def test():
-    id = 246900
-    get_bgg_board_game(id)
-
-
 def get_bgg_board_game(bgg_id: int, backup_name: str) -> BoardGame:
+    """
+    Fetches board game data from the BoardGameGeek /thing API and creates a local record.
+
+    Retrieves information such as ratings, rank, and descriptions using the provided BGG ID. If the API fetch fails,
+    falls back to creating a skeleton record using the backup name.
+
+    :param bgg_id: The unique BoardGameGeek identifier for the game.
+    :type bgg_id: int
+    :param backup_name: The fallback name to use if the API call fails or lacks a primary name.
+    :type backup_name: str
+    :returns: The newly created BoardGame instance containing the fetched data or skeleton data.
+    :rtype: catalog.models.BoardGame
+    """
+
     fetch_url: str = f"https://boardgamegeek.com/xmlapi2/thing?id={bgg_id}&stats=1"
 
     try:
@@ -36,6 +45,18 @@ def get_bgg_board_game(bgg_id: int, backup_name: str) -> BoardGame:
 
 
 def get_existing_board_game(bgg_id: int, backup_name: str) -> BoardGame:
+    """
+    Retrieves a board game from the local database or fetches it from BGG if missing. Prevents unnecessary API calls by
+    checking if the game already exists locally.
+
+    :param bgg_id: The unique BoardGameGeek identifier for the game.
+    :type bgg_id: int
+    :param backup_name: The fallback name to pass to the fetcher if the game is not found locally.
+    :type backup_name: str
+    :returns: The existing or newly fetched BoardGame instance.
+    :rtype: catalog.models.BoardGame
+    """
+
     existing_board_game: BoardGame = BoardGame.objects.filter(bgg_id=bgg_id).first()
 
     if existing_board_game:

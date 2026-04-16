@@ -27,13 +27,15 @@ def get_attribute_value(element: Element, xpath: str) -> str | None:
 
 def get_attribute(element: Element, xpath: str, attribute: str) -> str | None:
     """
-    Safely finds a sub-element by XPath and returns the given attribute attribute.
+    Safely finds a sub-element by XPath and returns the specified attribute.
 
     :param element: The XML element to search within.
     :type element: xml.etree.ElementTree.Element
     :param xpath: The XPath expression used to locate the sub-element.
     :type xpath: str
-    :returns: The string content of the given attribute if the node exists, otherwise None.
+    :param attribute: The name of the attribute to retrieve from the located node.
+    :type attribute: str
+    :returns: The string content of the requested attribute if the node exists, otherwise None.
     :rtype: str | None
     """
 

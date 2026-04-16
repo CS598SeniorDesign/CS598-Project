@@ -85,6 +85,10 @@ class PlaySession(models.Model):
 
         :param xml_item: The XML element representing a specific play session.
         :type xml_item: xml.etree.ElementTree.Element
+        :param user: The authenticated user who is syncing their plays.
+        :type user: django.contrib.auth.models.User
+        :param bgg_username: The BoardGameGeek username belonging to the syncing user.
+        :type bgg_username: str
         :returns: The created or updated PlaySession instance.
         :rtype: tracking.models.PlaySession
         """
@@ -110,19 +114,24 @@ class PlaySession(models.Model):
         return instance
 
     @staticmethod
-    def _handle_players(instance: 'PlaySession', xml_item: Element, user: User, bgg_username: str):
+    def _handle_players(instance: PlaySession, xml_item: Element, user: User, bgg_username: str):
         """
         Extracts player data from a session XML and links them to Django users.
 
-        Iterates through <player> tags. If a player's BGG username matches an existing Django user, a SessionPlayer
-        record is created with their score and win status.
+        Iterates through <player> tags. If a player's BGG username matches the syncing user's BGG username, a
+        SessionPlayer record is created with their score and win status.
 
         :param instance: The PlaySession instance to link players to.
         :type instance: tracking.models.PlaySession
         :param xml_item: The XML element containing the <players> block.
         :type xml_item: xml.etree.ElementTree.Element
+        :param user: The authenticated user who is syncing their plays.
+        :type user: django.contrib.auth.models.User
+        :param bgg_username: The BoardGameGeek username belonging to the syncing user.
+        :type bgg_username: str
         :returns: None
         """
+
         players_node = xml_item.find('players')
         if players_node is None:
             return

@@ -14,6 +14,20 @@ if TYPE_CHECKING:
 
 
 def fetch_bgg_plays(user: User, bgg_username: str) -> tuple[bool, str]:
+    """
+    Fetches and synchronizes a user's play sessions from the BoardGameGeek /plays API.
+
+    Makes an authenticated request to BGG, parses the resulting XML, and initiates the creation of PlaySession records
+    within a single database transaction.
+
+    :param user: The authenticated Django user requesting the sync.
+    :type user: django.contrib.auth.models.User
+    :param bgg_username: The target BoardGameGeek username to fetch plays for.
+    :type bgg_username: str
+    :returns: A tuple containing a boolean indicating success or failure, and a descriptive status message.
+    :rtype: tuple[bool, str]
+    """
+
     fetch_url: str = f"https://boardgamegeek.com/xmlapi2/plays?username={bgg_username}"
     response: requests.Response = requests.get(url=fetch_url, headers=REQUEST_HEADERS, timeout=10)
 
