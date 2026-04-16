@@ -23,13 +23,12 @@ def fetch_bgg_plays(user: str, bgg_username: str) -> tuple[bool, str]:
 
     # XML Root should be 'plays'
     response_root: Element = ElementTree.fromstring(response.content)
-
     sessions_created: int = 0
 
-    for play in response_root.findall('play'):
-        with transaction.atomic():
-            PlaySession.create_from_xml(play)
+    with transaction.atomic():
+        for play in response_root.findall('play'):
+            PlaySession.create_from_xml(play, user, bgg_username)
 
-        sessions_created += 1
+            sessions_created += 1
 
     return True, f"Successfully imported {sessions_created} plays."

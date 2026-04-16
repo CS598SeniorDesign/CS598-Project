@@ -127,7 +127,7 @@ class BoardGame(models.Model):
     bgg_rank = models.IntegerField(null=True, blank=True)
 
     @classmethod
-    def create_from_xml(cls, xml_item: Element):
+    def create_from_xml(cls, xml_item: Element, backup_name: str = None):
         """
         Parses a BGG XML element to create or update a BoardGame instance.
 
@@ -139,10 +139,11 @@ class BoardGame(models.Model):
         :return: The persisted BoardGame instance.
         :rtype: BoardGame
         """
+        detailed_name = get_attribute_value(xml_item, 'name[@type="primary"]')
 
         data: dict[str, str | None] = {
             "bgg_id": xml_item.attrib.get("id"),
-            "primary_name": get_attribute_value(xml_item, 'name[@type="primary"]'),
+            "primary_name": detailed_name or backup_name,
             "description": xml_item.findtext("description"),
             "year_published": get_attribute_value(xml_item, "yearpublished"),
             "minimum_players": get_attribute_value(xml_item, "minplayers"),

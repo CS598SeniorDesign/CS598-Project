@@ -1,7 +1,6 @@
 from datetime import datetime
 from django.db import models
 from django.conf import settings
-from django.contrib.auth import get_user_model
 from typing import TYPE_CHECKING
 
 from catalog.models import BoardGame
@@ -74,7 +73,7 @@ class PlaySession(models.Model):
     play_time_minutes = models.IntegerField()
 
     @classmethod
-    def create_from_xml(cls, xml_item: Element):
+    def create_from_xml(cls, xml_item: Element, user: str, bgg_username: str):
         """
         Parses a BGG XML <play> element to create or update a PlaySession.
 
@@ -87,27 +86,28 @@ class PlaySession(models.Model):
         :rtype: tracking.models.PlaySession
         """
 
-        bgg_game_id = int(get_attribute(xml_item, "item", "objectid"))
-        game_object = get_existing_board_game(bgg_game_id)
+        bgg_game_id = int(get_attribute(xml_item, 'item', 'objectid'))
+        backup_name = get_attribute(xml_item, 'item', 'name')
+        game_object = get_existing_board_game(bgg_game_id, backup_name)
 
         data = {
             "game": game_object,
-            "play_date": datetime.strptime(get_attribute(xml_item, ".", "date"), "%Y-%m-%d").date(),
-            "play_time_minutes": int(get_attribute(xml_item, ".", "length") or 0),
+            "play_date": datetime.strptime(get_attribute(xml_item, '.', 'date'), '%Y-%m-%d').date(),
+            "play_time_minutes": int(get_attribute(xml_item, '.', 'length') or 0),
         }
 
         instance: PlaySession
         is_created: bool
         instance, is_created = cls.objects.update_or_create(
-            bgg_id=int(get_attribute(xml_item, ".", "id")),
+            bgg_id=int(get_attribute(xml_item, '.', 'id')),
             defaults=data
         )
 
-        cls._handle_players(instance, xml_item)
+        cls._handle_players(instance, xml_item, user, bgg_username)
         return instance
 
     @staticmethod
-    def _handle_players(instance: 'PlaySession', xml_item: Element):
+    def _handle_players(instance: 'PlaySession', xml_item: Element, user, bgg_username):
         """
         Extracts player data from a session XML and links them to Django users.
 
@@ -120,26 +120,22 @@ class PlaySession(models.Model):
         :type xml_item: xml.etree.ElementTree.Element
         :returns: None
         """
-        User = get_user_model()
-
-        players_node = xml_item.find("players")
+        players_node = xml_item.find('players')
         if players_node is None:
             return
 
-        for player_node in players_node.findall("player"):
-            bgg_username: str | None = get_attribute(player_node, ".", "username")
+        for player_node in players_node.findall('player'):
+            player_xml_username: str | None = get_attribute(player_node, '.', 'username')
 
-            if bgg_username:
-                user = User.objects.filter(username=bgg_username).first()
-                if user:
-                    SessionPlayer.objects.update_or_create(
-                        session=instance,
-                        user=user,
-                        defaults={
-                            "score": float(get_attribute(player_node, ".", "score") or 0),
-                            "is_winner": get_attribute(player_node, ".", "win") == "1"
-                        }
-                    )
+            if player_xml_username == bgg_username:
+                SessionPlayer.objects.update_or_create(
+                    session=instance,
+                    user=user,
+                    defaults={
+                        "score": float(get_attribute(player_node, '.', 'score') or 0),
+                        "is_winner": get_attribute(player_node, '.', 'win') == '1'
+                    }
+                )
 
     def __str__(self) -> str:
         """
