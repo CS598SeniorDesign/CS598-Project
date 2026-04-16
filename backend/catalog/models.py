@@ -199,7 +199,7 @@ class BoardGame(models.Model):
                 object: models.Model
                 is_created: bool
                 object, is_created = model_class.objects.get_or_create(
-                    id=bgg_id,
+                    bgg_id=bgg_id,
                     defaults={"name": name}
                 )
 
