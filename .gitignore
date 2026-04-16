@@ -1,10 +1,14 @@
+#Root
+.env
+.env.local
+
 # Backend
 .venv
 __pycache__
-.env
+backend/.env
 
 # Frontend
-.env.local
+frontend/.env.local
 
 # Database
 *.sqlite3

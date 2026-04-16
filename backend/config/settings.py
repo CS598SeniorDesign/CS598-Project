@@ -22,13 +22,23 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 env = environ.Env(
     DEBUG=(bool, False),
     SECRET_KEY=(str, ''),
-    JWT_SIGNING_KEY=(str, ''),
+    JWT_SECRET_KEY=(str, ''),
     ALLOWED_HOSTS=(list, ['localhost']),
     CORS_ALLOWED_ORIGINS=(list, ['http://localhost:3000']),
+    CSRF_TRUSTED_ORIGINS=(list, ['http://localhost:3000']),
     FRONTEND_URL=(str, 'http://localhost:3000'),
     BACKEND_URL=(str, 'http://localhost:8000'),
-    DATABASE_URL=(str, 'sqlite:///db.sqlite3'),
-    BACKEND_REDIS_URL=(str, 'redis://localhost:6379/0')
+    DATABASE_NAME=(str, 'questlog_db'),
+    DATABASE_USERNAME=(str, 'django'),
+    DATABASE_PASSWORD=(str),
+    DATABASE_ENGINE=(str, 'django.db.backends.postgresql'),
+    DATABASE_HOST=(str, 'db'),
+    DATABASE_PORT=(int, 5432),
+    REDIS_PASSWORD=(str),
+    REDIS_CACHE_URL=(str, 'redis://redis:6379/0'),
+    REDIS_SESSION_URL=(str, 'redis://redis:6379/1'),
+    REDIS_CELERY_URL=(list, ['redis://redis:6379/2']),
+    SECURE_SSL_REDIRECT=(bool, False)
 )
 
 environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
@@ -73,7 +83,10 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'csp.middleware.CSPMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
 ]
+
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 ROOT_URLCONF = 'config.urls'
 
@@ -98,9 +111,20 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
+# DATABASES = {
+#     'default': env.db('DATABASE_URL')
+# }
+
 DATABASES = {
-    'default': env.db('DATABASE_URL')
-}
+     'default': {
+         'ENGINE': env('DATABASE_ENGINE'),
+         'NAME': env('DATABASE_NAME'),
+         'USER': env('DATABASE_USERNAME'),
+         'PASSWORD': env('DATABASE_PASSWORD'),
+         'HOST': env('DATABASE_HOST'),
+         'PORT': env('DATABASE_PORT'),
+     }
+ }
 
 CACHES = {
     "default": {
@@ -129,7 +153,7 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": env("REDIS_CACHE_URL")
+            "hosts": env.list("REDIS_CACHE_URL")
         }
     }
 }
@@ -170,6 +194,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Established default authentication and permission classes if one is not specified
 REST_FRAMEWORK = {
@@ -208,7 +233,7 @@ SECURE_BROWSER_XSS_FILTER = True
 X_FRAME_OPTIONS = 'DENY'
 
 # Forces HTTPS
-SECURE_SSL_REDIRECT = True
+SECURE_SSL_REDIRECT = env('SECURE_SSL_REDIRECT', False)
 SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True

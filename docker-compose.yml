@@ -1,0 +1,72 @@
+
+services:
+
+  db:
+    image: postgres:17
+    container_name: questlog-db
+    env_file:
+      - ./backend/.env
+    environment:
+      POSTGRES_DB: ${DATABASE_NAME}
+      POSTGRES_USER: ${DATABASE_USERNAME}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+  redis:
+    image: redis:latest
+    container_name: questlog-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    env_file:
+      - ./backend/.env
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD}
+      --appendonly yes
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    restart: unless-stopped
+    depends_on:
+      - db
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: questlog-django
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    environment:
+      REDIS_CACHE_URL: ${REDIS_CACHE_URL}
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      DEBUG: ${DEBUG}
+      LOGLEVEL: ${LOGLEVEL}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS}
+      DATABASE_ENGINE: ${DATABASE_ENGINE}
+      DATABASE_NAME: ${DATABASE_NAME}
+      DATABASE_USERNAME: ${DATABASE_USERNAME}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      DATABASE_HOST: ${DATABASE_HOST}
+      DATABASE_PORT: ${DATABASE_PORT}
+    depends_on:
+      - redis
+
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile
+  #   container_name: questlog-nextjs
+  #   ports:
+  #     - "3000:3000"
+  #   depends_on:
+  #     - backend
+
+volumes:
+  postgres_data:
+  redis_data:

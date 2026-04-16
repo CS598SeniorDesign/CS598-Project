@@ -11,3 +11,4 @@ django-redis
 gunicorn
 redis
 psycopg2-binary
+whitenoise
