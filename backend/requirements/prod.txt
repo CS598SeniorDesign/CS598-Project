@@ -36,3 +36,4 @@ pyjwt==2.11.0
 sqlparse==0.5.5
     # via django
 requests==2.33.1
+defusedxml==0.7.1

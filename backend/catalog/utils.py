@@ -1,5 +1,5 @@
 import requests
-import xml.etree.ElementTree as ElementTree
+import defusedxml.ElementTree as ElementTree
 from core.constants import VALID_STATUS_CODES, REQUEST_HEADERS
 from core.utils import get_attribute_value
 from catalog.models import BoardGame
@@ -12,7 +12,7 @@ def test():
 
 def get_bgg_board_game(bgg_id: int) -> BoardGame:
     fetch_url: str = f"https://boardgamegeek.com/xmlapi2/thing?id={bgg_id}"
-    response: requests.Response = requests.get(url=fetch_url, headers=REQUEST_HEADERS)
+    response: requests.Response = requests.get(url=fetch_url, headers=REQUEST_HEADERS, timeout=10)
 
     if response.status_code not in VALID_STATUS_CODES:
         return False, f"Failed to reach BGG API. Status: {response.status_code}"
@@ -21,7 +21,7 @@ def get_bgg_board_game(bgg_id: int) -> BoardGame:
     response_root: ElementTree.Element = ElementTree.fromstring(response.content)
 
     game_item = response_root.find('item')
-    BoardGame.create_from_xml(game_item)
+    # BoardGame.create_from_xml(game_item)
     primary_name: str | None = get_attribute_value(element=game_item, xpath='name[@type="primary"]')
     year_published: str | None = get_attribute_value(element=game_item, xpath='yearpublished')
 

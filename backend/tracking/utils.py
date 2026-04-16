@@ -1,5 +1,5 @@
 import requests
-import xml.etree.ElementTree as ElementTree
+import defusedxml.ElementTree as ElementTree
 from datetime import datetime
 from core.constants import VALID_STATUS_CODES, REQUEST_HEADERS
 
@@ -8,13 +8,13 @@ from catalog.utils import get_bgg_board_game, get_existing_board_game
 
 def fetch_bgg_plays(user: str, bgg_username: str) -> tuple[bool, str]:
     fetch_url: str = f"https://boardgamegeek.com/xmlapi2/plays?username={bgg_username}"
-    response: requests.Response = requests.get(url=fetch_url, headers=REQUEST_HEADERS)
+    response: requests.Response = requests.get(url=fetch_url, headers=REQUEST_HEADERS, timeout=10)
 
     if response.status_code not in VALID_STATUS_CODES:
         return False, f"Failed to reach BGG API. Status: {response.status_code}"
 
     # XML Root should be 'plays'
-    response_root: ElementTree.Element = ElementTree.fromstring(response.content)
+    response_root: ElementTree.Element[str] = ElementTree.fromstring(response.content)
 
     sessions_created: int = 0
     for play in response_root.findall('play'):

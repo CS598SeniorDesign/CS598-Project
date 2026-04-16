@@ -1,4 +1,4 @@
-import xml.etree.ElementTree as ElementTree
+import defusedxml.ElementTree as ElementTree
 from typing import Type
 from django.db import models
 from core.utils import get_attribute_value
