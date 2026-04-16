@@ -1,6 +1,6 @@
 from datetime import datetime
-from django.db import models
 from django.conf import settings
+from django.db import models
 from typing import TYPE_CHECKING
 
 from catalog.models import BoardGame
@@ -10,6 +10,7 @@ from profiles.models import GameGroup
 
 if TYPE_CHECKING:
     from xml.etree.ElementTree import Element
+    from django.contrib.auth.models import User
 
 
 class LibraryItem(models.Model):
@@ -73,7 +74,7 @@ class PlaySession(models.Model):
     play_time_minutes = models.IntegerField()
 
     @classmethod
-    def create_from_xml(cls, xml_item: Element, user: str, bgg_username: str):
+    def create_from_xml(cls, xml_item: Element, user: User, bgg_username: str):
         """
         Parses a BGG XML <play> element to create or update a PlaySession.
 
@@ -107,7 +108,7 @@ class PlaySession(models.Model):
         return instance
 
     @staticmethod
-    def _handle_players(instance: 'PlaySession', xml_item: Element, user, bgg_username):
+    def _handle_players(instance: 'PlaySession', xml_item: Element, user: User, bgg_username: str):
         """
         Extracts player data from a session XML and links them to Django users.
 

@@ -1,5 +1,6 @@
 import defusedxml.ElementTree as ElementTree
 import requests
+from django.contrib.auth.models import User
 from django.db import transaction
 from typing import TYPE_CHECKING
 
@@ -10,11 +11,7 @@ if TYPE_CHECKING:
     from xml.etree.ElementTree import Element
 
 
-def test():
-    fetch_bgg_plays('', 'ureia')
-
-
-def fetch_bgg_plays(user: str, bgg_username: str) -> tuple[bool, str]:
+def fetch_bgg_plays(user: User, bgg_username: str) -> tuple[bool, str]:
     fetch_url: str = f"https://boardgamegeek.com/xmlapi2/plays?username={bgg_username}"
     response: requests.Response = requests.get(url=fetch_url, headers=REQUEST_HEADERS, timeout=10)
 
