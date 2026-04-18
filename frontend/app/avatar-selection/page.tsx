@@ -2,7 +2,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 
-const avatars = [
+const AVATARS = [
   "/avatars/brandon.webp",
   "/avatars/sydney.webp",
   "/avatars/jennifer.webp",
@@ -31,7 +31,7 @@ export default function AvatarSelectionPage() {
       <div className="w-full max-w-md bg-gray-900 p-8 rounded-xl">
         <h1 className="text-3xl font-bold mb-6">Pick Your Avatar</h1>
         <div className="grid grid-cols-2 gap-4 mb-6">
-          {avatars.map((avt) => (
+          {AVATARS.map((avt) => (
             <img
               key={avt}
               src={avt}
