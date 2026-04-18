@@ -4,6 +4,7 @@ channels-redis
 django>=4.2
 djangorestframework
 djangorestframework-simplejwt
+django-allauth
 django-cors-headers
 django-csp
 django-environ
