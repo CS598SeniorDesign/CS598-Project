@@ -6,6 +6,8 @@ djangorestframework
 djangorestframework-simplejwt
 dj-rest-auth
 django-allauth
+django-allauth[mfa]
+django-allauth[socialaccount]
 django-cors-headers
 django-csp
 django-environ

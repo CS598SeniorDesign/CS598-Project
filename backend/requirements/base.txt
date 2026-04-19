@@ -17,12 +17,18 @@ billiard==4.2.4
     # via celery
 celery==5.6.3
     # via -r requirements/base.in
+certifi==2026.2.25
+    # via requests
+cffi==2.0.0
+    # via cryptography
 channels==4.3.2
     # via
     #   -r requirements/base.in
     #   channels-redis
 channels-redis==4.3.0
     # via -r requirements/base.in
+charset-normalizer==3.4.7
+    # via requests
 click==8.3.2
     # via
     #   celery
@@ -35,6 +41,10 @@ click-plugins==1.1.1.2
     # via celery
 click-repl==0.3.0
     # via celery
+cryptography==46.0.7
+    # via
+    #   fido2
+    #   pyjwt
 dj-rest-auth==7.2.0
     # via -r requirements/base.in
 django==6.0.2
@@ -48,7 +58,7 @@ django==6.0.2
     #   django-redis
     #   djangorestframework
     #   djangorestframework-simplejwt
-django-allauth==65.16.1
+django-allauth[mfa,socialaccount]==65.16.1
     # via -r requirements/base.in
 django-cors-headers==4.9.0
     # via -r requirements/base.in
@@ -65,12 +75,18 @@ djangorestframework==3.16.1
     #   djangorestframework-simplejwt
 djangorestframework-simplejwt==5.5.1
     # via -r requirements/base.in
+fido2==2.2.0
+    # via django-allauth
 gunicorn==25.3.0
     # via -r requirements/base.in
+idna==3.11
+    # via requests
 kombu==5.6.2
     # via celery
 msgpack==1.1.2
     # via channels-redis
+oauthlib==3.3.1
+    # via django-allauth
 packaging==26.0
     # via
     #   django-csp
@@ -80,15 +96,23 @@ prompt-toolkit==3.0.52
     # via click-repl
 psycopg2-binary==2.9.11
     # via -r requirements/base.in
-pyjwt==2.11.0
-    # via djangorestframework-simplejwt
+pycparser==3.0
+    # via cffi
+pyjwt[crypto]==2.11.0
+    # via
+    #   django-allauth
+    #   djangorestframework-simplejwt
 python-dateutil==2.9.0.post0
     # via celery
+qrcode==8.2
+    # via django-allauth
 redis==7.4.0
     # via
     #   -r requirements/base.in
     #   channels-redis
     #   django-redis
+requests==2.33.1
+    # via django-allauth
 six==1.17.0
     # via python-dateutil
 sqlparse==0.5.5
@@ -97,6 +121,8 @@ tzdata==2026.1
     # via kombu
 tzlocal==5.3.1
     # via celery
+urllib3==2.6.3
+    # via requests
 vine==5.1.0
     # via
     #   amqp
