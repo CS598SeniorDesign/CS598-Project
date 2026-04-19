@@ -1,5 +1,7 @@
 # QuestLog
 
+QuestLog is a web-based platform designed to help board game enthusiasts manage personal game collections, track their play sessions, and analyze gameplay statistics. The platform integrates game tracking, rating, discovery, and community features into a single platform.
+
 ## Table of Contents
 
 - [Getting Started](#getting-started)
