@@ -64,17 +64,27 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sites',
     'rest_framework',
+    'rest_framework.authtoken',
     'corsheaders',
     'rest_framework_simplejwt.token_blacklist',
     # django-allauth (Authentication extension and MFA)
     'allauth',
     'allauth.account',
+    'allauth.socialaccount',
+    'allauth.mfa',
+    'dj_rest_auth',
+    'dj_rest_auth.registration',
     # Apps/Models
     'profiles',
     'catalog',
     'tracking',
 ]
+
+SITE_ID = 1
+
+AUTH_USER_MODEL = 'users.User'
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
@@ -186,6 +196,36 @@ AUTHENTICATION_BACKENDS = [
     'allauth.account.auth_backends.AuthenticationBackend',
 ]
 
+# django allauth settings
+
+# Base auth settings
+ACCOUNT_AUTHENTICATION_METHOD = 'email'
+ACCOUNT_USERNAME_REQUIRED = False
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_UNIQUE_EMAIL = True
+ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
+ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
+ACCOUNT_USER_MODEL_USERNAME_FIELD = None
+ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 3
+
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# MFA
+MFA_ENABLED = True
+MFA_SUPPORTED_TYPES = ['totp']
+MFA_TOTP_ISSUER = "Questlog"
+
+# Auth JWT
+REST_USE_JWT = True
+JWT_AUTH_COOKIE = 'questlog-auth'
+JWT_AUTH_REFRESH_COOKIE = 'questlog-refresh'
+
+# dj-rest-auth
+REST_AUTH = {
+    'USE_JWT': True,
+    'JWT_AUTH_HTTPONLY': True,
+}
+
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
 
@@ -207,7 +247,8 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 # Established default authentication and permission classes if one is not specified
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'dj_rest_auth.jwt_auth.JWTCookieAuthentication',
+        # 'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
@@ -249,9 +290,10 @@ SECURE_HSTS_PRELOAD = True
 # Ensures cookies can't be read by JS
 SESSION_COOKIE_SECURE = True
 SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "None"
 CSRF_COOKIE_SECURE = True
 CSRF_COOKIE_HTTPONLY = True
-CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SAMESITE = 'None'
 CSRF_COOKIE_AGE = 31449600
 CSRF_COOKIE_NAME = 'csrf_token'
 
