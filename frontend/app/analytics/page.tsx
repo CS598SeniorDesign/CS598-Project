@@ -2,6 +2,8 @@
 
 import WinRateChart from "@/components/stats/WinRateChart";
 import React from "react";
+import CategoryChart from "@/components/stats/CategoryChart";
+import PlayerPieChart from "@/components/stats/PlayerPieChart";
 
 export default function AnalyticsPage() {
   return (
@@ -37,15 +39,31 @@ export default function AnalyticsPage() {
         </div>
 
       {/* CHARTS */}
-       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-8">
 
+       {/* CATEGORY CHART */}
+        <div className="bg-[#1E293B]/70 p-6 rounded-2xl">
+          <h2 className="text-xl font-bold mb-4 text-center">
+            Categories of Games Played
+          </h2>
+          <CategoryChart />
+        </div>
+       
        {/* WIN RATE */}
        <div className="bg-[#1E293B] p-6 rounded-xl h-[350px]">
-         <h2 className="mb-2 text-center">Win Rate</h2>
+         <h2 className="mb-2 text-center">Win / Loss Ratio </h2>
          <div className="flex-1 flex items-center justify-center">
           <WinRateChart className="w-full h-full" />
          </div>
        </div>
+
+       {/* PLAYER PIE CHART */}
+        <div className="bg-[#1E293B]/70 p-6 rounded-2xl">
+          <h2 className="text-xl font-bold mb-4 text-center">
+            Player Most Played With
+          </h2>
+          <PlayerPieChart />
+        </div>
 
        {/* DONUT */}
        <div className="bg-[#1E293B] p-6 rounded-xl flex flex-col items-center justify-center">
@@ -66,7 +84,7 @@ export default function AnalyticsPage() {
          </p>
         </div>
 
-       </div>
-    </div>
+        </div>
+        </div>
     );
 }
