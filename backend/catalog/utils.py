@@ -46,7 +46,7 @@ def get_bgg_board_game(bgg_id: int, backup_name: str) -> BoardGame:
     except requests.RequestException as exception:
         logger.warning("BGG API fetch failed for bgg_id=%s", bgg_id, exception)
     except (ElementTree.ParseError, EntitiesForbidden, DTDForbidden) as exception:
-        logger.error("BGG API returned unsafe XML for bgg_id=%s", bgg_id, exception)
+        logger.warning("BGG API fetch failed for bgg_id=%s: %s", bgg_id, exception)
     except Exception as exception:
         logger.critical("Unexpected error fetching BGG data for bgg_id=%s: %s", bgg_id, exception)
 
