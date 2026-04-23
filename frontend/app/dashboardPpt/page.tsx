@@ -148,7 +148,16 @@ export default function Page() {
              </Link>
             ))}
           </div>
+
+          <div className="flex justify-center mt-6">
+           <Link href="/library">
+            <button className="rounded-full bg-[#4F46E5] px-6 py-2 text-xl font-bold uppercase tracking-wide text-white transition hover:bg-[#6366F1] hover:scale-105">
+             GO TO LIBRARY
+            </button>
+           </Link>
+         </div>
         </div>
+
           {/* CALENDAR */}
           <div className="bg-[#1E293B]/70 p-5 rounded-2xl shadow-lg transition duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-indigo-500/10">
             <h2 className="mb-2 text-gray-300">Calendar</h2>
