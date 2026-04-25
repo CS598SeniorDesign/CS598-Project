@@ -41,7 +41,7 @@ export default function FriendsList() {
               alt={friend.name}
               width={56}
               height={56}
-              className="rounded-full object-cover border border-gray-500"
+              className="w-14 h-14 rounded-full object-cover border border-gray-500"
             />
             <span className="font-medium">{friend.name}</span>
           </li>

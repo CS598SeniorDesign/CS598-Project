@@ -32,7 +32,7 @@ export default function GameGroups() {
                 alt={group.name}
                 width={56}
                 height={56}
-                className="rounded-full object-cover border border-gray-500"
+                className="w-14 h-14 rounded-full object-cover border border-gray-500"
               />
               <span>{group.name}</span>
             </li>
