@@ -19,7 +19,7 @@ export default function UpcomingEvents() {
   return (
     <section className="border-t border-gray-600 pt-6">
       <h2 className="text-3xl font-bold mb-5 tracking-wide">
-        UPCOMING EVENTS
+        UPCOMING EVENTS 🎮
       </h2>
 
       <div className="space-y-5">
@@ -38,9 +38,22 @@ export default function UpcomingEvents() {
             </div>
 
             <div className="flex flex-col justify-center">
-              <h3 className="text-2xl font-semibold mb-2">{event.title}</h3>
+              <h3 className="text-2xl font-semibold mb-2">
+                {event.title}
+              </h3>
+
               <p className="text-lg text-gray-300">{event.date}</p>
-              <p className="text-lg text-gray-400 mt-1">Hosted by {event.group}</p>
+
+              <p className="text-lg text-gray-400 mt-2">
+                🎲 Hosted by{" "}
+                <span className="px-3 py-1 ml-1 text-sm rounded-full bg-gray-800 border border-gray-600">
+                  {event.group}
+                </span>
+              </p>
+
+              <p className="text-sm text-orange-400 font-semibold mt-2">
+                ⏳ Community event
+              </p>
             </div>
           </div>
         ))}
@@ -48,3 +61,5 @@ export default function UpcomingEvents() {
     </section>
   );
 }
+
+            
