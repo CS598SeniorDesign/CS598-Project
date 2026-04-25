@@ -21,12 +21,12 @@ const AVATARS = [
 
 export default function AvatarPicker({ onSelect, selected }: AvatarPickerProps) {
   return (
-    <div className="flex gap-4">
+    <div className="flex flex-wrap gap-5 justify-center">
       {AVATARS.map((av) => (
         <div
           key={av}
-          className={`cursor-pointer border-2 rounded-full p-1 ${
-            selected === av ? "border-indigo-500" : "border-transparent"
+          className={`cursor-pointer transition-all duration-200 border-2 rounded-full p-1 hover:scale-110 ${
+            selected === av ? "ring-4 ring-border-indigo-500 scale-110" : "ring-2 ring-transparent hover:ring-gray-500"
           }`}
           onClick={() => onSelect(av)}
         >

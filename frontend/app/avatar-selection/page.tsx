@@ -27,17 +27,17 @@ export default function AvatarSelectionPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black text-white">
-      <div className="w-full max-w-md bg-gray-900 p-8 rounded-xl">
-        <h1 className="text-3xl font-bold mb-6">Pick Your Avatar</h1>
-        <div className="grid grid-cols-2 gap-4 mb-6">
+    <div className="min-h-screen flex items-center justify-center bg-black text-white px-4">
+      <div className="w-full max-w-lg bg-gray-900/90 backdrop-blur-md p-10 rounded-2xl shadow-2xl">
+        <h1 className="text-4xl font-bold text-center mb-8">Pick Your Avatar</h1>
+        <div className="grid grid-cols-3 gap-6 justify-items-center mb-8">
           {AVATARS.map((avt) => (
             <img
               key={avt}
               src={avt}
               alt="avatar"
-              className={`w-20 h-20 rounded-full cursor-pointer border-4 ${
-                selectedAvatar === avt ? "border-indigo-500" : "border-gray-700"
+              className={`w-28 h-28 rounded-full cursor-pointer border-4 transition-all duration-200 hover:scale-110 ${
+                selectedAvatar === avt ? "border-indigo-500 scale-110 shadow-lg" : "border-gray-700 hover:border-gray-500"
               }`}
               onClick={() => setSelectedAvatar(avt)}
             />
@@ -47,7 +47,12 @@ export default function AvatarSelectionPage() {
         <button
           onClick={handleConfirm}
           disabled={!selectedAvatar}
-          className="bg-primary py-2 rounded-lg hover:opacity-90 w-full disabled:opacity-50"
+          className="w-full py-3 rounded-xl font-semibold text-lg bg-primary
+          hover:bg-indigo-500 
+          hover:scale-[1.02]
+          active:scale-95
+          transition-all duration-200
+          disabled:opacity-40 disabled:cursor-not-allowed "
         >
           Confirm → Dashboard
         </button>
