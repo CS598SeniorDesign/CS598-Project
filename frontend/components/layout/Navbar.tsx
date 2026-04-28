@@ -1,7 +1,7 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-
+import Link from "next/link";
+import ProfileDropdown from "@/components/ui/ProfileDropdown";
 export default function Navbar() {
   return (
     <nav className="w-full flex justify-between items-center px-10 mt-32">
@@ -30,6 +30,7 @@ export default function Navbar() {
         >
           Sign Up
         </Link>
+
 
       </div>
 
