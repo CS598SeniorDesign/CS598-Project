@@ -12,3 +12,5 @@ gunicorn
 redis
 psycopg2-binary
 whitenoise
+requests>=2.33.1
+defusedxml>=0.7.1
