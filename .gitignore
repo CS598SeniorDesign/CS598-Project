@@ -1,6 +1,7 @@
 #Root
 .env
 .env.local
+node_modules
 
 # Backend
 .venv
