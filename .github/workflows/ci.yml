@@ -44,6 +44,12 @@ jobs:
           set -o pipefail
           ruff check . --exclude 'migrations' 2>&1 | tee ruff-output.txt
 
+      - name: Check Ruff formatting
+        run: ruff format --check . --exclude 'migrations'
+
+      - name: Run Pyright type check
+        run: pyright .
+
       - name: Upload backend lint log
         if: always()
         uses: actions/upload-artifact@v4
@@ -74,6 +80,12 @@ jobs:
         run: |
           set -o pipefail
           npm run lint --prefix frontend 2>&1 | tee frontend-lint-output.txt
+
+      - name: Run TypeScript type check
+        run: npm run typecheck --prefix frontend
+
+      - name: Check frontend formatting
+        run: npm run format:check --prefix frontend
 
       - name: Upload frontend lint log
         if: always()
@@ -161,7 +173,15 @@ jobs:
       - name: Run Django tests
         run: |
           set -o pipefail
-          python manage.py test --verbosity 2 2>&1 | tee backend-test-output.txt
+          pytest --cov=. --cov-report=term-missing --cov-report=xml:coverage.xml -v 2>&1 | tee backend-test-output.txt
+
+      - name: Upload backend coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/coverage.xml
+          if-no-files-found: warn
 
       - name: Upload backend test log
         if: always()
