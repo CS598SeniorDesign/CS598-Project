@@ -24,11 +24,26 @@ This document provides guidance on running the backend
 ## Backend File Structure
 
 ```bash
-/app
-└── Core Django application containing the majority of backend functionality
-
+/catalog
+└── 'Django app for the board game library: game metadata, BGG XML API integration, search/filter, and wishlist models'
 /config
-└── Django configuration files (settings, ASGI, urls)
+└── 'Django project configuration: settings, ASGI/WSGI entrypoint, root urls.py'
+/profiles
+└── 'Django app for user/player profiles, player and group statistics, derived social tags, and account-level data'
+/tracking
+└── 'Django app for session/play tracking and multi-metric ratings.'
+.env.example
+└── 'Sanitized template of required environment variables (DB, Redis, Django secret key, hCaptcha keys, etc.) for local setup'
+.python-version
+└── 'Pins the exact Python version used by uv for this project'
+manage.py
+└── 'Djangos command line utility for running the dev server, migrations, management commands, etc.'
+pyproject.toml
+└── 'Python project metadata and tool configuration (dependencies, Ruff, mypy, pytest settings)'
+README.md
+└── 'Project documentation for architecture overview, local setup steps, environment variables'
+uv.lock
+└── 'Locked dependency versions for reproducible installs via uv'
 ```
 
 ## Getting Started
