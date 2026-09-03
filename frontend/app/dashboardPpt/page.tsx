@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import React, { useState, useEffect } from "react";
+import React, { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import WinRateChart from "@/components/stats/WinRateChart";
 
@@ -46,14 +46,27 @@ type CommunityItem = GameResult & {
 
 const days: string[] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+const subscribeToUserAvatar = () => {
+  return () => {};
+};
+
+const getUserAvatarSnapshot = () => {
+  return localStorage.getItem("userAvatar");
+};
+
+const getUserAvatarServerSnapshot = () => {
+  return null;
+};
+
 export default function Page() {
   const [openChart, setOpenChart] = useState<null | "winrate" | "donut">(null);
-  // state for avatar to fix hydration
-  const [userAvatar, setUserAvatar] = useState<string | null>(null);
-  useEffect(() => {
-    const avatar = localStorage.getItem("userAvatar");
-    if (avatar) setUserAvatar(avatar);
-  }, []);
+
+  // Read avatar from localStorage while keeping server rendering hydration-safe
+  const userAvatar = useSyncExternalStore(
+    subscribeToUserAvatar,
+    getUserAvatarSnapshot,
+    getUserAvatarServerSnapshot
+  );
 
   const scrollToAnalytics = () => {
     document.getElementById("analytics")?.scrollIntoView({
@@ -110,9 +123,11 @@ export default function Page() {
 
         <div className="flex items-center gap-3">
            {userAvatar ? (
-            <img 
+            <Image 
               src={userAvatar}
               alt="User Avatar"
+              width={32}
+              height={32}
               className="w-8 h-8 rounded-full object-cover"
               />
            ) : (
