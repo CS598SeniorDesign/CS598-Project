@@ -1,4 +1,12 @@
+from __future__ import annotations
+
 from django.db import models
+from typing import Type, TYPE_CHECKING
+
+from core.utils import get_attribute_value
+
+if TYPE_CHECKING:
+    from xml.etree.ElementTree import Element
 
 
 class BGGAttribute(models.Model):
@@ -119,6 +127,89 @@ class BoardGame(models.Model):
     # Stats
     average_rating = models.DecimalField(max_digits=5, decimal_places=3, null=True, blank=True)
     bgg_rank = models.IntegerField(null=True, blank=True)
+
+    @classmethod
+    def create_from_xml(cls, xml_item: Element, backup_name: str = None):
+        """
+        Parses a BGG XML element to create or update a BoardGame instance.
+
+        This method extracts attributes (ID, name, players, etc.) from an <item> node, updates the database if the
+        record exists, or creates a new one if it does not.
+
+        :param xml_item: The XML element representing a board game item.
+        :type xml_item: xml.etree.ElementTree.Element
+        :return: The persisted BoardGame instance.
+        :rtype: BoardGame
+        """
+        detailed_name = get_attribute_value(xml_item, 'name[@type="primary"]')
+
+        data: dict[str, str | None] = {
+            "bgg_id": xml_item.attrib.get("id"),
+            "primary_name": detailed_name or backup_name,
+            "description": xml_item.findtext("description"),
+            "year_published": get_attribute_value(xml_item, "yearpublished"),
+            "minimum_players": get_attribute_value(xml_item, "minplayers"),
+            "maximum_players": get_attribute_value(xml_item, "maxplayers"),
+            "playing_time": get_attribute_value(xml_item, "playingtime"),
+            "thumbnail_url": xml_item.findtext("thumbnail"),
+            "image_url": xml_item.findtext("image"),
+            "average_rating": get_attribute_value(xml_item, "statistics/ratings/average"),
+            "bgg_rank": get_attribute_value(xml_item, "statistics/ratings/ranks/rank[@name='boardgame']"),
+        }
+
+        instance: BoardGame
+        is_created: bool
+        instance, is_created = cls.objects.update_or_create(
+            bgg_id=data["bgg_id"],
+            defaults=data
+        )
+
+        cls._handle_links(instance, xml_item)
+        return instance
+
+    @staticmethod
+    def _handle_links(instance: "BoardGame", xml_item: Element):
+        """
+        Processes <link> tags from the XML and maps them to M2M relationships.
+
+        Iterates through link nodes, determines the appropriate metadata model (e.g., Category, Mechanic), and
+        associates the record with the provided BoardGame instance.
+
+        :param instance: The BoardGame model instance to associate metadata with.
+        :type instance: BoardGame
+        :param xml_item: The XML element containing the <link> nodes.
+        :type xml_item: xml.etree.ElementTree.Element
+        :return: None
+        """
+
+        VALID_LINK = {
+            "boardgamecategory": (Category, "categories"),
+            "boardgamemechanic": (Mechanic, "mechanics"),
+            "boardgamepublisher": (Publisher, "publishers"),
+            "boardgamedesigner": (Designer, "designers"),
+            "boardgameartist": (Artist, "artists"),
+            "boardgamefamily": (Family, "families"),
+        }
+
+        for link in xml_item.findall("link"):
+            link_type: str | None = link.attrib.get("type")
+
+            if link_type in VALID_LINK:
+                model_class: Type[models.Model]
+                field_name: str
+                model_class, field_name = VALID_LINK[link_type]
+
+                bgg_id: str = link.attrib.get("id")
+                name: str = link.attrib.get("value")
+
+                object: models.Model
+                is_created: bool
+                object, is_created = model_class.objects.get_or_create(
+                    bgg_id=bgg_id,
+                    defaults={"name": name}
+                )
+
+                getattr(instance, field_name).add(object)
 
     def __str__(self) -> str:
         """
