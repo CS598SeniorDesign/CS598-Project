@@ -1,0 +1,8 @@
+{
+  "include": ["."],
+  "exclude": ["**/migrations"],
+  "typeCheckingMode": "basic",
+  "reportMissingImports": false,
+  "reportArgumentType": "none",
+  "reportReturnType": "none"
+}

@@ -37,6 +37,19 @@ idna==3.13
     # via requests
 packaging==26.0
     # via django-csp
+pyright==1.1.411
+    # via -r dev.in
+pytest==9.1.1
+    # via
+    #   -r dev.in
+    #   pytest-cov
+    #   pytest-django
+pytest-cov==7.1.0
+    # via -r dev.in
+pytest-django==4.14.0
+    # via -r dev.in
+pluggy==1.6.0
+    # via pytest
 psycopg2-binary==2.9.11
     # via -r backend/requirements/base.in
 pyjwt==2.11.0
@@ -47,3 +60,17 @@ sqlparse==0.5.5
     # via django
 urllib3==2.6.3
     # via requests
+colorama==0.4.6
+    # via pytest
+coverage==7.16.0
+    # via pytest-cov
+iniconfig==2.3.0
+    # via pytest
+nodeenv==1.10.0
+    # via pyright
+pygments==2.21.0
+    # via pytest
+sqlparse==0.5.5
+    # via django
+typing-extensions==4.16.0
+    # via pyright
