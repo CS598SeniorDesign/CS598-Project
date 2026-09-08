@@ -1,3 +1,6 @@
 from django.test import TestCase
 
-# Create your tests here.
+
+class CatalogSmokeTest(TestCase):
+	def test_django_test_environment_loads(self):
+		self.assertTrue(self.client)
