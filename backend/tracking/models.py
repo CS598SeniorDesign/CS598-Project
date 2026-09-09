@@ -1,8 +1,23 @@
+<<<<<<< HEAD
+=======
+from __future__ import annotations
+
+from datetime import datetime, timezone
+from typing import TYPE_CHECKING
+
+>>>>>>> main
 from django.conf import settings
 from django.db import models
 
 from catalog.models import BoardGame
+from catalog.utils import get_existing_board_game
+from core.utils import get_attribute
 from profiles.models import GameGroup
+
+if TYPE_CHECKING:
+    from xml.etree.ElementTree import Element
+
+    from django.contrib.auth.models import User
 
 
 class LibraryItem(models.Model):
@@ -21,7 +36,9 @@ class LibraryItem(models.Model):
 
     user = models.ForeignKey(to=settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     game = models.ForeignKey(to=BoardGame, on_delete=models.CASCADE)
-    status = models.CharField(max_length=20, choices=LIBRARY_ENTRY_STATUSES, default=UNPLAYED)
+    status = models.CharField(
+        max_length=20, choices=LIBRARY_ENTRY_STATUSES, default=UNPLAYED
+    )
     house_rules = models.TextField(null=True, blank=True)
 
     def __str__(self) -> str:
@@ -62,10 +79,107 @@ class PlaySession(models.Model):
     Records an instance of a game group or user(s) playing a board game.
     """
 
+<<<<<<< HEAD
+=======
+    bgg_id = models.IntegerField(primary_key=True)
+>>>>>>> main
     game = models.ForeignKey(to=BoardGame, on_delete=models.CASCADE)
-    group = models.ForeignKey(to=GameGroup, on_delete=models.CASCADE)
+    group = models.ForeignKey(
+        to=GameGroup, on_delete=models.CASCADE, null=True, blank=True
+    )
     play_date = models.DateField()
     play_time_minutes = models.IntegerField()
+
+    @classmethod
+    def create_from_xml(cls, xml_item: Element, user: User, bgg_username: str):
+        """
+        Parses a BGG XML <play> element to create or update a PlaySession.
+
+        Extracts the BGG session ID, date, and duration. It also resolves the associated BoardGame record before
+        processing players.
+
+        :param xml_item: The XML element representing a specific play session.
+        :type xml_item: xml.etree.ElementTree.Element
+        :param user: The authenticated user who is syncing their plays.
+        :type user: django.contrib.auth.models.User
+        :param bgg_username: The BoardGameGeek username belonging to the syncing user.
+        :type bgg_username: str
+        :returns: The created or updated PlaySession instance.
+        :rtype: tracking.models.PlaySession
+        """
+
+        raw_bgg_game_id = get_attribute(xml_item, "item", "objectid")
+        bgg_game_id = int(raw_bgg_game_id) if raw_bgg_game_id is not None else 0
+
+        backup_name = get_attribute(xml_item, "item", "name") or "Unknown"
+        game_object = get_existing_board_game(bgg_game_id, backup_name)
+
+        raw_date = get_attribute(xml_item, ".", "date")
+        play_date_str = (
+            raw_date
+            if raw_date is not None
+            else datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        )
+
+        raw_length = get_attribute(xml_item, ".", "length")
+        play_time_minutes = int(raw_length) if raw_length is not None else 0
+
+        data = {
+            "game": game_object,
+            "play_date": datetime.strptime(play_date_str, "%Y-%m-%d")
+            .replace(tzinfo=timezone.utc)
+            .date(),
+            "play_time_minutes": play_time_minutes,
+        }
+
+        raw_id = get_attribute(xml_item, ".", "id")
+        play_id = int(raw_id) if raw_id is not None else 0
+
+        instance: PlaySession
+        instance, _ = cls.objects.update_or_create(bgg_id=play_id, defaults=data)
+        cls._handle_players(instance, xml_item, user, bgg_username)
+
+        return instance
+
+    @staticmethod
+    def _handle_players(
+        instance: PlaySession, xml_item: Element, user: User, bgg_username: str
+    ):
+        """
+        Extracts player data from a session XML and links them to Django users.
+
+        Iterates through <player> tags. If a player's BGG username matches the syncing user's BGG username, a
+        SessionPlayer record is created with their score and win status.
+
+        :param instance: The PlaySession instance to link players to.
+        :type instance: tracking.models.PlaySession
+        :param xml_item: The XML element containing the <players> block.
+        :type xml_item: xml.etree.ElementTree.Element
+        :param user: The authenticated user who is syncing their plays.
+        :type user: django.contrib.auth.models.User
+        :param bgg_username: The BoardGameGeek username belonging to the syncing user.
+        :type bgg_username: str
+        :returns: None
+        """
+
+        players_node = xml_item.find("players")
+        if players_node is None:
+            return
+
+        for player_node in players_node.findall("player"):
+            player_xml_username: str | None = get_attribute(
+                player_node, ".", "username"
+            )
+
+            if player_xml_username == bgg_username:
+                SessionPlayer.objects.update_or_create(
+                    session=instance,
+                    user=user,
+                    defaults={
+                        "score": float(get_attribute(player_node, ".", "score") or 0),
+                        "is_winner": get_attribute(player_node, ".", "win") == "1",
+                    },
+                )
 
     def __str__(self) -> str:
         """

@@ -20,7 +20,9 @@ class Profile(models.Model):
     user = models.OneToOneField(to=settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     display_name = models.CharField(max_length=100)
     bio = models.TextField(null=True, blank=True)
-    privacy_level = models.CharField(max_length=10, choices=PRIVACY_LEVEL_CHOICES, default=PUBLIC)
+    privacy_level = models.CharField(
+        max_length=10, choices=PRIVACY_LEVEL_CHOICES, default=PUBLIC
+    )
     friends = models.ManyToManyField(to="self", blank=True)
 
     def __str__(self) -> str:
@@ -46,7 +48,9 @@ class GameGroup(models.Model):
         null=True,
         related_name="created_groups",
     )
-    members = models.ManyToManyField(to=settings.AUTH_USER_MODEL, related_name="group_memberships")
+    members = models.ManyToManyField(
+        to=settings.AUTH_USER_MODEL, related_name="group_memberships"
+    )
 
     def __str__(self) -> str:
         """

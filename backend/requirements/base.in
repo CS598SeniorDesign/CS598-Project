@@ -1,0 +1,9 @@
+django>=4.2
+psycopg2-binary
+djangorestframework
+djangorestframework-simplejwt
+django-cors-headers
+django-environ
+django-csp
+requests>=2.33.1
+defusedxml>=0.7.1
