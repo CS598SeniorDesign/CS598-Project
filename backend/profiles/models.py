@@ -30,7 +30,7 @@ class Profile(models.Model):
         :returns: The display name associated with a user.
         """
 
-        return self.display_name
+        return str(self.display_name)
 
 
 class GameGroup(models.Model):
@@ -55,7 +55,7 @@ class GameGroup(models.Model):
         :returns: The name associated with a game group.
         """
 
-        return self.name
+        return str(self.name)
 
 
 class PlayerTag(models.Model):
@@ -67,9 +67,7 @@ class PlayerTag(models.Model):
     SIDEKICK = "SIDEKICK"
     TAG_TYPE_CHOICES = ((MORTAL_ENEMY, "Mortal Enemy"), (SIDEKICK, "Sidekick"))
 
-    assigning_user = models.ForeignKey(
-        to=settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="tags_given"
-    )
+    assigning_user = models.ForeignKey(to=settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="tags_given")
     target_user = models.ForeignKey(
         to=settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,

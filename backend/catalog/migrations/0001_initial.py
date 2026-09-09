@@ -114,9 +114,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "publishers",
-                    models.ManyToManyField(
-                        blank=True, related_name="games", to="catalog.publisher"
-                    ),
+                    models.ManyToManyField(blank=True, related_name="games", to="catalog.publisher"),
                 ),
             ],
         ),

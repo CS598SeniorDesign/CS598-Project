@@ -1,11 +1,8 @@
-<<<<<<< HEAD
-=======
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
->>>>>>> main
 from django.conf import settings
 from django.db import models
 
@@ -36,9 +33,7 @@ class LibraryItem(models.Model):
 
     user = models.ForeignKey(to=settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     game = models.ForeignKey(to=BoardGame, on_delete=models.CASCADE)
-    status = models.CharField(
-        max_length=20, choices=LIBRARY_ENTRY_STATUSES, default=UNPLAYED
-    )
+    status = models.CharField(max_length=20, choices=LIBRARY_ENTRY_STATUSES, default=UNPLAYED)
     house_rules = models.TextField(null=True, blank=True)
 
     def __str__(self) -> str:
@@ -79,16 +74,19 @@ class PlaySession(models.Model):
     Records an instance of a game group or user(s) playing a board game.
     """
 
-<<<<<<< HEAD
-=======
     bgg_id = models.IntegerField(primary_key=True)
->>>>>>> main
     game = models.ForeignKey(to=BoardGame, on_delete=models.CASCADE)
-    group = models.ForeignKey(
-        to=GameGroup, on_delete=models.CASCADE, null=True, blank=True
-    )
+    group = models.ForeignKey(to=GameGroup, on_delete=models.CASCADE, null=True, blank=True)
     play_date = models.DateField()
     play_time_minutes = models.IntegerField()
+
+    def __str__(self) -> str:
+        """
+        Return the string representation of the PlaySession.
+
+        :returns: A string describing the group and the game played.
+        """
+        return f"{self.group} playing {self.game}"
 
     @classmethod
     def create_from_xml(cls, xml_item: Element, user: User, bgg_username: str):
@@ -115,20 +113,14 @@ class PlaySession(models.Model):
         game_object = get_existing_board_game(bgg_game_id, backup_name)
 
         raw_date = get_attribute(xml_item, ".", "date")
-        play_date_str = (
-            raw_date
-            if raw_date is not None
-            else datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        )
+        play_date_str = raw_date if raw_date is not None else datetime.now(UTC).strftime("%Y-%m-%d")
 
         raw_length = get_attribute(xml_item, ".", "length")
         play_time_minutes = int(raw_length) if raw_length is not None else 0
 
         data = {
             "game": game_object,
-            "play_date": datetime.strptime(play_date_str, "%Y-%m-%d")
-            .replace(tzinfo=timezone.utc)
-            .date(),
+            "play_date": datetime.strptime(play_date_str, "%Y-%m-%d").replace(tzinfo=UTC).date(),
             "play_time_minutes": play_time_minutes,
         }
 
@@ -142,14 +134,12 @@ class PlaySession(models.Model):
         return instance
 
     @staticmethod
-    def _handle_players(
-        instance: PlaySession, xml_item: Element, user: User, bgg_username: str
-    ):
+    def _handle_players(instance: PlaySession, xml_item: Element, user: User, bgg_username: str):
         """
         Extracts player data from a session XML and links them to Django users.
 
-        Iterates through <player> tags. If a player's BGG username matches the syncing user's BGG username, a
-        SessionPlayer record is created with their score and win status.
+        Iterates through <player> tags. If a player's BGG username matches the syncing user's BGG
+        username, a SessionPlayer record is created with their score and win status.
 
         :param instance: The PlaySession instance to link players to.
         :type instance: tracking.models.PlaySession
@@ -167,9 +157,7 @@ class PlaySession(models.Model):
             return
 
         for player_node in players_node.findall("player"):
-            player_xml_username: str | None = get_attribute(
-                player_node, ".", "username"
-            )
+            player_xml_username: str | None = get_attribute(player_node, ".", "username")
 
             if player_xml_username == bgg_username:
                 SessionPlayer.objects.update_or_create(
@@ -180,14 +168,6 @@ class PlaySession(models.Model):
                         "is_winner": get_attribute(player_node, ".", "win") == "1",
                     },
                 )
-
-    def __str__(self) -> str:
-        """
-        Return the string representation of the PlaySession.
-
-        :returns: A string describing the group and the game played.
-        """
-        return f"{self.group} playing {self.game}"
 
 
 class SessionPlayer(models.Model):

@@ -14,7 +14,6 @@ dependencies = [
     "djangorestframework-simplejwt>=5.5.1",
     "psycopg2-binary>=2.9.12",
     "requests>=2.34.2",
-    "ruff>=0.16.6",
 ]
 
 [dependency-groups]
@@ -26,7 +25,7 @@ dev = [
     "pytest-cov>=7.1.0",
     "pytest-django>=4.14.0",
     "factory-boy>=3.3.1",
-    "django-types>=0.24.0",
+    "ruff>=0.16.6",
 ]
 [project.optional-dependencies]
 prod = [
@@ -34,7 +33,7 @@ prod = [
 ]
 
 [tool.ruff]
-line-length = 100
+line-length = 120
 target-version = "py312"
 
 [tool.ruff.lint]
@@ -63,7 +62,6 @@ known-first-party = ["config", "catalog", "profiles", "tracking"]
 python_version = "3.12"
 files = ["."]
 plugins = ["mypy_django_plugin.main", "mypy_drf_plugin.main"]
-mypy_path = "."
 exclude = ["migrations/", "\\.venv/"]
 check_untyped_defs = true
 disallow_untyped_defs = false # TODO: Update later as typing is updated/fixed

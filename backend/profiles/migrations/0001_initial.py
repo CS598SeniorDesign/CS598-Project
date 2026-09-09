@@ -38,9 +38,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "members",
-                    models.ManyToManyField(
-                        related_name="group_memberships", to=settings.AUTH_USER_MODEL
-                    ),
+                    models.ManyToManyField(related_name="group_memberships", to=settings.AUTH_USER_MODEL),
                 ),
             ],
         ),

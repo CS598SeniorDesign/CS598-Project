@@ -93,7 +93,6 @@ dependencies = [
     { name = "djangorestframework-simplejwt" },
     { name = "psycopg2-binary" },
     { name = "requests" },
-    { name = "ruff" },
 ]
 
 [package.optional-dependencies]
@@ -104,13 +103,13 @@ prod = [
 [package.dev-dependencies]
 dev = [
     { name = "django-stubs", extra = ["compatible-mypy"] },
-    { name = "django-types" },
     { name = "djangorestframework-stubs", extra = ["compatible-mypy"] },
     { name = "factory-boy" },
     { name = "mypy" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "pytest-django" },
+    { name = "ruff" },
 ]
 
 [package.metadata]
@@ -125,20 +124,19 @@ requires-dist = [
     { name = "psycopg2", marker = "extra == 'prod'", specifier = ">=2.9.12" },
     { name = "psycopg2-binary", specifier = ">=2.9.12" },
     { name = "requests", specifier = ">=2.34.2" },
-    { name = "ruff", specifier = ">=0.16.6" },
 ]
 provides-extras = ["prod"]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "django-stubs", extras = ["compatible-mypy"], specifier = ">=5.1.0" },
-    { name = "django-types", specifier = ">=0.24.0" },
     { name = "djangorestframework-stubs", extras = ["compatible-mypy"], specifier = ">=3.15.0" },
     { name = "factory-boy", specifier = ">=3.3.1" },
     { name = "mypy", specifier = ">=1.14.0" },
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "pytest-cov", specifier = ">=7.1.0" },
     { name = "pytest-django", specifier = ">=4.14.0" },
+    { name = "ruff", specifier = ">=0.16.6" },
 ]
 
 [[package]]
@@ -478,18 +476,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/e6/40/75dd6650c5fc345b9edaebe42085811096e31a502fdbe17a52ffb9640d03/django_stubs_ext-6.1.0.tar.gz", hash = "sha256:d5635a481f5bdf2e04d533a8b602d3b9a28f073deffc85b83048dd20032e4d20", size = 6848, upload-time = "2026-08-12T10:54:44.47Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ed/41/10b8d576651af4f1dc6bdfb0d8a203e8b3a55d60ae36ba305d0edcdb594f/django_stubs_ext-6.1.0-py3-none-any.whl", hash = "sha256:57273506823274700a707c8f404dfb52a12c4554daf1468dfb2bff857bb22074", size = 10404, upload-time = "2026-08-12T10:54:42.979Z" },
-]
-
-[[package]]
-name = "django-types"
-version = "0.24.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "types-psycopg2" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/d7/7b/8e05b8631fa7de84038d4f24fa57e983107aff889a6d88a9c40a21e15d1c/django_types-0.24.0.tar.gz", hash = "sha256:af903de8b9ee963b7594459a7a20cb8eaaab176ae2b3244ecaa089e0c570b0d1", size = 208426, upload-time = "2026-04-22T22:19:01.999Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/2f/ab/f5c37ecc08c396df62579246597796697b58253c8b30206870e8d0f644d0/django_types-0.24.0-py3-none-any.whl", hash = "sha256:ddb478ca733e0dde5475118dd59ab340156980f9659fd92de2083326ae96100a", size = 379436, upload-time = "2026-04-22T22:19:03.368Z" },
 ]
 
 [[package]]
@@ -930,15 +916,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/5f/d3/3f06a1006f2261d1342aefb3c71eed02f5d4ca5bdbecd86ebc12ad38306e/sqlparse-0.6.0.tar.gz", hash = "sha256:113c35c75365ab9cc9c7231d68c6428fb11c085fc8e9eb1ad659b7ddbf6cd2b9", size = 178477, upload-time = "2026-08-13T19:16:06.396Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d9/50/f00935da0ec7cbf325f8dc4f772ae46fbc7b672dd62876e73f0a94adda57/sqlparse-0.6.0-py3-none-any.whl", hash = "sha256:b861c0288ce2fa56209a9a6412d2e066ac664b3873b89c26c9d8415e8e32996f", size = 50070, upload-time = "2026-08-13T19:16:04.062Z" },
-]
-
-[[package]]
-name = "types-psycopg2"
-version = "2.9.21.20260724"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/d8/29/09ca8f0ad16105193deabcaf8256059e361e9e37ff24551efd9c739e240b/types_psycopg2-2.9.21.20260724.tar.gz", hash = "sha256:db31031c37de823a2b21c787cb84832174fdda2a99a8b1af648206f19cc32f8c", size = 27644, upload-time = "2026-07-24T04:57:36.61Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/cb/90/1e77eb76030bb5feb249ecb41cd7647c6ae831ec7bd2b61a61beecac4029/types_psycopg2-2.9.21.20260724-py3-none-any.whl", hash = "sha256:4f87890dd06cea99e3bb0536330ffc2a7320e69059dc1ee0e2c884ef2718f2b4", size = 24964, upload-time = "2026-07-24T04:57:35.703Z" },
 ]
 
 [[package]]

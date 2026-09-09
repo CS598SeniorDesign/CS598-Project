@@ -21,8 +21,8 @@ def fetch_bgg_plays(user: User, bgg_username: str) -> tuple[bool, str]:
     """
     Fetches and synchronizes a user's play sessions from the BoardGameGeek /plays API.
 
-    Makes an authenticated request to BGG iteratively until the number of records matches the total count reported by
-    the API.
+    Makes an authenticated request to BGG iteratively until the number of records matches the total
+    count reported by the API.
 
     :param user: The authenticated Django user requesting the sync.
     :type user: django.contrib.auth.models.User
@@ -61,8 +61,8 @@ def _sync_plays_page(user: User, bgg_username: str, page: int) -> tuple[int, int
     """
     Fetches a single page of plays from the BGG API and persists them to the database.
 
-    Uses a database transaction to ensure all records on a single page are saved atomically. The page size is
-    determined by the BGG API (defaulting to 100 records).
+    Uses a database transaction to ensure all records on a single page are saved atomically.
+    The page size is determined by the BGG API (defaulting to 100 records).
 
     :param user: The authenticated Django user requesting the sync.
     :type user: django.contrib.auth.models.User

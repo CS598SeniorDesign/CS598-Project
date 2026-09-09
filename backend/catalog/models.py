@@ -9,6 +9,8 @@ from core.utils import get_attribute_value
 if TYPE_CHECKING:
     from xml.etree.ElementTree import Element
 
+type LinkModel = type[Category] | type[Mechanic] | type[Publisher] | type[Designer] | type[Artist] | type[Family]
+
 
 class BGGAttribute(models.Model):
     """
@@ -32,7 +34,7 @@ class BGGAttribute(models.Model):
 
         :returns: The name associated with an attribute from the BGG API.
         """
-        return self.name
+        return str(self.name)
 
 
 class Category(BGGAttribute):
@@ -123,6 +125,14 @@ class BoardGame(models.Model):
     average_rating = models.DecimalField(max_digits=5, decimal_places=3, null=True, blank=True)
     bgg_rank = models.IntegerField(null=True, blank=True)
 
+    def __str__(self) -> str:
+        """
+        Return the string representation of a boardgame's name and year of publication
+
+        :return: A string containing the name and publication year for a board game.
+        """
+        return f"{self.primary_name} ({self.year_published})"
+
     @classmethod
     def create_from_xml(cls, xml_item: Element, backup_name: str | None = None):
         """
@@ -149,9 +159,7 @@ class BoardGame(models.Model):
             "thumbnail_url": xml_item.findtext("thumbnail"),
             "image_url": xml_item.findtext("image"),
             "average_rating": get_attribute_value(xml_item, "statistics/ratings/average"),
-            "bgg_rank": get_attribute_value(
-                xml_item, "statistics/ratings/ranks/rank[@name='boardgame']"
-            ),
+            "bgg_rank": get_attribute_value(xml_item, "statistics/ratings/ranks/rank[@name='boardgame']"),
         }
 
         instance: BoardGame
@@ -175,7 +183,7 @@ class BoardGame(models.Model):
         :return: None
         """
 
-        VALID_LINK = {
+        VALID_LINK: dict[str, tuple[LinkModel, str]] = {
             "boardgamecategory": (Category, "categories"),
             "boardgamemechanic": (Mechanic, "mechanics"),
             "boardgamepublisher": (Publisher, "publishers"),
@@ -195,16 +203,11 @@ class BoardGame(models.Model):
                 bgg_id: str | None = link.attrib.get("id")
                 name: str | None = link.attrib.get("value")
 
+                if bgg_id is None or name is None:
+                    continue
+
                 object: tuple[models.Model, bool] | Any = model_class.objects.get_or_create(
                     bgg_id=bgg_id, defaults={"name": name}
                 )
 
                 getattr(instance, field_name).add(object)
-
-    def __str__(self) -> str:
-        """
-        Return the string representation of a boardgame's name and year of publication
-
-        :return: A string containing the name and publication year for a board game.
-        """
-        return f"{self.primary_name} ({self.year_published})"

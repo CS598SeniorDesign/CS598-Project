@@ -64,9 +64,7 @@ class Migration(migrations.Migration):
                 ("play_time_minutes", models.IntegerField()),
                 (
                     "game",
-                    models.ForeignKey(
-                        on_delete=django.db.models.deletion.CASCADE, to="catalog.boardgame"
-                    ),
+                    models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to="catalog.boardgame"),
                 ),
                 (
                     "group",
