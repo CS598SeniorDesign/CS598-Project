@@ -19,6 +19,8 @@ This document provides guidance on running the backend
     - [Updating the `uv.lock` File](#updating-the-uvlock-file)
   - [Environment Variables](#environment-variables)
   - [Running the Backend](#running-the-backend)
+    - [Database Migrations & Rollbacks](#database-migrations--rollbacks)
+    - [Populating Synthetic Test Data](#populating-synthetic-test-data)
   - [Creating a new app](#creating-a-new-app)
   - [Running tests](#running-tests)
 
@@ -188,6 +190,28 @@ To run the server:
 uv run python manage.py runserver # Defaults to port 8000
 uv run python manage.py runserver 8001 # This will run the django server on localhost port 8001
 ```
+
+### Database Migrations & Rollbacks
+
+To apply the latest schema changes to your local database, run:
+```bash
+uv run python manage.py migrate
+```
+
+To test down-migrations (rollbacks) for a specific app, target the `zero` migration state to clear it:
+```bash
+uv run python manage.py migrate tracking zero
+uv run python manage.py migrate profiles zero
+uv run python manage.py migrate catalog zero
+```
+
+### Populating Synthetic Test Data
+
+To populate your local database with mock users, board games, library items, and ratings for development testing, run our custom seeder command:
+```bash
+uv run python manage.py seed
+```
+The mock data can be seen with the backend API running at `http://localhost:8000/admin/`
 
 ## Creating a new app
 
