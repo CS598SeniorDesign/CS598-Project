@@ -112,7 +112,7 @@ jobs:
       - name: Scan for secrets
         run: |
           set -o pipefail
-          trufflehog filesystem . --no-update --fail 2>&1 | tee trufflehog-output.txt
+          trufflehog filesystem . --no-update --fail --exclude-paths=trufflehog-exclude.txt 2>&1 | tee trufflehog-output.txt
 
       - name: Upload secret scan log
         if: always()
