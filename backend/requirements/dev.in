@@ -1,6 +1,0 @@
-# Includes packages in base.in
--r base.in
-pytest
-pytest-cov
-pytest-django
-pyright
