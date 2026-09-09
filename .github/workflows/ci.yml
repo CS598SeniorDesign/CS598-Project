@@ -29,26 +29,26 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
         with:
+          enable-cache: true
+          cache-dependency-glob: 'backend/uv.lock'
           python-version: '3.12'
 
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements/dev.txt ruff
+        run: uv sync --group dev --locked
 
       - name: Run Ruff lint
         run: |
           set -o pipefail
-          ruff check . --exclude 'migrations' 2>&1 | tee ruff-output.txt
+          uv run ruff check . --exclude 'migrations' 2>&1 | tee ruff-output.txt
 
       - name: Check Ruff formatting
-        run: ruff format --check . --exclude 'migrations'
+        run: uv run ruff format --check . --exclude 'migrations'
 
-      - name: Run Pyright type check
-        run: pyright .
+      - name: Run mypy type check
+        run: uv run mypy .
 
       - name: Upload backend lint log
         if: always()
@@ -128,7 +128,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:16
+        image: postgres:17
         env:
           POSTGRES_DB: test_db
           POSTGRES_USER: test_user
@@ -160,20 +160,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
         with:
+          enable-cache: true
+          cache-dependency-glob: 'backend/uv.lock'
           python-version: '3.12'
 
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements/dev.txt
+        run: uv sync --group dev --locked
 
       - name: Run Django tests
         run: |
           set -o pipefail
-          pytest --cov=. --cov-report=term-missing --cov-report=xml:coverage.xml -v 2>&1 | tee backend-test-output.txt
+          uv run pytest --cov=. --cov-report=term-missing --cov-report=xml:coverage.xml --cov-fail-under=60 -v 2>&1 | tee backend-test-output.txt
 
       - name: Upload backend coverage report
         if: always()
@@ -200,15 +200,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
         with:
+          enable-cache: true
+          cache-dependency-glob: 'backend/uv.lock'
           python-version: '3.12'
 
       - name: Install backend dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r backend/requirements/dev.txt
+        working-directory: backend
+        run: uv sync --group dev --locked
 
       - name: Run Django system check
         env:
@@ -221,7 +222,7 @@ jobs:
           BACKEND_URL: http://localhost:8000
           FRONTEND_URL: http://localhost:3000
           DATABASE_URL: sqlite:///qa_check.sqlite3
-        run: python backend/manage.py check
+        run: uv run manage.py check
 
       - name: Set up Node
         uses: actions/setup-node@v4
