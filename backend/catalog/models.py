@@ -3,12 +3,12 @@ from django.db import models
 
 class BGGAttribute(models.Model):
     """
-    A base class for BGG metadata linking. Serves as a template for Many-To-Many metadata tags returned by the BGG XML
-    API2 <link> nodes.
+    A base class for BGG metadata linking. Serves as a template for Many-To-Many metadata tags
+    returned by the BGG XML API2 <link> nodes.
 
     Note:
-        - 'abstract = True' ensures Django does not create a database table for this class, only for classes that
-        inherit from it. Do not remove this attribute.
+        - 'abstract = True' ensures Django does not create a database table for this class, only
+        for classes that inherit from it. Do not remove this attribute.
     """
 
     bgg_id = models.IntegerField(primary_key=True)
