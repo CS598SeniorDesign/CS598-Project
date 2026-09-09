@@ -10,5 +10,5 @@ BGG_TOKEN = settings.BGG_API_TOKEN
 
 REQUEST_HEADERS: dict[str, str] = {
     "User-Agent": "QuestLog/0.1",
-    "Authorization": f"Bearer {BGG_TOKEN}"
+    "Authorization": f"Bearer {BGG_TOKEN}",
 }

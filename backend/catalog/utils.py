@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-import defusedxml.ElementTree as ElementTree
 import logging
-import requests
 from typing import TYPE_CHECKING
+
+import requests
+from defusedxml import DTDForbidden, ElementTree, EntitiesForbidden
 
 from catalog.models import BoardGame
 from core.constants import REQUEST_HEADERS
-from defusedxml import EntitiesForbidden, DTDForbidden
 
 if TYPE_CHECKING:
     from xml.etree.ElementTree import Element
@@ -38,17 +38,15 @@ def get_bgg_board_game(bgg_id: int, backup_name: str) -> BoardGame:
         response.raise_for_status()
         # XML Root should be 'items'
         response_root: Element = ElementTree.fromstring(response.content)
-        game_item: Element = response_root.find('item')
+        game_item: Element[str] | None = response_root.find("item")
 
         if game_item is not None:
             return BoardGame.create_from_xml(game_item, backup_name)
 
     except requests.RequestException as exception:
-        logger.warning("BGG API fetch failed for bgg_id=%s", bgg_id, exception)
+        logger.warning("BGG API fetch failed for bgg_id=%s: %s", bgg_id, exception)
     except (ElementTree.ParseError, EntitiesForbidden, DTDForbidden) as exception:
         logger.warning("BGG API fetch failed for bgg_id=%s: %s", bgg_id, exception)
-    except Exception as exception:
-        logger.critical("Unexpected error fetching BGG data for bgg_id=%s: %s", bgg_id, exception)
 
     return BoardGame.objects.create(bgg_id=bgg_id, primary_name=backup_name)
 
@@ -66,7 +64,7 @@ def get_existing_board_game(bgg_id: int, backup_name: str) -> BoardGame:
     :rtype: catalog.models.BoardGame
     """
 
-    existing_board_game: BoardGame = BoardGame.objects.filter(bgg_id=bgg_id).first()
+    existing_board_game: BoardGame | None = BoardGame.objects.filter(bgg_id=bgg_id).first()
 
     if existing_board_game:
         return existing_board_game

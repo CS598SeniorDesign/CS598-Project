@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-import defusedxml.ElementTree as ElementTree
 import logging
-import requests
-from django.contrib.auth.models import User
-from django.db import transaction
 from typing import TYPE_CHECKING
 
-from core.constants import VALID_STATUS_CODES, REQUEST_HEADERS
+import requests
+from defusedxml import ElementTree
+from django.contrib.auth.models import User
+from django.db import transaction
+
+from core.constants import REQUEST_HEADERS, VALID_STATUS_CODES
 from tracking.models import PlaySession
 
 if TYPE_CHECKING:
@@ -20,8 +21,8 @@ def fetch_bgg_plays(user: User, bgg_username: str) -> tuple[bool, str]:
     """
     Fetches and synchronizes a user's play sessions from the BoardGameGeek /plays API.
 
-    Makes an authenticated request to BGG iteratively until the number of records matches the total count reported by
-    the API.
+    Makes an authenticated request to BGG iteratively until the number of records matches the total
+    count reported by the API.
 
     :param user: The authenticated Django user requesting the sync.
     :type user: django.contrib.auth.models.User
@@ -51,7 +52,7 @@ def fetch_bgg_plays(user: User, bgg_username: str) -> tuple[bool, str]:
     except requests.RequestException as exception:
         logger.warning("BGG API fetch failed for user %s: %s", bgg_username, exception)
         return False, "Connection to BGG failed. Please try again later."
-    except Exception as exception:
+    except (AttributeError, OSError, TypeError, ValueError) as exception:
         logger.error("Unexpected error during BGG sync for %s: %s", bgg_username, exception)
         return False, "An internal error occurred during synchronization."
 
@@ -60,8 +61,8 @@ def _sync_plays_page(user: User, bgg_username: str, page: int) -> tuple[int, int
     """
     Fetches a single page of plays from the BGG API and persists them to the database.
 
-    Uses a database transaction to ensure all records on a single page are saved atomically. The page size is
-    determined by the BGG API (defaulting to 100 records).
+    Uses a database transaction to ensure all records on a single page are saved atomically.
+    The page size is determined by the BGG API (defaulting to 100 records).
 
     :param user: The authenticated Django user requesting the sync.
     :type user: django.contrib.auth.models.User
@@ -79,12 +80,15 @@ def _sync_plays_page(user: User, bgg_username: str, page: int) -> tuple[int, int
     response.raise_for_status()
 
     if response.status_code not in VALID_STATUS_CODES:
-        logger.warning("BGG returned success code %s, but we expected 200/202.", response.status_code)
+        logger.warning(
+            "BGG returned success code %s, but we expected 200/202.",
+            response.status_code,
+        )
         return 0, 0
 
     response_root: Element = ElementTree.fromstring(response.content)
-    total_on_bgg = int(response_root.get('total', 0))
-    plays: list[Element[str]] = response_root.findall('play')
+    total_on_bgg = int(response_root.get("total", 0))
+    plays: list[Element[str]] = response_root.findall("play")
 
     with transaction.atomic():
         for play in plays:

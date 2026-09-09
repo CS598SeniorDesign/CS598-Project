@@ -1,22 +1,25 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Any
+
 from django.db import models
-from typing import Type, TYPE_CHECKING
 
 from core.utils import get_attribute_value
 
 if TYPE_CHECKING:
     from xml.etree.ElementTree import Element
 
+type LinkModel = type[Category] | type[Mechanic] | type[Publisher] | type[Designer] | type[Artist] | type[Family]
+
 
 class BGGAttribute(models.Model):
     """
-    A base class for BGG metadata linking. Serves as a template for Many-To-Many metadata tags returned by the BGG XML
-    API2 <link> nodes.
+    A base class for BGG metadata linking. Serves as a template for Many-To-Many metadata tags
+    returned by the BGG XML API2 <link> nodes.
 
     Note:
-        - 'abstract = True' ensures Django does not create a database table for this class, only for classes that
-        inherit from it. Do not remove this attribute.
+        - 'abstract = True' ensures Django does not create a database table for this class, only
+        for classes that inherit from it. Do not remove this attribute.
     """
 
     bgg_id = models.IntegerField(primary_key=True)
@@ -31,7 +34,7 @@ class BGGAttribute(models.Model):
 
         :returns: The name associated with an attribute from the BGG API.
         """
-        return self.name
+        return str(self.name)
 
 
 class Category(BGGAttribute):
@@ -41,7 +44,6 @@ class Category(BGGAttribute):
     Notes:
         - Extracted from BGG XML nodes matching: <link type="boardgamecategory">.
     """
-    pass
 
 
 class Mechanic(BGGAttribute):
@@ -51,7 +53,6 @@ class Mechanic(BGGAttribute):
     Notes:
         - Extracted from BGG XML nodes matching: <link type="boardgamemechanic">.
     """
-    pass
 
 
 class Publisher(BGGAttribute):
@@ -61,7 +62,6 @@ class Publisher(BGGAttribute):
     Notes:
         - Extracted from BGG XML nodes matching: <link type="boardgamepublisher">.
     """
-    pass
 
 
 class Designer(BGGAttribute):
@@ -71,7 +71,6 @@ class Designer(BGGAttribute):
     Notes:
         - Extracted from BGG XML nodes matching: <link type="boardgamedesigner">.
     """
-    pass
 
 
 class Artist(BGGAttribute):
@@ -81,7 +80,6 @@ class Artist(BGGAttribute):
     Notes:
         - Extracted from BGG XML nodes matching: <link type="boardgameartist">.
     """
-    pass
 
 
 class Family(BGGAttribute):
@@ -91,7 +89,6 @@ class Family(BGGAttribute):
     Notes:
         - Extracted from BGG XML nodes matching: <link type="boardgamefamily">.
     """
-    pass
 
 
 class BoardGame(models.Model):
@@ -117,19 +114,27 @@ class BoardGame(models.Model):
     image_url = models.URLField(max_length=500, null=True, blank=True)
 
     # Relationship (<link> tags)
-    categories = models.ManyToManyField(Category, related_name='games', blank=True)
-    mechanics = models.ManyToManyField(Mechanic, related_name='games', blank=True)
-    publishers = models.ManyToManyField(Publisher, related_name='games', blank=True)
-    designers = models.ManyToManyField(Designer, related_name='games', blank=True)
-    artists = models.ManyToManyField(Artist, related_name='games', blank=True)
-    families = models.ManyToManyField(Family, related_name='games', blank=True)
+    categories = models.ManyToManyField(Category, related_name="games", blank=True)
+    mechanics = models.ManyToManyField(Mechanic, related_name="games", blank=True)
+    publishers = models.ManyToManyField(Publisher, related_name="games", blank=True)
+    designers = models.ManyToManyField(Designer, related_name="games", blank=True)
+    artists = models.ManyToManyField(Artist, related_name="games", blank=True)
+    families = models.ManyToManyField(Family, related_name="games", blank=True)
 
     # Stats
     average_rating = models.DecimalField(max_digits=5, decimal_places=3, null=True, blank=True)
     bgg_rank = models.IntegerField(null=True, blank=True)
 
+    def __str__(self) -> str:
+        """
+        Return the string representation of a boardgame's name and year of publication
+
+        :return: A string containing the name and publication year for a board game.
+        """
+        return f"{self.primary_name} ({self.year_published})"
+
     @classmethod
-    def create_from_xml(cls, xml_item: Element, backup_name: str = None):
+    def create_from_xml(cls, xml_item: Element, backup_name: str | None = None):
         """
         Parses a BGG XML element to create or update a BoardGame instance.
 
@@ -143,7 +148,7 @@ class BoardGame(models.Model):
         """
         detailed_name = get_attribute_value(xml_item, 'name[@type="primary"]')
 
-        data: dict[str, str | None] = {
+        data = {
             "bgg_id": xml_item.attrib.get("id"),
             "primary_name": detailed_name or backup_name,
             "description": xml_item.findtext("description"),
@@ -158,17 +163,13 @@ class BoardGame(models.Model):
         }
 
         instance: BoardGame
-        is_created: bool
-        instance, is_created = cls.objects.update_or_create(
-            bgg_id=data["bgg_id"],
-            defaults=data
-        )
+        instance, _ = cls.objects.update_or_create(bgg_id=data["bgg_id"], defaults=data)
 
         cls._handle_links(instance, xml_item)
         return instance
 
     @staticmethod
-    def _handle_links(instance: "BoardGame", xml_item: Element):
+    def _handle_links(instance: BoardGame, xml_item: Element):
         """
         Processes <link> tags from the XML and maps them to M2M relationships.
 
@@ -182,7 +183,7 @@ class BoardGame(models.Model):
         :return: None
         """
 
-        VALID_LINK = {
+        VALID_LINK: dict[str, tuple[LinkModel, str]] = {
             "boardgamecategory": (Category, "categories"),
             "boardgamemechanic": (Mechanic, "mechanics"),
             "boardgamepublisher": (Publisher, "publishers"),
@@ -195,28 +196,18 @@ class BoardGame(models.Model):
             link_type: str | None = link.attrib.get("type")
 
             if link_type in VALID_LINK:
-                model_class: Type[models.Model]
+                model_class: type[models.Model]
                 field_name: str
                 model_class, field_name = VALID_LINK[link_type]
 
-                bgg_id: str = link.attrib.get("id")
-                name: str = link.attrib.get("value")
+                bgg_id: str | None = link.attrib.get("id")
+                name: str | None = link.attrib.get("value")
 
-                object: models.Model
-                is_created: bool
-                object, is_created = model_class.objects.get_or_create(
-                    bgg_id=bgg_id,
-                    defaults={"name": name}
+                if bgg_id is None or name is None:
+                    continue
+
+                object: tuple[models.Model, bool] | Any = model_class.objects.get_or_create(
+                    bgg_id=bgg_id, defaults={"name": name}
                 )
 
                 getattr(instance, field_name).add(object)
-
-    def __str__(self) -> str:
-        """
-        Return the string representation of a boardgame's name and year of publication
-
-        :return: A string containing the name and publication year for a board game.
-        """
-        return f"{self.primary_name} ({self.year_published})"
-
-# skibidi doo dah grimes, you guys actually reading this PR?
