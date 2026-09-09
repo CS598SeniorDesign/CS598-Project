@@ -38,7 +38,9 @@ def fetch_bgg_plays(user: User, bgg_username: str) -> tuple[bool, str]:
 
     try:
         while total_processed_plays < total_plays_to_fetch:
-            page_total, processed_count = _sync_plays_page(user, bgg_username, current_page)
+            page_total, processed_count = _sync_plays_page(
+                user, bgg_username, current_page
+            )
 
             if processed_count == 0 and total_processed_plays == 0:
                 return True, "No plays found for this user."
@@ -53,7 +55,9 @@ def fetch_bgg_plays(user: User, bgg_username: str) -> tuple[bool, str]:
         logger.warning("BGG API fetch failed for user %s: %s", bgg_username, exception)
         return False, "Connection to BGG failed. Please try again later."
     except (AttributeError, OSError, TypeError, ValueError) as exception:
-        logger.error("Unexpected error during BGG sync for %s: %s", bgg_username, exception)
+        logger.error(
+            "Unexpected error during BGG sync for %s: %s", bgg_username, exception
+        )
         return False, "An internal error occurred during synchronization."
 
 
@@ -80,12 +84,15 @@ def _sync_plays_page(user: User, bgg_username: str, page: int) -> tuple[int, int
     response.raise_for_status()
 
     if response.status_code not in VALID_STATUS_CODES:
-        logger.warning("BGG returned success code %s, but we expected 200/202.", response.status_code)
+        logger.warning(
+            "BGG returned success code %s, but we expected 200/202.",
+            response.status_code,
+        )
         return 0, 0
 
     response_root: Element = ElementTree.fromstring(response.content)
-    total_on_bgg = int(response_root.get('total', 0))
-    plays: list[Element[str]] = response_root.findall('play')
+    total_on_bgg = int(response_root.get("total", 0))
+    plays: list[Element[str]] = response_root.findall("play")
 
     with transaction.atomic():
         for play in plays:

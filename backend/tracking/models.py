@@ -21,18 +21,21 @@ class LibraryItem(models.Model):
     """
     Track the ownership status and house rules of a game for a specific user.
     """
-    OWNED = 'OWNED'
-    WISHLISTED = 'WISHLISTED'
-    UNPLAYED = 'UNPLAYED'
+
+    OWNED = "OWNED"
+    WISHLISTED = "WISHLISTED"
+    UNPLAYED = "UNPLAYED"
     LIBRARY_ENTRY_STATUSES = (
-        (OWNED, 'Owned'),
-        (WISHLISTED, 'Wishlisted'),
-        (UNPLAYED, 'Unplayed')
+        (OWNED, "Owned"),
+        (WISHLISTED, "Wishlisted"),
+        (UNPLAYED, "Unplayed"),
     )
 
     user = models.ForeignKey(to=settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     game = models.ForeignKey(to=BoardGame, on_delete=models.CASCADE)
-    status = models.CharField(max_length=20, choices=LIBRARY_ENTRY_STATUSES, default=UNPLAYED)
+    status = models.CharField(
+        max_length=20, choices=LIBRARY_ENTRY_STATUSES, default=UNPLAYED
+    )
     house_rules = models.TextField(null=True, blank=True)
 
     def __str__(self) -> str:
@@ -48,6 +51,7 @@ class Rating(models.Model):
     """
     Store a user's metrics and experience ratings for a game.
     """
+
     user = models.ForeignKey(to=settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     game = models.ForeignKey(to=BoardGame, on_delete=models.CASCADE)
     experience = models.FloatField()
@@ -56,7 +60,7 @@ class Rating(models.Model):
     enjoyment = models.FloatField()
 
     class Meta:
-        unique_together = ('user', 'game')
+        unique_together = ("user", "game")
 
     def __str__(self) -> str:
         """
@@ -71,9 +75,12 @@ class PlaySession(models.Model):
     """
     Records an instance of a game group or user(s) playing a board game.
     """
+
     bgg_id = models.IntegerField(primary_key=True)
     game = models.ForeignKey(to=BoardGame, on_delete=models.CASCADE)
-    group = models.ForeignKey(to=GameGroup, on_delete=models.CASCADE, null=True, blank=True)
+    group = models.ForeignKey(
+        to=GameGroup, on_delete=models.CASCADE, null=True, blank=True
+    )
     play_date = models.DateField()
     play_time_minutes = models.IntegerField()
 
@@ -95,29 +102,32 @@ class PlaySession(models.Model):
         :rtype: tracking.models.PlaySession
         """
 
-        bgg_game_id = int(get_attribute(xml_item, 'item', 'objectid'))
-        backup_name = get_attribute(xml_item, 'item', 'name')
+        bgg_game_id = int(get_attribute(xml_item, "item", "objectid"))
+        backup_name = get_attribute(xml_item, "item", "name")
         game_object = get_existing_board_game(bgg_game_id, backup_name)
 
         data = {
             "game": game_object,
             "play_date": datetime.strptime(
-                get_attribute(xml_item, '.', 'date'), '%Y-%m-%d'
-            ).replace(tzinfo=timezone.utc).date(),
-            "play_time_minutes": int(get_attribute(xml_item, '.', 'length') or 0),
+                get_attribute(xml_item, ".", "date"), "%Y-%m-%d"
+            )
+            .replace(tzinfo=timezone.utc)
+            .date(),
+            "play_time_minutes": int(get_attribute(xml_item, ".", "length") or 0),
         }
 
         instance: PlaySession
         instance = cls.objects.update_or_create(
-            bgg_id=int(get_attribute(xml_item, '.', 'id')),
-            defaults=data
+            bgg_id=int(get_attribute(xml_item, ".", "id")), defaults=data
         )
 
         cls._handle_players(instance, xml_item, user, bgg_username)
         return instance
 
     @staticmethod
-    def _handle_players(instance: PlaySession, xml_item: Element, user: User, bgg_username: str):
+    def _handle_players(
+        instance: PlaySession, xml_item: Element, user: User, bgg_username: str
+    ):
         """
         Extracts player data from a session XML and links them to Django users.
 
@@ -135,21 +145,23 @@ class PlaySession(models.Model):
         :returns: None
         """
 
-        players_node = xml_item.find('players')
+        players_node = xml_item.find("players")
         if players_node is None:
             return
 
-        for player_node in players_node.findall('player'):
-            player_xml_username: str | None = get_attribute(player_node, '.', 'username')
+        for player_node in players_node.findall("player"):
+            player_xml_username: str | None = get_attribute(
+                player_node, ".", "username"
+            )
 
             if player_xml_username == bgg_username:
                 SessionPlayer.objects.update_or_create(
                     session=instance,
                     user=user,
                     defaults={
-                        "score": float(get_attribute(player_node, '.', 'score') or 0),
-                        "is_winner": get_attribute(player_node, '.', 'win') == '1'
-                    }
+                        "score": float(get_attribute(player_node, ".", "score") or 0),
+                        "is_winner": get_attribute(player_node, ".", "win") == "1",
+                    },
                 )
 
     def __str__(self) -> str:
@@ -165,6 +177,7 @@ class SessionPlayer(models.Model):
     """
     Link a user to a specific play session.
     """
+
     session = models.ForeignKey(to=PlaySession, on_delete=models.CASCADE)
     user = models.ForeignKey(to=settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     score = models.FloatField()

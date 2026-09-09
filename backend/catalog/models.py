@@ -112,15 +112,17 @@ class BoardGame(models.Model):
     image_url = models.URLField(max_length=500, null=True, blank=True)
 
     # Relationship (<link> tags)
-    categories = models.ManyToManyField(Category, related_name='games', blank=True)
-    mechanics = models.ManyToManyField(Mechanic, related_name='games', blank=True)
-    publishers = models.ManyToManyField(Publisher, related_name='games', blank=True)
-    designers = models.ManyToManyField(Designer, related_name='games', blank=True)
-    artists = models.ManyToManyField(Artist, related_name='games', blank=True)
-    families = models.ManyToManyField(Family, related_name='games', blank=True)
+    categories = models.ManyToManyField(Category, related_name="games", blank=True)
+    mechanics = models.ManyToManyField(Mechanic, related_name="games", blank=True)
+    publishers = models.ManyToManyField(Publisher, related_name="games", blank=True)
+    designers = models.ManyToManyField(Designer, related_name="games", blank=True)
+    artists = models.ManyToManyField(Artist, related_name="games", blank=True)
+    families = models.ManyToManyField(Family, related_name="games", blank=True)
 
     # Stats
-    average_rating = models.DecimalField(max_digits=5, decimal_places=3, null=True, blank=True)
+    average_rating = models.DecimalField(
+        max_digits=5, decimal_places=3, null=True, blank=True
+    )
     bgg_rank = models.IntegerField(null=True, blank=True)
 
     @classmethod
@@ -148,15 +150,16 @@ class BoardGame(models.Model):
             "playing_time": get_attribute_value(xml_item, "playingtime"),
             "thumbnail_url": xml_item.findtext("thumbnail"),
             "image_url": xml_item.findtext("image"),
-            "average_rating": get_attribute_value(xml_item, "statistics/ratings/average"),
-            "bgg_rank": get_attribute_value(xml_item, "statistics/ratings/ranks/rank[@name='boardgame']"),
+            "average_rating": get_attribute_value(
+                xml_item, "statistics/ratings/average"
+            ),
+            "bgg_rank": get_attribute_value(
+                xml_item, "statistics/ratings/ranks/rank[@name='boardgame']"
+            ),
         }
 
         instance: BoardGame
-        instance = cls.objects.update_or_create(
-            bgg_id=data["bgg_id"],
-            defaults=data
-        )
+        instance = cls.objects.update_or_create(bgg_id=data["bgg_id"], defaults=data)
 
         cls._handle_links(instance, xml_item)
         return instance
@@ -198,8 +201,7 @@ class BoardGame(models.Model):
 
                 object: models.Model
                 object = model_class.objects.get_or_create(
-                    bgg_id=bgg_id,
-                    defaults={"name": name}
+                    bgg_id=bgg_id, defaults={"name": name}
                 )
 
                 getattr(instance, field_name).add(object)
@@ -211,5 +213,6 @@ class BoardGame(models.Model):
         :return: A string containing the name and publication year for a board game.
         """
         return f"{self.primary_name} ({self.year_published})"
+
 
 # skibidi doo dah grimes, you guys actually reading this PR?

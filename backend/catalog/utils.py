@@ -33,12 +33,14 @@ def get_bgg_board_game(bgg_id: int, backup_name: str) -> BoardGame:
     fetch_url: str = f"https://boardgamegeek.com/xmlapi2/thing?id={bgg_id}&stats=1"
 
     try:
-        response: requests.Response = requests.get(url=fetch_url, headers=REQUEST_HEADERS, timeout=10)
+        response: requests.Response = requests.get(
+            url=fetch_url, headers=REQUEST_HEADERS, timeout=10
+        )
 
         response.raise_for_status()
         # XML Root should be 'items'
         response_root: Element = ElementTree.fromstring(response.content)
-        game_item: Element = response_root.find('item')
+        game_item: Element = response_root.find("item")
 
         if game_item is not None:
             return BoardGame.create_from_xml(game_item, backup_name)
