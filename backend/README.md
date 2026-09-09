@@ -20,6 +20,7 @@ This document provides guidance on running the backend
   - [Environment Variables](#environment-variables)
   - [Running the Backend](#running-the-backend)
   - [Creating a new app](#creating-a-new-app)
+  - [Running tests](#running-tests)
 
 ## Backend File Structure
 
@@ -199,3 +200,14 @@ uv run python manage.py startapp [app_name]
 - Add the app to `INSTALLED_APPS` in config/settings.py
 - Create a urls.py file in your new app
 - Add your app urls to config/urls.py
+
+## Running tests
+
+The following commands can be run to lint, format, and run tests in the backend
+
+```bash
+uv run ruff check          # Linting
+uv run ruff format --check # Formatting
+uv run mypy                # Type checking
+uv run pytest              # Unit testing
+```
