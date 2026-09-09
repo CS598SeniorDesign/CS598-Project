@@ -25,6 +25,17 @@ jobs:
       run:
         working-directory: backend
 
+    env:
+      DJANGO_SECRET_KEY: test-secret-key
+      JWT_SECRET_KEY: test-jwt-secret
+      DEBUG: 'False'
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      CORS_ALLOWED_ORIGINS: http://localhost:3000
+      CSRF_TRUSTED_ORIGINS: http://localhost:3000
+      BACKEND_URL: http://localhost:8000
+      FRONTEND_URL: http://localhost:3000
+      DATABASE_URL: sqlite:///mypy_check.sqlite3
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
