@@ -78,7 +78,7 @@ django_settings_module = "config.settings"
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings"
-python_files = ["test_*.py", "*_test.py", "tests.py"]
+python_files = ["test_*.py", "*_test.py", "tests.py", "*_tests.py", "test_*.py"]
 testpaths = ["catalog", "profiles", "tracking", "core"]
 addopts = "--reuse-db --nomigrations"
 
