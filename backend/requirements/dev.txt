@@ -31,6 +31,8 @@ django-csp==4.0
     # via -r backend/requirements/base.in
 django-environ==0.14.0
     # via -r backend/requirements/base.in
+django-types==0.24.0
+    # via -r backend/requirements/dev.in
 djangorestframework==3.18.1
     # via
     #   -r backend/requirements/base.in
@@ -72,6 +74,8 @@ requests==2.34.2
     # via -r backend/requirements/base.in
 sqlparse==0.6.0
     # via django
+types-psycopg2==2.9.21.20260724
+    # via django-types
 typing-extensions==4.16.0
     # via pyright
 tzdata==2026.3
