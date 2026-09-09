@@ -59,11 +59,24 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="PlaySession",
             fields=[
-                ('bgg_id', models.IntegerField(primary_key=True, serialize=False)),
-                ('play_date', models.DateField()),
-                ('play_time_minutes', models.IntegerField()),
-                ('game', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='catalog.boardgame')),
-                ('group', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='profiles.gamegroup')),
+                ("bgg_id", models.IntegerField(primary_key=True, serialize=False)),
+                ("play_date", models.DateField()),
+                ("play_time_minutes", models.IntegerField()),
+                (
+                    "game",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE, to="catalog.boardgame"
+                    ),
+                ),
+                (
+                    "group",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="profiles.gamegroup",
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(

@@ -120,9 +120,7 @@ class BoardGame(models.Model):
     families = models.ManyToManyField(Family, related_name="games", blank=True)
 
     # Stats
-    average_rating = models.DecimalField(
-        max_digits=5, decimal_places=3, null=True, blank=True
-    )
+    average_rating = models.DecimalField(max_digits=5, decimal_places=3, null=True, blank=True)
     bgg_rank = models.IntegerField(null=True, blank=True)
 
     @classmethod
@@ -150,9 +148,7 @@ class BoardGame(models.Model):
             "playing_time": get_attribute_value(xml_item, "playingtime"),
             "thumbnail_url": xml_item.findtext("thumbnail"),
             "image_url": xml_item.findtext("image"),
-            "average_rating": get_attribute_value(
-                xml_item, "statistics/ratings/average"
-            ),
+            "average_rating": get_attribute_value(xml_item, "statistics/ratings/average"),
             "bgg_rank": get_attribute_value(
                 xml_item, "statistics/ratings/ranks/rank[@name='boardgame']"
             ),
@@ -199,10 +195,8 @@ class BoardGame(models.Model):
                 bgg_id: str | None = link.attrib.get("id")
                 name: str | None = link.attrib.get("value")
 
-                object: tuple[models.Model, bool] | Any = (
-                    model_class.objects.get_or_create(
-                        bgg_id=bgg_id, defaults={"name": name}
-                    )
+                object: tuple[models.Model, bool] | Any = model_class.objects.get_or_create(
+                    bgg_id=bgg_id, defaults={"name": name}
                 )
 
                 getattr(instance, field_name).add(object)
@@ -214,5 +208,3 @@ class BoardGame(models.Model):
         :return: A string containing the name and publication year for a board game.
         """
         return f"{self.primary_name} ({self.year_published})"
-
-# skibidi doo dah grimes, you guys actually reading this PR?
