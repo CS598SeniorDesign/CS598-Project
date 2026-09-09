@@ -13,6 +13,14 @@ on:
       - testing
       - qa
       - production
+      - 'feature/**'
+      - 'bugfix/**'
+      - 'hotfix/**'
+      - 'release/**'
+      - 'refactor/**'
+      - 'docs/**'
+      - 'chore/**'
+      - 'jisobe_docker'
 
 permissions:
   contents: read
