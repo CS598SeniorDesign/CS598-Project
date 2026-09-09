@@ -66,7 +66,9 @@ def get_existing_board_game(bgg_id: int, backup_name: str) -> BoardGame:
     :rtype: catalog.models.BoardGame
     """
 
-    existing_board_game: BoardGame | None = BoardGame.objects.filter(bgg_id=bgg_id).first()
+    existing_board_game: BoardGame | None = BoardGame.objects.filter(
+        bgg_id=bgg_id
+    ).first()
 
     if existing_board_game:
         return existing_board_game

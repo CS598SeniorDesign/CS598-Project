@@ -150,15 +150,16 @@ class BoardGame(models.Model):
             "playing_time": get_attribute_value(xml_item, "playingtime"),
             "thumbnail_url": xml_item.findtext("thumbnail"),
             "image_url": xml_item.findtext("image"),
-            "average_rating": get_attribute_value(xml_item, "statistics/ratings/average"),
-            "bgg_rank": get_attribute_value(xml_item, "statistics/ratings/ranks/rank[@name='boardgame']"),
+            "average_rating": get_attribute_value(
+                xml_item, "statistics/ratings/average"
+            ),
+            "bgg_rank": get_attribute_value(
+                xml_item, "statistics/ratings/ranks/rank[@name='boardgame']"
+            ),
         }
 
         instance: BoardGame
-        instance, _ = cls.objects.update_or_create(
-            bgg_id=data["bgg_id"],
-            defaults=data
-        )
+        instance, _ = cls.objects.update_or_create(bgg_id=data["bgg_id"], defaults=data)
 
         cls._handle_links(instance, xml_item)
         return instance
@@ -198,8 +199,10 @@ class BoardGame(models.Model):
                 bgg_id: str | None = link.attrib.get("id")
                 name: str | None = link.attrib.get("value")
 
-                object: tuple[models.Model, bool] | Any = model_class.objects.get_or_create(
-                    bgg_id=bgg_id, defaults={"name": name}
+                object: tuple[models.Model, bool] | Any = (
+                    model_class.objects.get_or_create(
+                        bgg_id=bgg_id, defaults={"name": name}
+                    )
                 )
 
                 getattr(instance, field_name).add(object)
