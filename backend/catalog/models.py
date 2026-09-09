@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from django.db import models
 
@@ -140,7 +140,7 @@ class BoardGame(models.Model):
         """
         detailed_name = get_attribute_value(xml_item, 'name[@type="primary"]')
 
-        data: dict[str, str | None] = {
+        data = {
             "bgg_id": xml_item.attrib.get("id"),
             "primary_name": detailed_name or backup_name,
             "description": xml_item.findtext("description"),
@@ -150,16 +150,15 @@ class BoardGame(models.Model):
             "playing_time": get_attribute_value(xml_item, "playingtime"),
             "thumbnail_url": xml_item.findtext("thumbnail"),
             "image_url": xml_item.findtext("image"),
-            "average_rating": get_attribute_value(
-                xml_item, "statistics/ratings/average"
-            ),
-            "bgg_rank": get_attribute_value(
-                xml_item, "statistics/ratings/ranks/rank[@name='boardgame']"
-            ),
+            "average_rating": get_attribute_value(xml_item, "statistics/ratings/average"),
+            "bgg_rank": get_attribute_value(xml_item, "statistics/ratings/ranks/rank[@name='boardgame']"),
         }
 
         instance: BoardGame
-        instance = cls.objects.update_or_create(bgg_id=data["bgg_id"], defaults=data)
+        instance, _ = cls.objects.update_or_create(
+            bgg_id=data["bgg_id"],
+            defaults=data
+        )
 
         cls._handle_links(instance, xml_item)
         return instance
@@ -196,11 +195,10 @@ class BoardGame(models.Model):
                 field_name: str
                 model_class, field_name = VALID_LINK[link_type]
 
-                bgg_id: str = link.attrib.get("id")
-                name: str = link.attrib.get("value")
+                bgg_id: str | None = link.attrib.get("id")
+                name: str | None = link.attrib.get("value")
 
-                object: models.Model
-                object = model_class.objects.get_or_create(
+                object: tuple[models.Model, bool] | Any = model_class.objects.get_or_create(
                     bgg_id=bgg_id, defaults={"name": name}
                 )
 
@@ -213,6 +211,3 @@ class BoardGame(models.Model):
         :return: A string containing the name and publication year for a board game.
         """
         return f"{self.primary_name} ({self.year_published})"
-
-
-# skibidi doo dah grimes, you guys actually reading this PR?

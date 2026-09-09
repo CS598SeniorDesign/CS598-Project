@@ -40,7 +40,7 @@ def get_bgg_board_game(bgg_id: int, backup_name: str) -> BoardGame:
         response.raise_for_status()
         # XML Root should be 'items'
         response_root: Element = ElementTree.fromstring(response.content)
-        game_item: Element = response_root.find("item")
+        game_item: Element[str] | None = response_root.find("item")
 
         if game_item is not None:
             return BoardGame.create_from_xml(game_item, backup_name)
@@ -66,7 +66,7 @@ def get_existing_board_game(bgg_id: int, backup_name: str) -> BoardGame:
     :rtype: catalog.models.BoardGame
     """
 
-    existing_board_game: BoardGame = BoardGame.objects.filter(bgg_id=bgg_id).first()
+    existing_board_game: BoardGame | None = BoardGame.objects.filter(bgg_id=bgg_id).first()
 
     if existing_board_game:
         return existing_board_game

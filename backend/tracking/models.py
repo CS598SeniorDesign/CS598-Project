@@ -102,26 +102,34 @@ class PlaySession(models.Model):
         :rtype: tracking.models.PlaySession
         """
 
-        bgg_game_id = int(get_attribute(xml_item, "item", "objectid"))
-        backup_name = get_attribute(xml_item, "item", "name")
+        raw_bgg_game_id = get_attribute(xml_item, 'item', 'objectid')
+        bgg_game_id = int(raw_bgg_game_id) if raw_bgg_game_id is not None else 0
+
+        backup_name = get_attribute(xml_item, 'item', 'name') or "Unknown"
         game_object = get_existing_board_game(bgg_game_id, backup_name)
+
+        raw_date = get_attribute(xml_item, '.', 'date')
+        play_date_str = raw_date if raw_date is not None else datetime.now(timezone.utc).strftime('%Y-%m-%d')
+
+        raw_length = get_attribute(xml_item, '.', 'length')
+        play_time_minutes = int(raw_length) if raw_length is not None else 0
 
         data = {
             "game": game_object,
-            "play_date": datetime.strptime(
-                get_attribute(xml_item, ".", "date"), "%Y-%m-%d"
-            )
-            .replace(tzinfo=timezone.utc)
-            .date(),
-            "play_time_minutes": int(get_attribute(xml_item, ".", "length") or 0),
+            "play_date": datetime.strptime(play_date_str, '%Y-%m-%d').replace(tzinfo=timezone.utc).date(),
+            "play_time_minutes": play_time_minutes,
         }
 
-        instance: PlaySession
-        instance = cls.objects.update_or_create(
-            bgg_id=int(get_attribute(xml_item, ".", "id")), defaults=data
-        )
+        raw_id = get_attribute(xml_item, '.', 'id')
+        play_id = int(raw_id) if raw_id is not None else 0
 
+        instance: PlaySession
+        instance, _ = cls.objects.update_or_create(
+            bgg_id=play_id,
+            defaults=data
+        )
         cls._handle_players(instance, xml_item, user, bgg_username)
+
         return instance
 
     @staticmethod
