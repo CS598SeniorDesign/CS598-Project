@@ -21,24 +21,24 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 env = environ.Env(
     DEBUG=(bool, False),
-    SECRET_KEY=(str, ''),
-    JWT_SECRET_KEY=(str, ''),
-    ALLOWED_HOSTS=(list, ['localhost']),
-    CORS_ALLOWED_ORIGINS=(list, ['http://localhost:3000']),
-    CSRF_TRUSTED_ORIGINS=(list, ['http://localhost:3000']),
-    FRONTEND_URL=(str, 'http://localhost:3000'),
-    BACKEND_URL=(str, 'http://localhost:8000'),
-    DATABASE_NAME=(str, 'questlog_db'),
-    DATABASE_USERNAME=(str, 'django'),
+    SECRET_KEY=(str, ""),
+    JWT_SECRET_KEY=(str, ""),
+    ALLOWED_HOSTS=(list, ["localhost"]),
+    CORS_ALLOWED_ORIGINS=(list, ["http://localhost:3000"]),
+    CSRF_TRUSTED_ORIGINS=(list, ["http://localhost:3000"]),
+    FRONTEND_URL=(str, "http://localhost:3000"),
+    BACKEND_URL=(str, "http://localhost:8000"),
+    DATABASE_NAME=(str, "questlog_db"),
+    DATABASE_USERNAME=(str, "django"),
     DATABASE_PASSWORD=(str),
-    DATABASE_ENGINE=(str, 'django.db.backends.postgresql'),
-    DATABASE_HOST=(str, 'db'),
+    DATABASE_ENGINE=(str, "django.db.backends.postgresql"),
+    DATABASE_HOST=(str, "db"),
     DATABASE_PORT=(int, 5432),
     REDIS_PASSWORD=(str),
-    REDIS_CACHE_URL=(str, 'redis://redis:6379/0'),
-    REDIS_SESSION_URL=(str, 'redis://redis:6379/1'),
-    REDIS_CELERY_URL=(list, ['redis://redis:6379/2']),
-    SECURE_SSL_REDIRECT=(bool, False)
+    REDIS_CACHE_URL=(str, "redis://redis:6379/0"),
+    REDIS_SESSION_URL=(str, "redis://redis:6379/1"),
+    REDIS_CELERY_URL=(list, ["redis://redis:6379/2"]),
+    SECURE_SSL_REDIRECT=(bool, False),
 )
 
 environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
@@ -75,21 +75,21 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'csp.middleware.CSPMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
+    "corsheaders.middleware.CorsMiddleware",
+    "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "csp.middleware.CSPMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
 ]
 
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
-ROOT_URLCONF = 'config.urls'
+ROOT_URLCONF = "config.urls"
 
 TEMPLATES = [
     {
@@ -117,23 +117,21 @@ WSGI_APPLICATION = "config.wsgi.application"
 # }
 
 DATABASES = {
-     'default': {
-         'ENGINE': env('DATABASE_ENGINE'),
-         'NAME': env('DATABASE_NAME'),
-         'USER': env('DATABASE_USERNAME'),
-         'PASSWORD': env('DATABASE_PASSWORD'),
-         'HOST': env('DATABASE_HOST'),
-         'PORT': env('DATABASE_PORT'),
-     }
- }
+    "default": {
+        "ENGINE": env("DATABASE_ENGINE"),
+        "NAME": env("DATABASE_NAME"),
+        "USER": env("DATABASE_USERNAME"),
+        "PASSWORD": env("DATABASE_PASSWORD"),
+        "HOST": env("DATABASE_HOST"),
+        "PORT": env("DATABASE_PORT"),
+    }
+}
 
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
         "LOCATION": env("REDIS_CACHE_URL"),
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient"
-        }
+        "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
     }
 }
 
@@ -142,21 +140,14 @@ SESSION_CACHE_ALIAS = "sessions"
 CACHES["sessions"] = {
     "BACKEND": "django_redis.cache.RedisCache",
     "LOCATION": env("REDIS_SESSION_URL"),
-    "OPTIONS": {
-        "CLIENT_CLASS": "django_redis.client.DefaultClient"
-    }
+    "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
 }
 
 CELERY_BROKER_URL = env("REDIS_CELERY_URL")
 CELERY_RESULT_BACKEND = env("REDIS_CELERY_URL")
 
 CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {
-            "hosts": env.list("REDIS_CACHE_URL")
-        }
-    }
+    "default": {"BACKEND": "channels_redis.core.RedisChannelLayer", "CONFIG": {"hosts": env.list("REDIS_CACHE_URL")}}
 }
 
 
@@ -194,8 +185,8 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = 'static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # Established default authentication and permission classes if one is not specified
 REST_FRAMEWORK = {
@@ -230,7 +221,7 @@ SECURE_BROWSER_XSS_FILTER = True
 X_FRAME_OPTIONS = "DENY"
 
 # Forces HTTPS
-SECURE_SSL_REDIRECT = env('SECURE_SSL_REDIRECT', False)
+SECURE_SSL_REDIRECT = env("SECURE_SSL_REDIRECT", False)
 SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True

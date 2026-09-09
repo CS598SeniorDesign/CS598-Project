@@ -10,6 +10,7 @@ dependencies = [
     "django-cors-headers>=4.9.0",
     "django-csp>=4.0",
     "django-environ>=0.14.0",
+    "django-redis>=7.0.0",
     "djangorestframework>=3.18.0",
     "djangorestframework-simplejwt>=5.5.1",
     "psycopg2-binary>=2.9.12",
@@ -54,6 +55,7 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "*/migrations/*.py" = ["RUF012"]
 "**/tests/*.py" = ["S101"]
+"**/views.py" = ["RUF012"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["config", "catalog", "profiles", "tracking"]
