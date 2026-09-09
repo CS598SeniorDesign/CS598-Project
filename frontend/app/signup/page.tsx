@@ -8,7 +8,7 @@ export default function SignupPage() {
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [mfa, setMfa] = useState(false)
+  const [mfa, setMfa] = useState(false) 
   const [privacy, setPrivacy] = useState("public")
 
   const handleSubmit = (event: React.FormEvent) => {
