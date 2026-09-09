@@ -21,8 +21,8 @@ def fetch_bgg_plays(user: User, bgg_username: str) -> tuple[bool, str]:
     """
     Fetches and synchronizes a user's play sessions from the BoardGameGeek /plays API.
 
-    Makes an authenticated request to BGG iteratively until the number of records matches the total count reported by
-    the API.
+    Makes an authenticated request to BGG iteratively until the number of records matches the total
+    count reported by the API.
 
     :param user: The authenticated Django user requesting the sync.
     :type user: django.contrib.auth.models.User
@@ -38,9 +38,7 @@ def fetch_bgg_plays(user: User, bgg_username: str) -> tuple[bool, str]:
 
     try:
         while total_processed_plays < total_plays_to_fetch:
-            page_total, processed_count = _sync_plays_page(
-                user, bgg_username, current_page
-            )
+            page_total, processed_count = _sync_plays_page(user, bgg_username, current_page)
 
             if processed_count == 0 and total_processed_plays == 0:
                 return True, "No plays found for this user."
@@ -55,9 +53,7 @@ def fetch_bgg_plays(user: User, bgg_username: str) -> tuple[bool, str]:
         logger.warning("BGG API fetch failed for user %s: %s", bgg_username, exception)
         return False, "Connection to BGG failed. Please try again later."
     except (AttributeError, OSError, TypeError, ValueError) as exception:
-        logger.error(
-            "Unexpected error during BGG sync for %s: %s", bgg_username, exception
-        )
+        logger.error("Unexpected error during BGG sync for %s: %s", bgg_username, exception)
         return False, "An internal error occurred during synchronization."
 
 
@@ -65,8 +61,8 @@ def _sync_plays_page(user: User, bgg_username: str, page: int) -> tuple[int, int
     """
     Fetches a single page of plays from the BGG API and persists them to the database.
 
-    Uses a database transaction to ensure all records on a single page are saved atomically. The page size is
-    determined by the BGG API (defaulting to 100 records).
+    Uses a database transaction to ensure all records on a single page are saved atomically.
+    The page size is determined by the BGG API (defaulting to 100 records).
 
     :param user: The authenticated Django user requesting the sync.
     :type user: django.contrib.auth.models.User

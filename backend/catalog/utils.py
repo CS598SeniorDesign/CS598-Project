@@ -33,9 +33,7 @@ def get_bgg_board_game(bgg_id: int, backup_name: str) -> BoardGame:
     fetch_url: str = f"https://boardgamegeek.com/xmlapi2/thing?id={bgg_id}&stats=1"
 
     try:
-        response: requests.Response = requests.get(
-            url=fetch_url, headers=REQUEST_HEADERS, timeout=10
-        )
+        response: requests.Response = requests.get(url=fetch_url, headers=REQUEST_HEADERS, timeout=10)
 
         response.raise_for_status()
         # XML Root should be 'items'
@@ -66,9 +64,7 @@ def get_existing_board_game(bgg_id: int, backup_name: str) -> BoardGame:
     :rtype: catalog.models.BoardGame
     """
 
-    existing_board_game: BoardGame | None = BoardGame.objects.filter(
-        bgg_id=bgg_id
-    ).first()
+    existing_board_game: BoardGame | None = BoardGame.objects.filter(bgg_id=bgg_id).first()
 
     if existing_board_game:
         return existing_board_game

@@ -20,9 +20,7 @@ class Profile(models.Model):
     user = models.OneToOneField(to=settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     display_name = models.CharField(max_length=100)
     bio = models.TextField(null=True, blank=True)
-    privacy_level = models.CharField(
-        max_length=10, choices=PRIVACY_LEVEL_CHOICES, default=PUBLIC
-    )
+    privacy_level = models.CharField(max_length=10, choices=PRIVACY_LEVEL_CHOICES, default=PUBLIC)
     friends = models.ManyToManyField(to="self", blank=True)
 
     def __str__(self) -> str:
@@ -32,7 +30,7 @@ class Profile(models.Model):
         :returns: The display name associated with a user.
         """
 
-        return self.display_name
+        return str(self.display_name)
 
 
 class GameGroup(models.Model):
@@ -48,9 +46,7 @@ class GameGroup(models.Model):
         null=True,
         related_name="created_groups",
     )
-    members = models.ManyToManyField(
-        to=settings.AUTH_USER_MODEL, related_name="group_memberships"
-    )
+    members = models.ManyToManyField(to=settings.AUTH_USER_MODEL, related_name="group_memberships")
 
     def __str__(self) -> str:
         """
@@ -59,7 +55,7 @@ class GameGroup(models.Model):
         :returns: The name associated with a game group.
         """
 
-        return self.name
+        return str(self.name)
 
 
 class PlayerTag(models.Model):
@@ -71,9 +67,7 @@ class PlayerTag(models.Model):
     SIDEKICK = "SIDEKICK"
     TAG_TYPE_CHOICES = ((MORTAL_ENEMY, "Mortal Enemy"), (SIDEKICK, "Sidekick"))
 
-    assigning_user = models.ForeignKey(
-        to=settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="tags_given"
-    )
+    assigning_user = models.ForeignKey(to=settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="tags_given")
     target_user = models.ForeignKey(
         to=settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
