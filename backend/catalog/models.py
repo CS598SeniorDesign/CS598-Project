@@ -33,7 +33,6 @@ class Category(BGGAttribute):
     Notes:
         - Extracted from BGG XML nodes matching: <link type="boardgamecategory">.
     """
-    pass
 
 
 class Mechanic(BGGAttribute):
@@ -43,7 +42,6 @@ class Mechanic(BGGAttribute):
     Notes:
         - Extracted from BGG XML nodes matching: <link type="boardgamemechanic">.
     """
-    pass
 
 
 class Publisher(BGGAttribute):
@@ -53,7 +51,6 @@ class Publisher(BGGAttribute):
     Notes:
         - Extracted from BGG XML nodes matching: <link type="boardgamepublisher">.
     """
-    pass
 
 
 class Designer(BGGAttribute):
@@ -63,7 +60,6 @@ class Designer(BGGAttribute):
     Notes:
         - Extracted from BGG XML nodes matching: <link type="boardgamedesigner">.
     """
-    pass
 
 
 class Artist(BGGAttribute):
@@ -73,7 +69,6 @@ class Artist(BGGAttribute):
     Notes:
         - Extracted from BGG XML nodes matching: <link type="boardgameartist">.
     """
-    pass
 
 
 class Family(BGGAttribute):
@@ -83,7 +78,6 @@ class Family(BGGAttribute):
     Notes:
         - Extracted from BGG XML nodes matching: <link type="boardgamefamily">.
     """
-    pass
 
 
 class BoardGame(models.Model):
@@ -109,12 +103,12 @@ class BoardGame(models.Model):
     image_url = models.URLField(max_length=500, null=True, blank=True)
 
     # Relationship (<link> tags)
-    categories = models.ManyToManyField(Category, related_name='games', blank=True)
-    mechanics = models.ManyToManyField(Mechanic, related_name='games', blank=True)
-    publishers = models.ManyToManyField(Publisher, related_name='games', blank=True)
-    designers = models.ManyToManyField(Designer, related_name='games', blank=True)
-    artists = models.ManyToManyField(Artist, related_name='games', blank=True)
-    families = models.ManyToManyField(Family, related_name='games', blank=True)
+    categories = models.ManyToManyField(Category, related_name="games", blank=True)
+    mechanics = models.ManyToManyField(Mechanic, related_name="games", blank=True)
+    publishers = models.ManyToManyField(Publisher, related_name="games", blank=True)
+    designers = models.ManyToManyField(Designer, related_name="games", blank=True)
+    artists = models.ManyToManyField(Artist, related_name="games", blank=True)
+    families = models.ManyToManyField(Family, related_name="games", blank=True)
 
     # Stats
     average_rating = models.DecimalField(max_digits=5, decimal_places=3, null=True, blank=True)
@@ -127,5 +121,6 @@ class BoardGame(models.Model):
         :return: A string containing the name and publication year for a board game.
         """
         return f"{self.primary_name} ({self.year_published})"
+
 
 # skibidi doo dah grimes, you guys actually reading this PR?

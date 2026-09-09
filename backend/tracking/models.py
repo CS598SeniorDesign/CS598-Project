@@ -1,5 +1,6 @@
-from django.db import models
 from django.conf import settings
+from django.db import models
+
 from catalog.models import BoardGame
 from profiles.models import GameGroup
 
@@ -8,14 +9,15 @@ class LibraryItem(models.Model):
     """
     Track the ownership status and house rules of a game for a specific user.
     """
-    OWNED = 'OWNED'
-    WISHLISTED = 'WISHLISTED'
-    UNPLAYED = 'UNPLAYED'
-    LIBRARY_ENTRY_STATUSES = [
-        (OWNED, 'Owned'),
-        (WISHLISTED, 'Wishlisted'),
-        (UNPLAYED, 'Unplayed')
-    ]
+
+    OWNED = "OWNED"
+    WISHLISTED = "WISHLISTED"
+    UNPLAYED = "UNPLAYED"
+    LIBRARY_ENTRY_STATUSES = (
+        (OWNED, "Owned"),
+        (WISHLISTED, "Wishlisted"),
+        (UNPLAYED, "Unplayed"),
+    )
 
     user = models.ForeignKey(to=settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     game = models.ForeignKey(to=BoardGame, on_delete=models.CASCADE)
@@ -35,6 +37,7 @@ class Rating(models.Model):
     """
     Store a user's metrics and experience ratings for a game.
     """
+
     user = models.ForeignKey(to=settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     game = models.ForeignKey(to=BoardGame, on_delete=models.CASCADE)
     experience = models.FloatField()
@@ -43,7 +46,7 @@ class Rating(models.Model):
     enjoyment = models.FloatField()
 
     class Meta:
-        unique_together = ['user', 'game']
+        unique_together = ("user", "game")
 
     def __str__(self) -> str:
         """
@@ -58,6 +61,7 @@ class PlaySession(models.Model):
     """
     Records an instance of a game group or user(s) playing a board game.
     """
+
     game = models.ForeignKey(to=BoardGame, on_delete=models.CASCADE)
     group = models.ForeignKey(to=GameGroup, on_delete=models.CASCADE)
     play_date = models.DateField()
@@ -76,6 +80,7 @@ class SessionPlayer(models.Model):
     """
     Link a user to a specific play session.
     """
+
     session = models.ForeignKey(to=PlaySession, on_delete=models.CASCADE)
     user = models.ForeignKey(to=settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     score = models.FloatField()
