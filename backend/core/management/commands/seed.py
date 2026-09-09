@@ -10,7 +10,7 @@ from tracking.models import LibraryItem, Rating
 
 
 class Command(BaseCommand):
-    help = 'Seeds the database with synthetic test data for Prototype 1'
+    help = "Seeds the database with synthetic test data for Prototype 1"
 
     def handle(self, *args, **kwargs):
         fake = Faker()
@@ -28,23 +28,21 @@ class Command(BaseCommand):
                 description=fake.paragraph(nb_sentences=3),
                 year_published=random.randint(1995, 2024),
                 bgg_rank=random.randint(1, 500),
-                average_rating=round(random.uniform(5.0, 9.0), 3)
+                average_rating=round(random.uniform(5.0, 9.0), 3),
             )
             games.append(game)
 
         self.stdout.write("Seeding Users, Profiles, and Library Items...")
         for _ in range(10):
             user = User.objects.create_user(
-                username=fake.unique.user_name(),
-                email=fake.unique.email(),
-                password='password123'
+                username=fake.unique.user_name(), email=fake.unique.email(), password="password123"
             )
 
             Profile.objects.create(
                 user=user,
                 display_name=fake.first_name(),
                 bio=fake.text(max_nb_chars=100),
-                privacy_level=random.choice([Profile.PUBLIC, Profile.FRIENDS])
+                privacy_level=random.choice([Profile.PUBLIC, Profile.FRIENDS]),
             )
 
             user_games = random.sample(games, random.randint(2, 5))
@@ -52,7 +50,7 @@ class Command(BaseCommand):
                 LibraryItem.objects.create(
                     user=user,
                     game=game,
-                    status=random.choice([LibraryItem.OWNED, LibraryItem.WISHLISTED, LibraryItem.UNPLAYED])
+                    status=random.choice([LibraryItem.OWNED, LibraryItem.WISHLISTED, LibraryItem.UNPLAYED]),
                 )
 
                 Rating.objects.create(
@@ -61,7 +59,7 @@ class Command(BaseCommand):
                     experience=round(random.uniform(1.0, 5.0), 1),
                     mechanics=round(random.uniform(1.0, 5.0), 1),
                     replayability=round(random.uniform(1.0, 5.0), 1),
-                    enjoyment=round(random.uniform(1.0, 5.0), 1)
+                    enjoyment=round(random.uniform(1.0, 5.0), 1),
                 )
 
-        self.stdout.write(self.style.SUCCESS('Successfully seeded database with synthetic data!'))
+        self.stdout.write(self.style.SUCCESS("Successfully seeded database with synthetic data!"))
