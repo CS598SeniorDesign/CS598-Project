@@ -48,7 +48,7 @@ jobs:
         run: uv run ruff format --check . --exclude 'migrations'
 
       - name: Run mypy type check
-        run: uv run mypy .
+        run: uv run mypy
 
       - name: Upload backend lint log
         if: always()
