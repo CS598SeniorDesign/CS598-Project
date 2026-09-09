@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from django.db import models
-from typing import Type, TYPE_CHECKING
 
 from core.utils import get_attribute_value
 
@@ -41,7 +42,6 @@ class Category(BGGAttribute):
     Notes:
         - Extracted from BGG XML nodes matching: <link type="boardgamecategory">.
     """
-    pass
 
 
 class Mechanic(BGGAttribute):
@@ -51,7 +51,6 @@ class Mechanic(BGGAttribute):
     Notes:
         - Extracted from BGG XML nodes matching: <link type="boardgamemechanic">.
     """
-    pass
 
 
 class Publisher(BGGAttribute):
@@ -61,7 +60,6 @@ class Publisher(BGGAttribute):
     Notes:
         - Extracted from BGG XML nodes matching: <link type="boardgamepublisher">.
     """
-    pass
 
 
 class Designer(BGGAttribute):
@@ -71,7 +69,6 @@ class Designer(BGGAttribute):
     Notes:
         - Extracted from BGG XML nodes matching: <link type="boardgamedesigner">.
     """
-    pass
 
 
 class Artist(BGGAttribute):
@@ -81,7 +78,6 @@ class Artist(BGGAttribute):
     Notes:
         - Extracted from BGG XML nodes matching: <link type="boardgameartist">.
     """
-    pass
 
 
 class Family(BGGAttribute):
@@ -91,7 +87,6 @@ class Family(BGGAttribute):
     Notes:
         - Extracted from BGG XML nodes matching: <link type="boardgamefamily">.
     """
-    pass
 
 
 class BoardGame(models.Model):
@@ -129,7 +124,7 @@ class BoardGame(models.Model):
     bgg_rank = models.IntegerField(null=True, blank=True)
 
     @classmethod
-    def create_from_xml(cls, xml_item: Element, backup_name: str = None):
+    def create_from_xml(cls, xml_item: Element, backup_name: str | None = None):
         """
         Parses a BGG XML element to create or update a BoardGame instance.
 
@@ -158,8 +153,7 @@ class BoardGame(models.Model):
         }
 
         instance: BoardGame
-        is_created: bool
-        instance, is_created = cls.objects.update_or_create(
+        instance = cls.objects.update_or_create(
             bgg_id=data["bgg_id"],
             defaults=data
         )
@@ -168,7 +162,7 @@ class BoardGame(models.Model):
         return instance
 
     @staticmethod
-    def _handle_links(instance: "BoardGame", xml_item: Element):
+    def _handle_links(instance: BoardGame, xml_item: Element):
         """
         Processes <link> tags from the XML and maps them to M2M relationships.
 
@@ -195,7 +189,7 @@ class BoardGame(models.Model):
             link_type: str | None = link.attrib.get("type")
 
             if link_type in VALID_LINK:
-                model_class: Type[models.Model]
+                model_class: type[models.Model]
                 field_name: str
                 model_class, field_name = VALID_LINK[link_type]
 
@@ -203,8 +197,7 @@ class BoardGame(models.Model):
                 name: str = link.attrib.get("value")
 
                 object: models.Model
-                is_created: bool
-                object, is_created = model_class.objects.get_or_create(
+                object = model_class.objects.get_or_create(
                     bgg_id=bgg_id,
                     defaults={"name": name}
                 )

@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-import defusedxml.ElementTree as ElementTree
 import logging
-import requests
-from django.contrib.auth.models import User
-from django.db import transaction
 from typing import TYPE_CHECKING
 
-from core.constants import VALID_STATUS_CODES, REQUEST_HEADERS
+import requests
+from defusedxml import ElementTree
+from django.contrib.auth.models import User
+from django.db import transaction
+
+from core.constants import REQUEST_HEADERS, VALID_STATUS_CODES
 from tracking.models import PlaySession
 
 if TYPE_CHECKING:
@@ -51,7 +52,7 @@ def fetch_bgg_plays(user: User, bgg_username: str) -> tuple[bool, str]:
     except requests.RequestException as exception:
         logger.warning("BGG API fetch failed for user %s: %s", bgg_username, exception)
         return False, "Connection to BGG failed. Please try again later."
-    except Exception as exception:
+    except (AttributeError, OSError, TypeError, ValueError) as exception:
         logger.error("Unexpected error during BGG sync for %s: %s", bgg_username, exception)
         return False, "An internal error occurred during synchronization."
 

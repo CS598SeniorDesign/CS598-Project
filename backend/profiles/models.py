@@ -1,5 +1,5 @@
-from django.db import models
 from django.conf import settings
+from django.db import models
 
 
 class Profile(models.Model):
@@ -11,11 +11,11 @@ class Profile(models.Model):
     FRIENDS = 'FRIENDS'
     PRIVATE = 'PRIVATE'
 
-    PRIVACY_LEVEL_CHOICES = [
+    PRIVACY_LEVEL_CHOICES = (
         (PUBLIC, 'Public'),
         (FRIENDS, 'Friends'),
         (PRIVATE, 'Private')
-    ]
+    )
 
     user = models.OneToOneField(to=settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     display_name = models.CharField(max_length=100)
@@ -61,10 +61,10 @@ class PlayerTag(models.Model):
 
     MORTAL_ENEMY = 'MORTAL_ENEMY'
     SIDEKICK = 'SIDEKICK'
-    TAG_TYPE_CHOICES = [
+    TAG_TYPE_CHOICES = (
         (MORTAL_ENEMY, 'Mortal Enemy'),
         (SIDEKICK, 'Sidekick')
-    ]
+    )
 
     assigning_user = models.ForeignKey(to=settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='tags_given')
     target_user = models.ForeignKey(to=settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='tags_received')

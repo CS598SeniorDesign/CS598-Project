@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
+from typing import TYPE_CHECKING
+
 from django.conf import settings
 from django.db import models
-from typing import TYPE_CHECKING
 
 from catalog.models import BoardGame
 from catalog.utils import get_existing_board_game
@@ -12,6 +13,7 @@ from profiles.models import GameGroup
 
 if TYPE_CHECKING:
     from xml.etree.ElementTree import Element
+
     from django.contrib.auth.models import User
 
 
@@ -22,11 +24,11 @@ class LibraryItem(models.Model):
     OWNED = 'OWNED'
     WISHLISTED = 'WISHLISTED'
     UNPLAYED = 'UNPLAYED'
-    LIBRARY_ENTRY_STATUSES = [
+    LIBRARY_ENTRY_STATUSES = (
         (OWNED, 'Owned'),
         (WISHLISTED, 'Wishlisted'),
         (UNPLAYED, 'Unplayed')
-    ]
+    )
 
     user = models.ForeignKey(to=settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     game = models.ForeignKey(to=BoardGame, on_delete=models.CASCADE)
@@ -54,7 +56,7 @@ class Rating(models.Model):
     enjoyment = models.FloatField()
 
     class Meta:
-        unique_together = ['user', 'game']
+        unique_together = ('user', 'game')
 
     def __str__(self) -> str:
         """
@@ -99,13 +101,14 @@ class PlaySession(models.Model):
 
         data = {
             "game": game_object,
-            "play_date": datetime.strptime(get_attribute(xml_item, '.', 'date'), '%Y-%m-%d').date(),
+            "play_date": datetime.strptime(
+                get_attribute(xml_item, '.', 'date'), '%Y-%m-%d'
+            ).replace(tzinfo=timezone.utc).date(),
             "play_time_minutes": int(get_attribute(xml_item, '.', 'length') or 0),
         }
 
         instance: PlaySession
-        is_created: bool
-        instance, is_created = cls.objects.update_or_create(
+        instance = cls.objects.update_or_create(
             bgg_id=int(get_attribute(xml_item, '.', 'id')),
             defaults=data
         )
