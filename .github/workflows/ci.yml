@@ -394,9 +394,8 @@ jobs:
         run: |
           for i in $(seq 1 30); do
             STATUS=$(docker inspect --format='{{json .State.Health.Status}}' nextjs 2>/dev/null || echo '"not-found"')
-            echo STATUS
-            if [[ $STATUS == '"healthy"' ]]; then
-              HEALTHY=1
+            echo "STATUS: $STATUS"
+            if [[ $STATUS == '"ok"' ]]; then
               exit 0
             fi
             sleep 2
