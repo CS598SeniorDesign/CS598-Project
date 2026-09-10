@@ -1,5 +1,5 @@
 #QuestLog Frontend
-The QuestLog frontend is built using **Next.js, React, and TypeScript**. This directory contains the frontend application, reusable UI components, static asstes, environment configuration, and frontend Docker setup.
+The QuestLog frontend is built using **Next.js, React, and TypeScript**. This directory contains the frontend application, reusable UI components, static assets, environment configuration, and frontend Docker setup.
 
 ##Getting Started
 
