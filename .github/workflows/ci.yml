@@ -33,7 +33,23 @@ jobs:
       run:
         working-directory: backend
 
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: test_db
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     env:
+      DJANGO_SETTINGS_MODULE: config.settings
       DJANGO_SECRET_KEY: test-secret-key
       JWT_SECRET_KEY: test-jwt-secret
       DEBUG: 'False'
@@ -42,7 +58,15 @@ jobs:
       CSRF_TRUSTED_ORIGINS: http://localhost:3000
       BACKEND_URL: http://localhost:8000
       FRONTEND_URL: http://localhost:3000
-      DATABASE_URL: sqlite:///mypy_check.sqlite3
+      DATABASE_ENGINE: django.db.backends.postgresql
+      DATABASE_NAME: test_db
+      DATABASE_USERNAME: test_user
+      DATABASE_PASSWORD: test_password
+      DATABASE_HOST: localhost
+      DATABASE_PORT: 5432
+      REDIS_CACHE_URL: redis://localhost:6379/0
+      REDIS_SESSION_URL: redis://localhost:6379/1
+      REDIS_CELERY_URL: redis://localhost:6379/2
 
     steps:
       - name: Checkout repository
@@ -71,10 +95,10 @@ jobs:
         continue-on-error: true # switch to false when backend is fully typed
 
       - name: Check for unreachable / non-reversible migrations
-        run: python manage.py lintmigrations
+        run: uv run python manage.py lintmigrations
 
       - name: Run migrations
-        run: python manage.py migrate --noinput
+        run: uv run python manage.py migrate --noinput
 
       - name: Upload backend lint log
         if: always()
@@ -189,9 +213,15 @@ jobs:
       CSRF_TRUSTED_ORIGINS: http://localhost:3000
       BACKEND_URL: http://localhost:8000
       FRONTEND_URL: http://localhost:3000
-      DATABASE_URL: postgres://test_user:test_password@localhost:5432/test_db
-      REDIS_URL: redis://localhost:6379/0
-      SECRET_KEY: ci-test-secret-key-not-for-production
+      DATABASE_ENGINE: django.db.backends.postgresql
+      DATABASE_NAME: test_db
+      DATABASE_USERNAME: test_user
+      DATABASE_PASSWORD: test_password
+      DATABASE_HOST: localhost
+      DATABASE_PORT: 5432
+      REDIS_CACHE_URL: redis://localhost:6379/0
+      REDIS_SESSION_URL: redis://localhost:6379/1
+      REDIS_CELERY_URL: redis://localhost:6379/2
 
     steps:
       - name: Checkout repository
@@ -276,7 +306,8 @@ jobs:
       - name: Create CI env file
         run: |
           cp .env.example .env
-          echo "SECRET_KEY=ci-smoke-test-secret" >> .env
+          echo "DJANGO_SECRET_KEY=ci-smoke-test-secret" >> .env
+          cp frontend/.env.example frontend/.env
 
       - name: Build images
         run: docker compose build
@@ -410,8 +441,13 @@ jobs:
           CSRF_TRUSTED_ORIGINS: http://localhost:3000
           BACKEND_URL: http://localhost:8000
           FRONTEND_URL: http://localhost:3000
-          DATABASE_URL: sqlite:///qa_check.sqlite3
-        run: uv run manage.py check
+          DATABASE_ENGINE: django.db.backends.postgresql
+          DATABASE_NAME: qa_check_db
+          DATABASE_USERNAME: qa_check_user
+          DATABASE_PASSWORD: qa-check-password
+          DATABASE_HOST: localhost
+          DATABASE_PORT: 5432
+        run: uv run python manage.py check
 
       - name: Set up Node
         uses: actions/setup-node@v4
