@@ -198,8 +198,12 @@ To apply the latest schema changes to your local database, run:
 uv run python manage.py migrate
 ```
 
-To test down-migrations (rollbacks) for a specific app, target the `zero` migration state to clear it:
+To test down-migrations (rollbacks), target the `zero` migration state to clear it. This can be done for the entire project or single apps.
 ```bash
+// Entire App
+uv run python manage.py migrate zero
+
+// Single App
 uv run python manage.py migrate tracking zero
 uv run python manage.py migrate profiles zero
 uv run python manage.py migrate catalog zero
