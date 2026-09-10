@@ -315,6 +315,22 @@ jobs:
       - name: Start stack
         run: docker compose up -d
 
+      - name: Dump backend logs for diagnosis
+        if: always()
+        run: |
+          echo "--- questlog-django logs ---"
+          docker compose logs backend
+          echo "--- questlog-django inspect ---"
+          docker inspect questlog-django --format='{{json .State}}' | head -c 2000
+          echo ""
+          echo "--- health check log ---"
+          docker inspect questlog-django --format='{{json .State.Health}}'
+
+      - name: Fail if stack didn't start
+        run: |
+          docker compose ps
+          docker compose ps | grep -q "questlog-django.*Up" || exit 1
+
       - name: Wait for backend liveness
         run: |
           for i in {1..30}; do
@@ -378,7 +394,7 @@ jobs:
       - name: Wait for container to be healthy
         run: |
           for i in $(seq 1 30); do
-            if curl -sf http://0.0.0.0:3000 > /dev/null; then
+            if curl -sf http://localhost:3000 > /dev/null; then
               echo "Frontend responded successfully"
               exit 0
             fi
