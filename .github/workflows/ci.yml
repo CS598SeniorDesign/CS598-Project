@@ -405,10 +405,6 @@ jobs:
           echo "Frontend did not respond in time"
           echo "--- Verbose host curl attempt ---"
           curl -v --max-time 5 http://127.0.0.1:3000 || true
-          echo "--- Listening sockets ---"
-          docker exec frontend-smoke sh -c "cat /proc/net/tcp"
-          echo "--- Internal request (bypasses host->container path entirely) ---"
-          docker exec frontend-smoke wget -q -O - --timeout=5 http://127.0.0.1:3000 || echo "internal request failed, exit code $?"
           echo "--- docker port ---"
           docker port frontend-smoke
           echo "--- Full unfiltered logs ---"
