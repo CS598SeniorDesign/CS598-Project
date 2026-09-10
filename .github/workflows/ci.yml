@@ -392,21 +392,18 @@ jobs:
 
       - name: Wait for container to be healthy
         run: |
-          for i in {1..60}; do
+          for i in $(seq 1 30); do
             STATUS=$(docker inspect --format='{{json .State.Health.Status}}' nextjs 2>/dev/null || echo '"not-found"')
-            if [[ $STATUS == '"healthy"' || $STATUS == '"no-healthcheck"' ]]; then
+            echo STATUS
+            if [[ $STATUS == '"healthy"' ]]; then
               HEALTHY=1
-              break
+              exit 0
             fi
             sleep 2
           done
           echo "Frontend did not respond in time"
           echo "--- Verbose host curl attempt ---"
-          curl -v --max-time 5 http://127.0.0.1:3000 || true
-          echo "--- docker port ---"
-          docker port frontend-smoke
-          echo "--- Full unfiltered logs ---"
-          docker logs frontend-smoke 2>&1
+          curl -v --max-time 5 http://127.0.0.1:3000/api/health || true
           exit 1
 
       - name: Dump logs on failure
