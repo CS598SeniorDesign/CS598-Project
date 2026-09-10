@@ -1,6 +1,7 @@
 "use client"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
 
 const AVATARS = [
   "/avatars/brandon.webp",
@@ -31,10 +32,12 @@ export default function AvatarSelectionPage() {
         <h1 className="text-3xl font-bold mb-6">Pick Your Avatar</h1>
         <div className="grid grid-cols-2 gap-4 mb-6">
           {AVATARS.map((avt) => (
-            <img
+            <Image
               key={avt}
               src={avt}
               alt="avatar"
+              width={80}
+              height={80}
               className={`w-20 h-20 rounded-full cursor-pointer border-4 ${
                 selectedAvatar === avt ? "border-indigo-500" : "border-gray-700"
               }`}

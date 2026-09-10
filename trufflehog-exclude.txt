@@ -1,0 +1,3 @@
+^\.git/
+^trufflehog-output\.txt$
+^trufflehog-exclude\.txt$
