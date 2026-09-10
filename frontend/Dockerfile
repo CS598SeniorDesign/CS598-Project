@@ -1,7 +1,7 @@
 FROM node:22-alpine AS base
 WORKDIR /app
 
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache libc6-compat wget
 
 FROM base AS deps
 COPY package.json package-lock.json ./
