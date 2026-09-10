@@ -337,13 +337,15 @@ jobs:
             exit 1
           }
           echo "$response"
-          echo "$response" | grep -q '"status": "ok"' || {
+          echo "$response" | jq -e '.status == "ok"' > /dev/null || {
             echo "Backend reported unhealthy dependencies"
             exit 1
           }
 
       - name: Confirm migrations applied cleanly in container
-        run: docker compose exec -T backend python manage.py showmigrations --plan
+        run: |
+          docker compose exec -T backend python manage.py showmigrations --plan
+          docker compose exec -T backend python manage.py migrate --check
 
       - name: Tear down
         if: always()

@@ -4,7 +4,8 @@ QuestLog is a web-based platform designed to help board game enthusiasts manage 
 
 ## Table of Contents
 
-- [Getting Started](#getting-started)
+- [Architecture Overview](#architecture-overview)
+- [Repository Structure](#repository-structure)
 
 ## Architecture Overview
 
