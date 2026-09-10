@@ -18,7 +18,7 @@ FROM base AS builder
 ENV NODE_ENV=production
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN npm run build
+RUN npx next build --webpack
 
 FROM base AS runner
 ENV NODE_ENV=production
