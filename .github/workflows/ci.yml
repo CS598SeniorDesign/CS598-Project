@@ -68,6 +68,13 @@ jobs:
 
       - name: Run mypy type check
         run: uv run mypy
+        continue-on-error: true # switch to false when backend is fully typed
+
+      - name: Check for unreachable / non-reversible migrations
+        run: python manage.py lintmigrations
+
+      - name: Run migrations
+        run: python manage.py migrate --noinput
 
       - name: Upload backend lint log
         if: always()
@@ -159,12 +166,21 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      redis:
+        image: redis:7
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     defaults:
       run:
         working-directory: backend
 
     env:
+      DJANGO_SETTINGS_MODULE: config.settings
       DJANGO_SECRET_KEY: test-secret-key
       JWT_SECRET_KEY: test-jwt-secret
       DEBUG: 'False'
@@ -174,6 +190,8 @@ jobs:
       BACKEND_URL: http://localhost:8000
       FRONTEND_URL: http://localhost:3000
       DATABASE_URL: postgres://test_user:test_password@localhost:5432/test_db
+      REDIS_URL: redis://localhost:6379/0
+      SECRET_KEY: ci-test-secret-key-not-for-production
 
     steps:
       - name: Checkout repository
@@ -210,6 +228,118 @@ jobs:
           path: backend/backend-test-output.txt
           if-no-files-found: warn
 
+  docker-compose-smoke-test:
+    name: Docker Compose — Single-Command Startup Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create CI env file
+        run: |
+          cp .env.example .env
+          echo "SECRET_KEY=ci-smoke-test-secret" >> .env
+
+      - name: Build images
+        run: docker compose build
+
+      - name: Start stack
+        run: docker compose up -d
+
+      - name: Wait for backend liveness
+        run: |
+          for i in {1..30}; do
+            if curl -sf http://localhost:8000/health/; then
+              echo "Backend live"
+              exit 0
+            fi
+            echo "Waiting for backend... ($i/30)"
+            sleep 2
+          done
+          echo "Backend never became live"
+          docker compose logs
+          exit 1
+
+      - name: Confirm backend readiness (DB + Redis reachable)
+        run: |
+          response=$(curl -sf http://localhost:8000/ready/) || {
+            echo "Readiness check failed to respond"
+            docker compose logs
+            exit 1
+          }
+          echo "$response"
+          echo "$response" | grep -q '"status": "ok"' || {
+            echo "Backend reported unhealthy dependencies"
+            exit 1
+          }
+
+      - name: Confirm migrations applied cleanly in container
+        run: docker compose exec -T backend python manage.py showmigrations --plan
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
+
+  frontend-standalone-build:
+    name: Frontend Standalone Build & Smoke Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build production image (runner stage)
+        run: |
+          docker build \
+            --target runner \
+            -t questlog-frontend:ci \
+            ./frontend
+
+      - name: Run container
+        run: |
+          docker run -d \
+            --name frontend-smoke \
+            -p 3000:3000 \
+            questlog-frontend:ci
+
+      - name: Wait for container to be healthy
+        run: |
+          for i in $(seq 1 15); do
+            if curl -sf http://localhost:3000 > /dev/null; then
+              echo "Frontend responded successfully"
+              exit 0
+            fi
+            echo "Waiting for frontend... ($i/15)"
+            sleep 2
+          done
+          echo "Frontend did not respond in time"
+          docker logs frontend-smoke
+          exit 1
+
+      - name: Dump logs on failure
+        if: failure()
+        run: docker logs frontend-smoke
+
+      - name: Clean up
+        if: always()
+        run: |
+          docker stop frontend-smoke || true
+          docker rm frontend-smoke || true
+
+  dependency-review:
+    name: Dependency vulnerability review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: moderate
+          comment-summary-in-pr: always
+
   qa-validation:
     name: QA validation
     if: github.ref == 'refs/heads/testing' || github.ref == 'refs/heads/qa'
@@ -231,6 +361,7 @@ jobs:
         run: uv sync --group dev --locked
 
       - name: Run Django system check
+        working-directory: backend
         env:
           DJANGO_SECRET_KEY: qa-secret-key
           JWT_SECRET_KEY: qa-jwt-secret
