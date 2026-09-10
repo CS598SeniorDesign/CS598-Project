@@ -18,6 +18,9 @@ ENV PATH="/app/.venv/bin:$PATH"
 ENV DJANGO_SETTINGS_MODULE=config.settings
 
 COPY . .
+RUN chmod +x entrypoint.sh
+
+ENTRYPOINT ["./entrypoint.sh"]
 
 EXPOSE 8000
 
@@ -35,6 +38,7 @@ ENV PATH="/app/.venv/bin:$PATH"
 
 WORKDIR /app
 COPY --chown=appuser:appuser . .
+RUN chmod +x entrypoint.sh
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1

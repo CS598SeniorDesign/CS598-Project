@@ -358,6 +358,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Create CI env file
+        run: cp frontend/.env.example frontend/.env
+
       - name: Build production image (runner stage)
         run: |
           docker build \
@@ -374,15 +377,22 @@ jobs:
 
       - name: Wait for container to be healthy
         run: |
-          for i in $(seq 1 15); do
+          for i in $(seq 1 30); do
             if curl -sf http://localhost:3000 > /dev/null; then
               echo "Frontend responded successfully"
               exit 0
             fi
-            echo "Waiting for frontend... ($i/15)"
+            echo "Waiting for frontend... ($i/30)"
             sleep 2
           done
           echo "Frontend did not respond in time"
+          echo "--- Container status ---"
+          docker inspect --format='{{.State.Status}} exitcode={{.State.ExitCode}}' frontend-smoke
+          echo "--- Port bindings ---"
+          docker port frontend-smoke
+          echo "--- Internal check (bypasses host port mapping) ---"
+          docker exec frontend-smoke wget -qO- http://localhost:3000 || echo "internal request also failed"
+          echo "--- Full logs ---"
           docker logs frontend-smoke
           exit 1
 
