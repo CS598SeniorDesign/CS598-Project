@@ -10,9 +10,23 @@ from tracking.models import LibraryItem, Rating
 
 
 class Command(BaseCommand):
+    """
+    Populate the database with fake data.
+
+    Clears all existing User and BoardGame records to prevent collisions, then generates realistic mock records using
+    the Faker library.
+    """
+
     help = "Seeds the database with synthetic test data for Prototype 1"
 
     def handle(self, *args, **kwargs):
+        """
+        Execute the data seeding process.
+
+        :param args: Additional positional arguments.
+        :param kwargs: Additional keyword arguments.
+        :returns: None
+        """
         fake = Faker()
 
         self.stdout.write("Clearing existing records...")
