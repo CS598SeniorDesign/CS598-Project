@@ -20,7 +20,6 @@ on:
       - 'refactor/**'
       - 'docs/**'
       - 'chore/**'
-      - 'jisobe_docker'
 
 permissions:
   contents: read
