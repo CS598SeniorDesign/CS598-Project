@@ -398,18 +398,20 @@ jobs:
               echo "Frontend responded successfully"
               exit 0
             fi
-            echo "Waiting for frontend... ($i/30)"
             sleep 2
           done
           echo "Frontend did not respond in time"
-          echo "--- Container status ---"
-          docker inspect --format='{{.State.Status}} exitcode={{.State.ExitCode}}' frontend-smoke
-          echo "--- Port bindings ---"
-          docker port frontend-smoke
-          echo "--- Internal check (bypasses host port mapping) ---"
-          docker exec frontend-smoke wget -qO- http://localhost:3000 || echo "internal request also failed"
-          echo "--- Full logs ---"
-          docker logs frontend-smoke
+          echo "--- Running processes ---"
+          docker exec frontend-smoke ps aux
+          echo "--- Listening sockets (raw /proc/net/tcp) ---"
+          docker exec frontend-smoke sh -c "cat /proc/net/tcp; echo '---tcp6---'; cat /proc/net/tcp6"
+          echo "--- Env vars inside container ---"
+          docker exec frontend-smoke env | grep -E 'HOSTNAME|PORT|NODE_ENV'
+          echo "--- server.js location & content head ---"
+          docker exec frontend-smoke find / -maxdepth 2 -name "server.js"
+          docker exec frontend-smoke cat /app/server.js | head -60
+          echo "--- Full logs (unfiltered) ---"
+          docker logs frontend-smoke 2>&1
           exit 1
 
       - name: Dump logs on failure
