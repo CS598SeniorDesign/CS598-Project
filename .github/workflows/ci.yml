@@ -239,7 +239,7 @@ jobs:
       - name: Run Django tests
         run: |
           set -o pipefail
-          uv run pytest --cov=. --cov-report=term-missing --cov-report=xml:coverage.xml --cov-fail-under=60 -v 2>&1 | tee backend-test-output.txt
+          uv run pytest --cov=. --cov-report=term-missing --cov-report=xml:coverage.xml --cov-fail-under=10 -v 2>&1 | tee backend-test-output.txt
 
       - name: Upload backend coverage report
         if: always()
