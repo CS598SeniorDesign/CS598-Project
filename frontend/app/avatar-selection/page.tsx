@@ -1,7 +1,7 @@
-"use client"
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import Image from "next/image"
+"use client";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 const AVATARS = [
   "/avatars/brandon.webp",
@@ -13,18 +13,18 @@ const AVATARS = [
   "/avatars/avatar3.webp",
   "/avatars/avatar4.webp",
   "/avatars/avatar5.webp",
-]
+];
 
 export default function AvatarSelectionPage() {
-  const router = useRouter()
-  const [selectedAvatar, setSelectedAvatar] = useState<string>("")
+  const router = useRouter();
+  const [selectedAvatar, setSelectedAvatar] = useState<string>("");
 
   const handleConfirm = () => {
     if (selectedAvatar) {
-      localStorage.setItem("userAvatar", selectedAvatar)
-      router.push("/dashboardPpt") 
+      localStorage.setItem("userAvatar", selectedAvatar);
+      router.push("/dashboardPpt");
     }
-  }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-black text-white">
@@ -55,5 +55,5 @@ export default function AvatarSelectionPage() {
         </button>
       </div>
     </div>
-  )
+  );
 }

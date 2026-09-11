@@ -3,12 +3,7 @@ import AvatarPicker from "./AvatarPicker";
 
 describe("AvatarPicker", () => {
   it("renders the available avatars", () => {
-    render(
-      <AvatarPicker
-        selected=""
-        onSelect={jest.fn()}
-      />
-    );
+    render(<AvatarPicker selected="" onSelect={jest.fn()} />);
 
     const avatars = screen.getAllByAltText("avatar");
 
@@ -18,12 +13,7 @@ describe("AvatarPicker", () => {
   it("calls onSelect when an avatar is clicked", () => {
     const onSelect = jest.fn();
 
-    render(
-      <AvatarPicker
-        selected=""
-        onSelect={onSelect}
-      />
-    );
+    render(<AvatarPicker selected="" onSelect={onSelect} />);
 
     const avatars = screen.getAllByAltText("avatar");
 

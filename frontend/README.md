@@ -5,8 +5,8 @@ The QuestLog frontend is built using **Next.js, React, and TypeScript**. This di
 
 From the 'frontend/' directory, install the project dependenices:
 
-```bash 
-npm install 
+```bash
+npm install
 ```
 
 Start the development server:
