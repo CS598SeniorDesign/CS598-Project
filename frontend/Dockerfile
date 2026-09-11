@@ -16,6 +16,13 @@ CMD ["npm", "run", "dev"]
 
 FROM base AS builder
 ENV NODE_ENV=production
+
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_BGG_API_BASE
+
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_BGG_API_BASE=$NEXT_PUBLIC_BGG_API_BASE
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npx next build --webpack

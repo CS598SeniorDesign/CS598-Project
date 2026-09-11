@@ -64,17 +64,17 @@ QuestLog uses **three separate env files**, each with a distinct scope. Do not m
 | :--- | :--- | :--- |
 | `/.env` | Docker Compose orchestration — variable interpolation inside `docker-compose.yml` (e.g. `${DATABASE_NAME}`), and env vars injected into the `db`, `redis`, and `backend` containers | Docker Compose |
 | `/backend/.env` | Backend settings when running Django **outside** Docker (e.g. `uv run python manage.py runserver` directly on your host) | `django-environ` via `config/settings.py` |
-| `/frontend/.env.local` | Frontend environment variables — Next.js's own built-in convention for local, uncommitted overrides | Next.js (`next dev` / `next build`) |
+| `/frontend/.env` | Frontend environment variables — Next.js's own built-in convention for local, uncommitted overrides | Next.js (`next dev` / `next build`) |
 
 Copy each template and fill in real values:
 
 ```bash
 cp .env.example .env
 cp backend/.env.example backend/.env
-cp frontend/.env.local.example frontend/.env.local
+cp frontend/.env.example frontend/.env
 ```
 
-None of the real `.env` / `.env.local` files are committed — only the `*.example` templates. Never commit real secret values.
+None of the real `.env` files are committed — only the `*.example` templates. Never commit real secret values.
 
 ### Running with Docker Compose
 
