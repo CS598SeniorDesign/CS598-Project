@@ -24,6 +24,7 @@ This document provides guidance on running the backend through Docker and locall
   - [Running the Backend](#running-the-backend)
     - [Database Migrations & Rollbacks](#database-migrations--rollbacks)
     - [Populating Synthetic Test Data](#populating-synthetic-test-data)
+    - [Admin Access & Superuser Creation](#admin-access--superuser-creation)
   - [Creating a new app](#creating-a-new-app)
   - [Running tests](#running-tests)
   - [Health Endpoints](#health-endpoints)
@@ -288,6 +289,21 @@ uv run python manage.py seed
 **Docker:**
 ```bash
 docker compose exec backend uv run python manage.py seed
+```
+
+### Admin Access & Superuser Creation
+You can access the Django admin dashboard at `http://localhost:8000/admin/`.
+
+**Manual Creation**
+
+**Local (uv):**
+```bash
+uv run python manage.py createsuperuser
+```
+
+**Docker:**
+```bash
+docker compose exec backend uv run python manage.py createsuperuser
 ```
 
 ## Creating a new app
