@@ -65,6 +65,7 @@ See: [Running the Backend](#running-the-backend)
 
 ### Quick Setup
 
+**Local (uv):**
 ```bash
 pip install uv # Run if uv is not already installed. Swap pip install for your systems package management install command
 uv sync
@@ -75,6 +76,12 @@ Establish the [database connection](#environment-variables) and continue:
 ```bash
 uv run python manage.py migrate
 uv run python manage.py runserver
+```
+
+**Docker:**
+To launch the complete local development stack (database, Redis, backend, frontend) with a single command:
+```bash
+docker compose up --build
 ```
 
 ## Virtual Environment
@@ -178,44 +185,58 @@ Considerations:
 
 ## Running the Backend
 
-Before running, make sure your database has the proper migrations, using:
+Before running, make sure your database has the proper migrations.
 
+**Local (uv):**
 ```bash
 uv run python manage.py migrate
+```
+
+**Docker:**
+```bash
+docker compose exec backend uv run python manage.py migrate
 ```
 
 To run the server:
 
+**Local (uv):**
 ```bash
 uv run python manage.py runserver # Defaults to port 8000
 uv run python manage.py runserver 8001 # This will run the django server on localhost port 8001
 ```
+*(Note: Docker automatically runs the server using the compose file).*
 
 ### Database Migrations & Rollbacks
 
-To apply the latest schema changes to your local database, run:
-```bash
-uv run python manage.py migrate
-```
+To test down-migrations (rollbacks) for a specific app, target the `zero` migration state to clear it.
 
-To test down-migrations (rollbacks), target the `zero` migration state to clear it. This can be done for the entire project or single apps.
+**Local (uv):**
 ```bash
-// Entire App
-uv run python manage.py migrate zero
-
-// Single App
 uv run python manage.py migrate tracking zero
 uv run python manage.py migrate profiles zero
 uv run python manage.py migrate catalog zero
 ```
 
+**Docker:**
+```bash
+docker compose exec backend uv run python manage.py migrate tracking zero
+docker compose exec backend uv run python manage.py migrate profiles zero
+docker compose exec backend uv run python manage.py migrate catalog zero
+```
+
 ### Populating Synthetic Test Data
 
-To populate your local database with mock users, board games, library items, and ratings for development testing, run our custom seeder command:
+To populate your local database with mock users, board games, library items, and ratings for development testing, run our custom seeder command. The mock data can be seen with the backend API running at `http://localhost:8000/admin/`.
+
+**Local (uv):**
 ```bash
 uv run python manage.py seed
 ```
-The mock data can be seen with the backend API running at `http://localhost:8000/admin/`
+
+**Docker:**
+```bash
+docker compose exec backend uv run python manage.py seed
+```
 
 ## Creating a new app
 
