@@ -1,9 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import React, { useState, useSyncExternalStore } from "react";
+import React, { useSyncExternalStore } from "react";
+// import React, { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import WinRateChart from "@/components/stats/WinRateChart";
+// import WinRateChart from "@/components/stats/WinRateChart";
 
 // avatars
 import brandonAvatar from "@/public/avatars/brandon.webp";
@@ -57,7 +58,7 @@ const getUserAvatarServerSnapshot = () => {
 };
 
 export default function Page() {
-  const [openChart, setOpenChart] = useState<null | "winrate" | "donut">(null);
+  // const [openChart, setOpenChart] = useState<null | "winrate" | "donut">(null);
 
   // Read avatar from localStorage while keeping server rendering hydration-safe
   const userAvatar = useSyncExternalStore(
@@ -66,12 +67,12 @@ export default function Page() {
     getUserAvatarServerSnapshot,
   );
 
-  const scrollToAnalytics = () => {
-    document.getElementById("analytics")?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
-  };
+  // const scrollToAnalytics = () => {
+  //   document.getElementById("analytics")?.scrollIntoView({
+  //     behavior: "smooth",
+  //     block: "start",
+  //   });
+  // };
   const games: Game[] = [
     { gameName: "Botany", gameImg: "/images/botany.webp" },
     { gameName: "Stardew Valley", gameImg: "/images/stardew.webp" },
