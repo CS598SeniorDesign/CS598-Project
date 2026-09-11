@@ -18,7 +18,10 @@ const AVATARS = [
   "/avatars/supriya.webp",
 ];
 
-export default function AvatarPicker({ onSelect, selected }: AvatarPickerProps) {
+export default function AvatarPicker({
+  onSelect,
+  selected,
+}: AvatarPickerProps) {
   return (
     <div className="flex gap-4">
       {AVATARS.map((av) => (
@@ -29,7 +32,13 @@ export default function AvatarPicker({ onSelect, selected }: AvatarPickerProps) 
           }`}
           onClick={() => onSelect(av)}
         >
-          <Image src={av} alt="avatar" width={50} height={50} className="rounded-full" />
+          <Image
+            src={av}
+            alt="avatar"
+            width={50}
+            height={50}
+            className="rounded-full"
+          />
         </div>
       ))}
     </div>

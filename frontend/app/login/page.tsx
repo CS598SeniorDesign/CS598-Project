@@ -1,31 +1,35 @@
-"use client"
+"use client";
 
-import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 export default function LoginPage() {
-    const router = useRouter()
-    const [email, setEmail] = useState("")
-    const [password, setPassword] = useState("")
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
-    const handleSubmit = (event: React.FormEvent) => {
-     event.preventDefault()
-  
-      //TODO: Replace with real authentication logic
-      // temporary auth placeholder
-      if (email && password) {
-        router.push("/avatar-selection") 
-      } else {
-        alert("Please enter email and passowrd")
-      }
-    } 
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
 
-    return (
+    //TODO: Replace with real authentication logic
+    // temporary auth placeholder
+    if (email && password) {
+      router.push("/avatar-selection");
+    } else {
+      alert("Please enter email and passowrd");
+    }
+  };
+
+  return (
     <div className="min-h-screen flex items-center justify-center bg-black text-white">
       <div className="w-full max-w-md bg-gray-900 p-8 rounded-xl">
         <h1 className="text-3xl font-bold mb-6">Login</h1>
 
-        <form onSubmit={handleSubmit} autoComplete="off" className="flex flex-col gap-4">
+        <form
+          onSubmit={handleSubmit}
+          autoComplete="off"
+          className="flex flex-col gap-4"
+        >
           <input
             type="email"
             placeholder="Email"
@@ -55,13 +59,12 @@ export default function LoginPage() {
         </form>
 
         <p className="text-sm text-gray-400 mt-6 text-center">
-          Don&apos;t have an account? {" "}
-          < a href="/signup" className="text-indigo-400 hover:underline">
-           Sign Up
+          Don&apos;t have an account?{" "}
+          <a href="/signup" className="text-indigo-400 hover:underline">
+            Sign Up
           </a>
         </p>
-
       </div>
     </div>
-  )
+  );
 }

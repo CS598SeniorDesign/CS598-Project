@@ -7,7 +7,10 @@ type WinRateChartProps = {
   data?: { label: string; value: number }[];
 };
 
-export default function WinRateChart({ className, data: customData }: WinRateChartProps) {
+export default function WinRateChart({
+  className,
+  data: customData,
+}: WinRateChartProps) {
   const chartData = customData || [
     { label: "Wins", value: 12 },
     { label: "Losses", value: 8 },
@@ -20,7 +23,7 @@ export default function WinRateChart({ className, data: customData }: WinRateCha
           <Pie
             data={chartData}
             dataKey="value"
-            nameKey="label"   
+            nameKey="label"
             outerRadius={100}
             innerRadius={60}
             paddingAngle={2}
