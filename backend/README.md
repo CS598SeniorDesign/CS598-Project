@@ -22,6 +22,9 @@ This document provides guidance on running the backend through Docker and locall
     - [Updating the `uv.lock` File](#updating-the-uvlock-file)
   - [Environment Variables](#environment-variables)
   - [Running the Backend](#running-the-backend)
+    - [Database Migrations & Rollbacks](#database-migrations--rollbacks)
+    - [Populating Synthetic Test Data](#populating-synthetic-test-data)
+    - [Admin Access & Superuser Creation](#admin-access--superuser-creation)
   - [Creating a new app](#creating-a-new-app)
   - [Running tests](#running-tests)
   - [Health Endpoints](#health-endpoints)
@@ -100,6 +103,7 @@ See: [Running the Backend](#running-the-backend)
 
 ### Quick Setup
 
+**Local (uv):**
 ```bash
 pip install uv # Run if uv is not already installed. Swap pip install for your systems package management install command
 uv sync
@@ -110,6 +114,12 @@ Establish the [database connection](#environment-variables) and continue:
 ```bash
 uv run python manage.py migrate
 uv run python manage.py runserver
+```
+
+**Docker:**
+To launch the complete local development stack (database, Redis, backend, frontend) with a single command:
+```bash
+docker compose up --build
 ```
 
 ## Virtual Environment
@@ -223,17 +233,77 @@ Considerations:
 
 ## Running the Backend
 
-Before running, make sure your database has the proper migrations, using:
+Before running, make sure your database has the proper migrations.
 
+**Local (uv):**
 ```bash
 uv run python manage.py migrate
 ```
 
+**Docker:**
+```bash
+docker compose exec backend uv run python manage.py migrate
+```
+
 To run the server:
 
+**Local (uv):**
 ```bash
 uv run python manage.py runserver # Defaults to port 8000
 uv run python manage.py runserver 8001 # This will run the django server on localhost port 8001
+```
+*(Note: Docker automatically runs the server using the compose file).*
+
+### Database Migrations & Rollbacks
+
+To test down-migrations (rollbacks) for a specific app, target the `zero` migration state to clear it.
+
+**Local (uv):**
+```bash
+uv run python manage.py migrate tracking zero
+uv run python manage.py migrate profiles zero
+uv run python manage.py migrate catalog zero
+```
+
+**Docker:**
+To reset the entire database:
+```bash
+docker compose down -v
+```
+For specific apps:
+```bash
+docker compose exec backend uv run python manage.py migrate tracking zero
+docker compose exec backend uv run python manage.py migrate profiles zero
+docker compose exec backend uv run python manage.py migrate catalog zero
+```
+
+### Populating Synthetic Test Data
+
+To populate your local database with mock users, board games, library items, and ratings for development testing, run our custom seeder command. The mock data can be seen with the backend API running at `http://localhost:8000/admin/`.
+
+**Local (uv):**
+```bash
+uv run python manage.py seed
+```
+
+**Docker:**
+```bash
+docker compose exec backend uv run python manage.py seed
+```
+
+### Admin Access & Superuser Creation
+You can access the Django admin dashboard at `http://localhost:8000/admin/`.
+
+**Manual Creation**
+
+**Local (uv):**
+```bash
+uv run python manage.py createsuperuser
+```
+
+**Docker:**
+```bash
+docker compose exec backend uv run python manage.py createsuperuser
 ```
 
 ## Creating a new app
@@ -258,7 +328,6 @@ uv run ruff format --check # Formatting
 uv run mypy                # Type checking
 uv run pytest              # Unit testing
 ```
-
 Minimum coverage threshold is enforced at 60% (`--cov-fail-under=60` via `[tool.coverage.report]` in `pyproject.toml`).
 
 The same commands can be run inside the Docker `dev` container via `docker compose exec backend uv run <command>` — see the [root README](../README.md#running-tests--linting).

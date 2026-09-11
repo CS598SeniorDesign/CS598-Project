@@ -72,6 +72,7 @@ INSTALLED_APPS = [
     # Apps/Models
     "profiles",
     "catalog",
+    "core",
     "tracking",
 ]
 
