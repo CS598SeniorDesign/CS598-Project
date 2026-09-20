@@ -1,13 +1,13 @@
 :root {
-  --bg-dark: #0F172A;
+  --bg-dark: #0f172a;
   --card-bg: #1f1f1f;
 
-  --text-light: #F8FAFC;
+  --text-light: #f8fafc;
   --text-muted: #9ca3af;
 
-  --primary: #4F46E5;   /* Muted Indigo */
-  --primary-hover: #6366F1;
-  --primary-active: #4338CA;
+  --primary: #4f46e5; /* Muted Indigo */
+  --primary-hover: #6366f1;
+  --primary-active: #4338ca;
 
   --border-dark: #3f3f3f;
   --input-bg: #2d2d2d;
@@ -50,7 +50,7 @@
   padding: 0.75rem; /* 3 */
   border-radius: 0.375rem;
   background-color: var(--input-bg);
-  border: 1px solid var(--border-dark) ;
+  border: 1px solid var(--border-dark);
   color: var(--text-light); /* Light Gray text */
 }
 
@@ -63,7 +63,9 @@
   font-weight: 600;
   border: none;
   cursor: pointer;
-  transition: background-color 0.2s ease, transform 0.1s ease;
+  transition:
+    background-color 0.2s ease,
+    transform 0.1s ease;
 }
 
 .signup-button:hover {
@@ -85,7 +87,7 @@
 }
 
 .signup-login-link {
-  color: var(--primary); 
+  color: var(--primary);
   text-decoration: underline;
 }
 
@@ -104,8 +106,6 @@
 .signup-button.login:active {
   background-color: var(--primary-active);
 }
-
-
 
 /* MFA specific tweaks */
 
@@ -133,7 +133,9 @@
   font-weight: 600;
   border: none;
   cursor: pointer;
-  transition: background-color 0.2s ease, transform 0.1s ease;
+  transition:
+    background-color 0.2s ease,
+    transform 0.1s ease;
 }
 
 .enable-mfa:hover {

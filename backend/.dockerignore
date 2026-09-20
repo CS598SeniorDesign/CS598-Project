@@ -1,0 +1,38 @@
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# Coverage / test artifacts
+.coverage
+.coverage.*
+htmlcov/
+
+# Env files — never bake real secrets into an image layer
+.env
+.env.*
+!.env.example
+
+# Git
+.git/
+.gitignore
+
+# Editor/OS cruft
+.vscode/
+.idea/
+.DS_Store
+
+# Static files collected locally (rebuilt inside the image anyway)
+staticfiles/
+
+# Logs
+*.log
