@@ -10,6 +10,8 @@ from profiles.models import Profile
 from tracking.models import LibraryItem, Rating
 
 User = get_user_model()
+
+
 class Command(BaseCommand):
     """
     Populate the database with fake data.
@@ -49,10 +51,8 @@ class Command(BaseCommand):
 
         self.stdout.write("Seeding Users, Profiles, and Library Items...")
         for _ in range(10):
-            seed_email=fake.unique.email()
-            user = User.objects.create_user(
-                email=seed_email, password="password123"
-            )
+            seed_email = fake.unique.email()
+            user = User.objects.create_user(email=seed_email, password="password123")
             EmailAddress.objects.create(user=user, email=seed_email, verified=True, primary=True)
 
             Profile.objects.create(

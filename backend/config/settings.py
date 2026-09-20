@@ -11,7 +11,6 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 import os
-from datetime import timedelta
 from pathlib import Path
 
 import environ
@@ -59,21 +58,21 @@ ALLOWED_HOSTS = env.list("ALLOWED_HOSTS")
 # Application definition
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
     "django_migration_linter",
-    'django.contrib.sites',
-    'rest_framework',
+    "django.contrib.sites",
+    "rest_framework",
     # django-allauth (Authentication extension and MFA)
-    'allauth',
-    'allauth.headless',
-    'allauth.account',
-    'allauth.socialaccount',
-    'allauth.mfa',
+    "allauth",
+    "allauth.headless",
+    "allauth.account",
+    "allauth.socialaccount",
+    "allauth.mfa",
     # Apps/Models
     "profiles",
     "catalog",
@@ -84,7 +83,7 @@ INSTALLED_APPS = [
 
 SITE_ID = 1
 
-AUTH_USER_MODEL = 'users.User'
+AUTH_USER_MODEL = "users.User"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -95,7 +94,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    'allauth.account.middleware.AccountMiddleware',
+    "allauth.account.middleware.AccountMiddleware",
 ]
 
 STORAGES = {"staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"}}
@@ -187,15 +186,15 @@ PASSWORD_HASHERS = [
 ]
 
 AUTHENTICATION_BACKENDS = [
-    'django.contrib.auth.backends.ModelBackend',
-    'allauth.account.auth_backends.AuthenticationBackend',
+    "django.contrib.auth.backends.ModelBackend",
+    "allauth.account.auth_backends.AuthenticationBackend",
 ]
 
 # django allauth settings
 
 # Base auth settings
 ACCOUNT_UNIQUE_EMAIL = True
-ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
+ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 ACCOUNT_USER_MODEL_USERNAME_FIELD = None
 ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 3
 ACCOUNT_LOGIN_METHODS = {"email"}
@@ -213,8 +212,25 @@ HEADLESS_FRONTEND_URLS = {
 
 MFA_TOTP_ISSUER = "Questlog"
 
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+SMTP_HOST = env.str("SMTP_HOST", default="")
 
+if SMTP_HOST:
+    MAILERS = {
+        "default": {
+            "BACKEND": "django.core.mail.backends.smtp.EmailBackend",
+            "OPTIONS": {
+                "host": SMTP_HOST,
+                "port": env.int("SMTP_PORT", default=587),
+                "use_tls": env.bool("SMTP_USE_TLS", default=True),
+                "username": env.str("SMTP_USER", default=""),
+                "password": env.str("SMTP_PASSWORD", default=""),
+            },
+        },
+    }
+else:
+    MAILERS = {"default": {"BACKEND": "django.core.mail.backends.console.EmailBackend"}}
+
+DEFAULT_FROM_EMAIL = env.str("DEFAULT_FROM_EMAIL", default="QuestLog <noreply@localhost>")
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
 
@@ -235,12 +251,8 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # Established default authentication and permission classes if one is not specified
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        "rest_framework.authentication.SessionAuthentication",
-    ),
-    'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.IsAuthenticated',
-    ),
+    "DEFAULT_AUTHENTICATION_CLASSES": ("rest_framework.authentication.SessionAuthentication",),
+    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
 }
 
 # Prevents browsers from MIME-sniffing a response away from the declared content-type
@@ -251,6 +263,7 @@ X_FRAME_OPTIONS = "DENY"
 
 # Forces HTTPS
 SECURE_SSL_REDIRECT = env("SECURE_SSL_REDIRECT", False)
+SECURE_REDIRECT_EXEMPT = [r"^health/$"]
 SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True

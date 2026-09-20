@@ -56,7 +56,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"*/migrations/*.py" = ["RUF012"]
+"*/migrations/*.py" = ["RUF012", "E501"]
 "**/tests/*.py" = ["S101"]
 "**/views.py" = ["RUF012"]
 
@@ -85,8 +85,11 @@ django_settings_module = "config.settings"
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings"
 python_files = ["test_*.py", "*_test.py", "tests.py", "*_tests.py", "test_*.py"]
-testpaths = ["catalog", "profiles", "tracking", "core"]
+testpaths = ["catalog", "profiles", "tracking", "core", "users"]
 addopts = "--reuse-db --nomigrations"
+filterwarnings = [
+    "ignore:No directory at:UserWarning",
+]
 
 [tool.coverage.run]
 source = ["."]
