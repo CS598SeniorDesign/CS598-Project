@@ -22,7 +22,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 env = environ.Env(
     DEBUG=(bool, False),
     SECRET_KEY=(str, ""),
-    JWT_SECRET_KEY=(str, ""),
     ALLOWED_HOSTS=(list, ["localhost"]),
     CORS_ALLOWED_ORIGINS=(list, ["http://localhost:3000"]),
     CSRF_TRUSTED_ORIGINS=(list, ["http://localhost:3000"]),
@@ -52,6 +51,7 @@ BGG_API_TOKEN = env.str("BGG_API_TOKEN", default="")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env.bool("DEBUG", default=False)
+ADMIN_ENABLED = env.bool("ADMIN_ENABLED", default=DEBUG)
 
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS")
 
@@ -68,21 +68,18 @@ INSTALLED_APPS = [
     "django_migration_linter",
     'django.contrib.sites',
     'rest_framework',
-    'rest_framework.authtoken',
-    'corsheaders',
-    'rest_framework_simplejwt.token_blacklist',
     # django-allauth (Authentication extension and MFA)
     'allauth',
+    'allauth.headless',
     'allauth.account',
     'allauth.socialaccount',
     'allauth.mfa',
-    'dj_rest_auth',
-    'dj_rest_auth.registration',
     # Apps/Models
     "profiles",
     "catalog",
     "core",
     "tracking",
+    "users",
 ]
 
 SITE_ID = 1
@@ -90,27 +87,20 @@ SITE_ID = 1
 AUTH_USER_MODEL = 'users.User'
 
 MIDDLEWARE = [
-    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "csp.middleware.CSPMiddleware",
-    "whitenoise.middleware.WhiteNoiseMiddleware",
     'allauth.account.middleware.AccountMiddleware',
 ]
 
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+STORAGES = {"staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"}}
 
 ROOT_URLCONF = "config.urls"
-
-
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-
-ROOT_URLCONF = 'config.urls'
 
 TEMPLATES = [
     {
@@ -156,7 +146,7 @@ CACHES = {
     }
 }
 
-SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+SESSION_ENGINE = "django.contrib.sessions.backends.cached_db"
 SESSION_CACHE_ALIAS = "sessions"
 CACHES["sessions"] = {
     "BACKEND": "django_redis.cache.RedisCache",
@@ -204,32 +194,26 @@ AUTHENTICATION_BACKENDS = [
 # django allauth settings
 
 # Base auth settings
-ACCOUNT_AUTHENTICATION_METHOD = 'email'
-ACCOUNT_USERNAME_REQUIRED = False
-ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
-ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
 ACCOUNT_USER_MODEL_USERNAME_FIELD = None
 ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 3
+ACCOUNT_LOGIN_METHODS = {"email"}
+ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*"]
 
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+HEADLESS_ONLY = True
+HEADLESS_CLIENTS = ("browser",)  # drops the app/token endpoints
+FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:3000")
+HEADLESS_FRONTEND_URLS = {
+    "account_confirm_email": f"{FRONTEND_URL}/account/verify-email/{{key}}",
+    "account_reset_password": f"{FRONTEND_URL}/account/password/reset",
+    "account_reset_password_from_key": f"{FRONTEND_URL}/account/password/reset/key/{{key}}",
+    "account_signup": f"{FRONTEND_URL}/account/signup",
+}
 
-# MFA
-MFA_ENABLED = True
-MFA_SUPPORTED_TYPES = ['totp']
 MFA_TOTP_ISSUER = "Questlog"
 
-# Auth JWT
-REST_USE_JWT = True
-JWT_AUTH_COOKIE = 'questlog-auth'
-JWT_AUTH_REFRESH_COOKIE = 'questlog-refresh'
-
-# dj-rest-auth
-REST_AUTH = {
-    'USE_JWT': True,
-    'JWT_AUTH_HTTPONLY': True,
-}
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
@@ -252,36 +236,15 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 # Established default authentication and permission classes if one is not specified
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'dj_rest_auth.jwt_auth.JWTCookieAuthentication',
-        # 'rest_framework_simplejwt.authentication.JWTAuthentication',
+        "rest_framework.authentication.SessionAuthentication",
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
 }
 
-# Established JWT settings
-
-SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=10),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
-    "ROTATE_REFRESH_TOKENS": True,
-    "BLACKLIST_AFTER_ROTATION": True,
-    "UPDATE_LAST_LOGIN": True,
-    "ALGORITHM": "HS256",
-    "SIGNING_KEY": env("JWT_SECRET_KEY"),
-    "AUTH_HEADER_TYPES": ("Bearer",),
-}
-
-# Whitelists addresses
-CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS")
-CORS_ALLOW_CREDENTIALS = True
-
 # Prevents browsers from MIME-sniffing a response away from the declared content-type
 SECURE_CONTENT_TYPE_NOSNIFF = True
-
-# For browser's built-in XSS filter
-SECURE_BROWSER_XSS_FILTER = True
 
 # Prevents site from being loaded in an iframe
 X_FRAME_OPTIONS = "DENY"
@@ -294,21 +257,15 @@ SECURE_HSTS_PRELOAD = True
 
 # Ensures cookies can't be read by JS
 SESSION_COOKIE_SECURE = not DEBUG
+SESSION_COOKIE_AGE = 60 * 60 * 24 * 14
 SESSION_COOKIE_HTTPONLY = True
-SESSION_COOKIE_SAMESITE = "None"
+SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SECURE = not DEBUG
-CSRF_COOKIE_HTTPONLY = True
-CSRF_COOKIE_SAMESITE = 'None'
+CSRF_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_AGE = 31449600
 CSRF_COOKIE_NAME = "csrf_token"
 
-CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS")
+CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
 
-# Only allow resources from own backend and frontend
-CSP_DEFAULT_SRC = ("'self'",)
-CSP_SCRIPT_SRC = ("'self'",)
-CSP_STYLE_SRC = ("'self'", "'unsafe-inline'")
-CSP_IMG_SRC = ("'self'", "data:", "https:")
-CSP_FONT_SRC = ("'self'",)
-CSP_CONNECT_SRC = ("'self'", env("BACKEND_URL"))
-CSP_FRAME_ANCESTORS = ("'none'",)
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

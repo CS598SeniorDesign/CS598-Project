@@ -1,6 +1,7 @@
 import random
 
-from django.contrib.auth.models import User
+from allauth.account.models import EmailAddress
+from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 from faker import Faker
 
@@ -8,7 +9,7 @@ from catalog.models import BoardGame
 from profiles.models import Profile
 from tracking.models import LibraryItem, Rating
 
-
+User = get_user_model()
 class Command(BaseCommand):
     """
     Populate the database with fake data.
@@ -48,9 +49,11 @@ class Command(BaseCommand):
 
         self.stdout.write("Seeding Users, Profiles, and Library Items...")
         for _ in range(10):
+            seed_email=fake.unique.email()
             user = User.objects.create_user(
-                username=fake.unique.user_name(), email=fake.unique.email(), password="password123"
+                email=seed_email, password="password123"
             )
+            EmailAddress.objects.create(user=user, email=seed_email, verified=True, primary=True)
 
             Profile.objects.create(
                 user=user,

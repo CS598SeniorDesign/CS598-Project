@@ -8,12 +8,12 @@ dependencies = [
     "defusedxml>=0.7.1",
     "django[argon2]>=4.2",
     "django-cors-headers>=4.9.0",
-    "django-csp>=4.0",
     "django-environ>=0.14.0",
     "django-redis>=7.0.0",
     "djangorestframework>=3.18.0",
-    "djangorestframework-simplejwt>=5.5.1",
     "requests>=2.34.2",
+    "django-allauth[headless]>=65.19.4",
+    "fido2>=2.2.1",
 ]
 
 [dependency-groups]
