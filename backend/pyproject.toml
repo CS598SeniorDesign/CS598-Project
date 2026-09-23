@@ -29,6 +29,8 @@ dev = [
     "psycopg2-binary>=2.9.12",
     "whitenoise>=6.12.0",
     "django-migration-linter>=6.0.0",
+    "complexipy>=8.0.1",
+    "pip-audit>=2.10.1",
 ]
 [project.optional-dependencies]
 prod = [
@@ -50,10 +52,14 @@ select = [
     "DJ",
     "C4",
     "RUF",
+    "C901",
 ]
 ignore = [
     "DJ001",
 ]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
 
 [tool.ruff.lint.per-file-ignores]
 "*/migrations/*.py" = ["RUF012"]

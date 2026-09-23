@@ -164,7 +164,7 @@ uv run mypy .
 
 | Workflow | Trigger | Does |
 | --- | --- | --- |
-| `ci.yml` | Every PR | Lint (Ruff/ESLint), type check (mypy/tsc), migration lint, pytest w/ coverage gate, Docker smoke test, TruffleHog secret scan, `uv audit` / `npm audit`, dependency-review CVE gate |
+| `ci.yml` | Every PR | Lint (Ruff/ESLint), type check (mypy/tsc), migration lint, pytest w/ coverage gate, Docker smoke test, TruffleHog secret scan, `pip-audit` / `npm audit`, dependency-review CVE gate |
 
 If a PR fails the dependency-review step, it's usually a newly introduced CVE — check the CI log for the specific advisory before overriding anything.
 

@@ -86,6 +86,11 @@ jobs:
           set -o pipefail
           uv run ruff check . --exclude 'migrations' 2>&1 | tee ruff-output.txt
 
+      - name: Enforce backend complexity caps
+        run: |
+          uv run complexipy . --max-complexity-allowed 10 --exclude migrations --exclude tests
+          uv run ruff check . --select C901 --exclude 'migrations'
+
       - name: Check Ruff formatting
         run: uv run ruff format --check . --exclude 'migrations'
 
@@ -382,6 +387,42 @@ jobs:
           fail-on-severity: moderate
           comment-summary-in-pr: always
 
+  dependency-audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+          cache-dependency-glob: 'backend/uv.lock'
+          python-version: '3.12'
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: uv sync --group dev --locked
+
+      - name: Audit Python dependencies
+        working-directory: backend
+        run: uv run pip-audit
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci --prefix frontend
+
+      - name: Audit JavaScript dependencies
+        run: npm audit --audit-level=moderate --prefix frontend
+
   qa-validation:
     name: QA validation
     if: github.ref == 'refs/heads/testing' || github.ref == 'refs/heads/qa'
@@ -453,6 +494,7 @@ jobs:
     needs:
       - backend-lint
       - frontend-lint
+      - dependency-audit
       - secret-scan
       - backend-tests
       - frontend-tests
@@ -469,6 +511,7 @@ jobs:
           echo "- Backend lint: ${{ needs.backend-lint.result }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- Frontend lint: ${{ needs.frontend-lint.result }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- Secret scan: ${{ needs.secret-scan.result }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Dependency audit: ${{ needs.dependency-audit.result || 'skipped' }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- Backend tests: ${{ needs.backend-tests.result }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- Frontend tests: ${{ needs.frontend-tests.result }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- QA validation: ${{ needs.qa-validation.result || 'skipped' }}" >> "$GITHUB_STEP_SUMMARY"

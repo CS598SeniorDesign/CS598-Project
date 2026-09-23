@@ -325,9 +325,15 @@ The following commands can be run to lint, format, and run tests in the backend
 ```bash
 uv run ruff check          # Linting
 uv run ruff format --check # Formatting
+uv run complexipy . --max-complexity-allowed 10 --exclude migrations --exclude tests
+uv run ruff check . --select C901 --exclude migrations
+uv run pip-audit         # Known Python dependency vulnerabilities
 uv run mypy                # Type checking
 uv run pytest              # Unit testing
 ```
+The backend enforces a maximum cyclomatic complexity of 10 with Ruff and a maximum cognitive complexity of 10 with Complexipy. These same caps run in the `backend-lint` CI job.
+
+Pull requests run `pip-audit` against the locked backend environment and fail when known dependency vulnerabilities are found.
 Minimum coverage threshold is enforced at 60% (`--cov-fail-under=60` via `[tool.coverage.report]` in `pyproject.toml`).
 
 The same commands can be run inside the Docker `dev` container via `docker compose exec backend uv run <command>` — see the [root README](../README.md#running-tests--linting).
