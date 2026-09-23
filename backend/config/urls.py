@@ -15,13 +15,18 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 
+from django.conf import settings
 from django.contrib import admin
-from django.urls import path
+from django.urls import include, path
 
 from core.views import HealthCheckView, ReadinessCheckView
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
+    path("accounts/", include("allauth.urls")),
+    path("_allauth/", include("allauth.headless.urls")),
     path("health/", HealthCheckView.as_view(), name="health-check"),
     path("ready/", ReadinessCheckView.as_view(), name="readiness-check"),
 ]
+
+if settings.ADMIN_ENABLED:
+    urlpatterns += [path("admin/", admin.site.urls)]
