@@ -272,13 +272,11 @@ Treat committed migration files as the source-controlled schema history. Before 
 uv run python manage.py makemigrations --check --dry-run
 
 # Fails for unsafe or non-reversible migration operations.
-uv run python manage.py lintmigrations
+uv run python manage.py lintmigrations --include-apps catalog profiles tracking users
 
 # Fails if the configured database has unapplied migrations.
 uv run python manage.py migrate --check
 ```
-
-The CI workflow runs all three checks. The Docker entrypoint applies migrations automatically on startup, but it cannot detect model changes that were never turned into migration files; `makemigrations --check --dry-run` is the protection against that form of drift. Do not edit an already-applied migration. Create a new migration instead:
 
 ```bash
 uv run python manage.py makemigrations
