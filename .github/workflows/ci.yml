@@ -93,11 +93,17 @@ jobs:
         run: uv run mypy
         continue-on-error: true # switch to false when backend is fully typed
 
-      # - name: Check for unreachable / non-reversible migrations
-      #   run: uv run python manage.py lintmigrations
+      - name: Check for model and migration drift
+        run: uv run python manage.py makemigrations --check --dry-run
+
+      - name: Check for unreachable / non-reversible migrations
+        run: uv run python manage.py lintmigrations
 
       - name: Run migrations
         run: uv run python manage.py migrate --noinput
+
+      - name: Verify no unapplied migrations remain
+        run: uv run python manage.py migrate --check
 
       - name: Upload backend lint log
         if: always()
