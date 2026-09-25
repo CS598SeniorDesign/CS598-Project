@@ -4,22 +4,14 @@ import Link from "next/link";
 export default function Navbar() {
   return (
     <nav className="w-full flex justify-between items-center px-10 mt-32">
-
       {/* Logo */}
-      <Link
-        href="/"
-        className="text-4xl font-bold text-white tracking-wide"
-      >
+      <Link href="/" className="text-4xl font-bold text-white tracking-wide">
         QuestLog
       </Link>
 
       {/* Right side links */}
       <div className="flex items-center text-xl">
-
-        <Link
-          href="/login"
-          className="hover:text-gray-400 transition"
-        >
+        <Link href="/login" className="hover:text-gray-400 transition">
           Login
         </Link>
 
@@ -29,10 +21,7 @@ export default function Navbar() {
         >
           Sign Up
         </Link>
-
-
       </div>
-
     </nav>
-  )
+  );
 }
