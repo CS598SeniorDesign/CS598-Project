@@ -1,0 +1,26 @@
+meta {
+  name: Get Game
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/games/{{bggGameId}}/
+  body: none
+  auth: none
+}
+
+docs {
+  Fetches a game by BoardGameGeek ID. If it isn't stored locally, the backend fetches it from BGG and
+  caches it. Requires a valid `BGG_API_TOKEN` in the root `.env`; otherwise a skeleton record named
+  "Unknown" is saved instead.
+}
+
+tests {
+  test("returns the requested game with metadata links", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().bgg_id).to.equal(Number(bru.getEnvVar("bggGameId")));
+    expect(res.getBody()).to.have.property("categories");
+    expect(res.getBody()).to.have.property("mechanics");
+  });
+}
