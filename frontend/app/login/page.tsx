@@ -1,22 +1,105 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
+
+type AuthResponse = {
+  status?: number;
+  meta?: {
+    is_authenticated?: boolean;
+  };
+  data?: {
+    flows?: Array<{ id: string }>;
+  };
+};
+
+function getCookie(name: string): string | null {
+  const cookie = document.cookie
+    .split("; ")
+    .find((item) => item.startsWith(`${name}=`));
+
+  return cookie ? decodeURIComponent(cookie.substring(name.length + 1)) : null;
+}
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setError("");
+    setIsLoading(true);
 
-    //TODO: Replace with real authentication logic
-    // temporary auth placeholder
-    if (email && password) {
-      router.push("/avatar-selection");
-    } else {
-      alert("Please enter email and passowrd");
+    try {
+      //browser session and getting the CSRF cookie
+      const sessionResponse = await fetch("/_allauth/browser/v1/auth/session", {
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+
+      if (!sessionResponse.ok && sessionResponse.status !== 401) {
+        throw new Error("Unable to connect to the server. Please try again.");
+      }
+
+      const csrfToken = getCookie("csrf_token");
+
+      if (!csrfToken) {
+        throw new Error(
+          "Unable to initialize the login security. Please refresh and try again!",
+        );
+      }
+
+      const response = await fetch("/_allauth/browser/v1/auth/login", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrfToken,
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+        }),
+      });
+
+      const result: AuthResponse = await response.json();
+
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 400) {
+          setError(
+            "Unable to sign in. Check your email and passowrd, or verify your account.",
+          );
+        } else if (response.status === 403) {
+          setError(
+            "Login was blocked by a security check. Please refresh and try again.",
+          );
+        } else {
+          setError("Something went wrong. Please try again.");
+        }
+        return;
+      }
+
+      if (result.meta?.is_authenticated === true) {
+        router.push("/avatar-selection");
+        return;
+      }
+
+      setError(
+        "Your account requires another verification steps before you can proceed.",
+      );
+    } catch (err) {
+      console.error("QuestLog login error:", err);
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Could not complete login. Please check your connection and try again.",
+      );
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -38,6 +121,7 @@ export default function LoginPage() {
             onChange={(event) => setEmail(event.target.value)}
             className="p-3 rounded bg-gray-800 border border-gray-700"
             required
+            disabled={isLoading}
           />
 
           <input
@@ -48,13 +132,21 @@ export default function LoginPage() {
             onChange={(event) => setPassword(event.target.value)}
             className="p-3 rounded bg-gray-800 border border-gray-700"
             required
+            disabled={isLoading}
           />
+
+          {error && (
+            <p role="alert" className="text-sm text-red-400">
+              {error}
+            </p>
+          )}
 
           <button
             type="submit"
+            disabled={isLoading}
             className="bg-primary py-2 rounded-lg hover:opacity-90"
           >
-            Sign In
+            {isLoading ? "Signing In..." : "Sign In"}
           </button>
         </form>
 
