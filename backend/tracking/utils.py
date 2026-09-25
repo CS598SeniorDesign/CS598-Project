@@ -54,7 +54,7 @@ def fetch_bgg_plays(user: User, bgg_username: str) -> tuple[bool, str]:
         logger.warning("BGG API fetch failed for user %s: %s", bgg_username, exception)
         return False, "Connection to BGG failed. Please try again later."
     except (AttributeError, OSError, TypeError, ValueError) as exception:
-        logger.error("Unexpected error during BGG sync for %s: %s", bgg_username, exception)
+        logger.exception("Unexpected error during BGG sync for %s: %s", bgg_username, exception)
         return False, "An internal error occurred during synchronization."
 
 
