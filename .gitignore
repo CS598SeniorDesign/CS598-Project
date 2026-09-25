@@ -86,8 +86,10 @@ next-env.d.ts
 *.pid
 
 # System
-.vscode/
+.vscode/*
+!.vscode/
 !.vscode/extensions.json
+!.vscode/settings.json
 .idea/
 *.swp
 *.swo
@@ -153,3 +155,4 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+**/.vscode/

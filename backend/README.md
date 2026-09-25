@@ -109,6 +109,15 @@ pip install uv # Run if uv is not already installed. Swap pip install for your s
 uv sync
 ```
 
+When the repository is opened in VS Code, select the interpreter at `backend/.venv/bin/python` if it is not selected automatically. The repository workspace settings point Pylance at this interpreter and add `backend/` to its import search path. This must match the environment where `uv sync` installs dependencies.
+
+To verify the environment and imports:
+
+```bash
+uv run python -c "import django; print(django.get_version())"
+uv run python manage.py check
+```
+
 Establish the [database connection](#environment-variables) and continue:
 
 ```bash
@@ -255,6 +264,24 @@ uv run python manage.py runserver 8001 # This will run the django server on loca
 *(Note: Docker automatically runs the server using the compose file).*
 
 ### Database Migrations & Rollbacks
+
+Treat committed migration files as the source-controlled schema history. Before opening a pull request, run the following checks from `backend/`:
+
+```bash
+# Fails if model changes would generate an uncommitted migration.
+uv run python manage.py makemigrations --check --dry-run
+
+# Fails for unsafe or non-reversible migration operations.
+uv run python manage.py lintmigrations --include-apps catalog profiles tracking users
+
+# Fails if the configured database has unapplied migrations.
+uv run python manage.py migrate --check
+```
+
+```bash
+uv run python manage.py makemigrations
+uv run python manage.py showmigrations --plan
+```
 
 To test down-migrations (rollbacks) for a specific app, target the `zero` migration state to clear it.
 
