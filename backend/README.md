@@ -22,9 +22,9 @@ This document provides guidance on running the backend through Docker and locall
     - [Updating the `uv.lock` File](#updating-the-uvlock-file)
   - [Environment Variables](#environment-variables)
   - [Running the Backend](#running-the-backend)
-    - [Database Migrations & Rollbacks](#database-migrations--rollbacks)
+    - [Database Migrations \& Rollbacks](#database-migrations--rollbacks)
     - [Populating Synthetic Test Data](#populating-synthetic-test-data)
-    - [Admin Access & Superuser Creation](#admin-access--superuser-creation)
+    - [Admin Access \& Superuser Creation](#admin-access--superuser-creation)
   - [Creating a new app](#creating-a-new-app)
   - [Running tests](#running-tests)
   - [Health Endpoints](#health-endpoints)
@@ -354,13 +354,13 @@ uv run ruff check          # Linting
 uv run ruff format --check # Formatting
 uv run complexipy . --max-complexity-allowed 10 --exclude migrations --exclude tests
 uv run ruff check . --select C901 --exclude migrations
-uv run pip-audit         # Known Python dependency vulnerabilities
+uv audit         # Known Python dependency vulnerabilities
 uv run mypy                # Type checking
 uv run pytest              # Unit testing
 ```
 The backend enforces a maximum cyclomatic complexity of 10 with Ruff and a maximum cognitive complexity of 10 with Complexipy. These same caps run in the `backend-lint` CI job.
 
-Pull requests run `pip-audit` against the locked backend environment and fail when known dependency vulnerabilities are found.
+Pull requests run `uv audit` against the locked backend environment and fail when known dependency vulnerabilities are found.
 Minimum coverage threshold is enforced at 60% (`--cov-fail-under=60` via `[tool.coverage.report]` in `pyproject.toml`).
 
 The same commands can be run inside the Docker `dev` container via `docker compose exec backend uv run <command>` — see the [root README](../README.md#running-tests--linting).
