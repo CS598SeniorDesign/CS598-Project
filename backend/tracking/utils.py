@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING
 
 import requests
 from defusedxml import ElementTree
-from django.contrib.auth.models import User
 from django.db import transaction
 
 from core.constants import REQUEST_HEADERS, VALID_STATUS_CODES
@@ -13,6 +12,8 @@ from tracking.models import PlaySession
 
 if TYPE_CHECKING:
     from xml.etree.ElementTree import Element
+
+    from users.models import User
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +26,7 @@ def fetch_bgg_plays(user: User, bgg_username: str) -> tuple[bool, str]:
     count reported by the API.
 
     :param user: The authenticated Django user requesting the sync.
-    :type user: django.contrib.auth.models.User
+    :type user: users.models.User
     :param bgg_username: The target BoardGameGeek username to fetch plays for.
     :type bgg_username: str
     :returns: A tuple containing a success flag and a descriptive status message.
@@ -65,7 +66,7 @@ def _sync_plays_page(user: User, bgg_username: str, page: int) -> tuple[int, int
     The page size is determined by the BGG API (defaulting to 100 records).
 
     :param user: The authenticated Django user requesting the sync.
-    :type user: django.contrib.auth.models.User
+    :type user: users.models.User
     :param bgg_username: The BoardGameGeek username belonging to the syncing user.
     :type bgg_username: str
     :param page: The specific page number to retrieve.

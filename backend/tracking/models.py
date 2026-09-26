@@ -14,7 +14,7 @@ from profiles.models import GameGroup
 if TYPE_CHECKING:
     from xml.etree.ElementTree import Element
 
-    from django.contrib.auth.models import User
+    from users.models import User
 
 
 class LibraryItem(models.Model):
@@ -99,7 +99,7 @@ class PlaySession(models.Model):
         :param xml_item: The XML element representing a specific play session.
         :type xml_item: xml.etree.ElementTree.Element
         :param user: The authenticated user who is syncing their plays.
-        :type user: django.contrib.auth.models.User
+        :type user: users.models.User
         :param bgg_username: The BoardGameGeek username belonging to the syncing user.
         :type bgg_username: str
         :returns: The created or updated PlaySession instance.
@@ -146,7 +146,7 @@ class PlaySession(models.Model):
         :param xml_item: The XML element containing the <players> block.
         :type xml_item: xml.etree.ElementTree.Element
         :param user: The authenticated user who is syncing their plays.
-        :type user: django.contrib.auth.models.User
+        :type user: users.models.User
         :param bgg_username: The BoardGameGeek username belonging to the syncing user.
         :type bgg_username: str
         :returns: None

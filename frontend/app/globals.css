@@ -1,7 +1,28 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+:root {
+  /* Core */
+  --background: #0f172a; /* Deep Slate */
+  --foreground: #f8fafc; /* Light Gray text */
 
-html {
-  scroll-behavior: smooth;
+  /* Brand */
+  --primary: #4f46e5; /* Muted Indigo */
+  --secondary: #10b981; /* Emerald */
+  --accent: #ffbf00; /* Warm Amber */
+  --destructive: #ef4444; /* Error Red */
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+a:visited {
+  color: inherit;
 }
