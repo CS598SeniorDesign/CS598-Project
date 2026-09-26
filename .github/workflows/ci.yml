@@ -414,7 +414,7 @@ jobs:
 
       - name: Audit Python dependencies
         working-directory: backend
-        run: uv run pip-audit
+        run: uv audit
 
       - name: Set up Node
         uses: actions/setup-node@v4
