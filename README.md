@@ -164,9 +164,20 @@ Run backend checks inside the running container:
 ```bash
 docker compose exec backend uv run ruff check
 docker compose exec backend uv run ruff format --check
+docker compose exec backend uv run complexipy . --max-complexity-allowed 10 --exclude migrations --exclude tests
+docker compose exec backend uv run ruff check . --select C901 --exclude migrations
+docker compose exec backend uv audit
 docker compose exec backend uv run mypy
 docker compose exec backend uv run pytest
 ```
+
+Static analysis enforces a maximum cyclomatic complexity of 10 and a maximum cognitive complexity of 10.
+
+Backend limits are checked with Ruff and Complexipy.
+
+Frontend limits are checked by ESLint and SonarJS during the `backend-lint` and `frontend-lint` CI jobs.
+
+Pull requests also run `uv audit` against the locked Python environment and `npm audit --audit-level=moderate` against the frontend lockfile. Either audit fails the `dependency-audit` CI job when known moderate, high, or critical vulnerabilities are found. The existing GitHub Dependency Review job adds a second changed-dependency CVE gate.
 
 See [`backend/README.md`](backend/README.md) for the full backend command reference, including running these natively (outside Docker) via `uv`.
 
