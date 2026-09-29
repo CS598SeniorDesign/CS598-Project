@@ -21,6 +21,18 @@ function getCookie(name: string): string | null {
   return cookie ? decodeURIComponent(cookie.substring(name.length + 1)) : null;
 }
 
+function getLoginErrorMessage(status: number): string {
+  if (status === 401 || status === 400) {
+    return "Unable to sign in. Check your email and password, or verify your account.";
+  }
+
+  if (status === 403) {
+    return "Login was blocked by a security check. Please refresh and try again.";
+  }
+
+  return "Something went wrong. Please try again.";
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -68,17 +80,7 @@ export default function LoginPage() {
       const result: AuthResponse = await response.json();
 
       if (!response.ok) {
-        if (response.status === 401 || response.status === 400) {
-          setError(
-            "Unable to sign in. Check your email and passowrd, or verify your account.",
-          );
-        } else if (response.status === 403) {
-          setError(
-            "Login was blocked by a security check. Please refresh and try again.",
-          );
-        } else {
-          setError("Something went wrong. Please try again.");
-        }
+        setError(getLoginErrorMessage(response.status));
         return;
       }
 
