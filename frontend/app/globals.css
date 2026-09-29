@@ -1,6 +1,10 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+:root {
+  /* Core */
+  --background: #0f172a; /* Deep Slate */
+  --foreground: #f8fafc; /* Light Gray text */
 
 :root {
   --background: #0f172a;
