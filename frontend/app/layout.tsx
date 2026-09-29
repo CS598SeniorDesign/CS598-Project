@@ -1,4 +1,5 @@
 import "./globals.css";
+import Navbar from "@/components/layout/Navbar";
 
 export default function RootLayout({
   children,
@@ -7,8 +8,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className="min-h-screen bg-background text-white">
+        <Navbar />
+        <main>{children}</main>
+      </body>
     </html>
   );
 }
-<html data-scroll-behavior="smooth"></html>;

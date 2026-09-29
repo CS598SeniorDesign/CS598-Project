@@ -22,9 +22,9 @@ This document provides guidance on running the backend through Docker and locall
     - [Updating the `uv.lock` File](#updating-the-uvlock-file)
   - [Environment Variables](#environment-variables)
   - [Running the Backend](#running-the-backend)
-    - [Database Migrations & Rollbacks](#database-migrations--rollbacks)
+    - [Database Migrations \& Rollbacks](#database-migrations--rollbacks)
     - [Populating Synthetic Test Data](#populating-synthetic-test-data)
-    - [Admin Access & Superuser Creation](#admin-access--superuser-creation)
+    - [Admin Access \& Superuser Creation](#admin-access--superuser-creation)
   - [Creating a new app](#creating-a-new-app)
   - [Running tests](#running-tests)
   - [Health Endpoints](#health-endpoints)
@@ -107,6 +107,15 @@ See: [Running the Backend](#running-the-backend)
 ```bash
 pip install uv # Run if uv is not already installed. Swap pip install for your systems package management install command
 uv sync
+```
+
+When the repository is opened in VS Code, select the interpreter at `backend/.venv/bin/python` if it is not selected automatically. The repository workspace settings point Pylance at this interpreter and add `backend/` to its import search path. This must match the environment where `uv sync` installs dependencies.
+
+To verify the environment and imports:
+
+```bash
+uv run python -c "import django; print(django.get_version())"
+uv run python manage.py check
 ```
 
 Establish the [database connection](#environment-variables) and continue:
@@ -256,6 +265,24 @@ uv run python manage.py runserver 8001 # This will run the django server on loca
 
 ### Database Migrations & Rollbacks
 
+Treat committed migration files as the source-controlled schema history. Before opening a pull request, run the following checks from `backend/`:
+
+```bash
+# Fails if model changes would generate an uncommitted migration.
+uv run python manage.py makemigrations --check --dry-run
+
+# Fails for unsafe or non-reversible migration operations.
+uv run python manage.py lintmigrations --include-apps catalog profiles tracking users
+
+# Fails if the configured database has unapplied migrations.
+uv run python manage.py migrate --check
+```
+
+```bash
+uv run python manage.py makemigrations
+uv run python manage.py showmigrations --plan
+```
+
 To test down-migrations (rollbacks) for a specific app, target the `zero` migration state to clear it.
 
 **Local (uv):**
@@ -325,9 +352,15 @@ The following commands can be run to lint, format, and run tests in the backend
 ```bash
 uv run ruff check          # Linting
 uv run ruff format --check # Formatting
+uv run complexipy . --max-complexity-allowed 10 --exclude migrations --exclude tests
+uv run ruff check . --select C901 --exclude migrations
+uv audit         # Known Python dependency vulnerabilities
 uv run mypy                # Type checking
 uv run pytest              # Unit testing
 ```
+The backend enforces a maximum cyclomatic complexity of 10 with Ruff and a maximum cognitive complexity of 10 with Complexipy. These same caps run in the `backend-lint` CI job.
+
+Pull requests run `uv audit` against the locked backend environment and fail when known dependency vulnerabilities are found.
 Minimum coverage threshold is enforced at 60% (`--cov-fail-under=60` via `[tool.coverage.report]` in `pyproject.toml`).
 
 The same commands can be run inside the Docker `dev` container via `docker compose exec backend uv run <command>` — see the [root README](../README.md#running-tests--linting).
