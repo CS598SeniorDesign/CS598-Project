@@ -8,7 +8,7 @@ type AuthResponse = {
     is_authenticated?: boolean;
   };
   data?: {
-    flows?: Array<{ id: string, is_pending?: boolean }>;
+    flows?: Array<{ id: string; is_pending?: boolean }>;
   };
   errors?: Array<{
     message?: string;
@@ -100,7 +100,7 @@ export default function SignupPage() {
 
       if (verificationPending) {
         console.log("Privacy setting:", privacy);
-      setSignUpComplete(true);
+        setSignUpComplete(true);
       }
 
       if (!response.ok) {

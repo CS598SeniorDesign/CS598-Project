@@ -4,11 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 type VerificationState =
-  | "loading"
-  | "ready"
-  | "verifying"
-  | "success"
-  | "error";
+  "loading" | "ready" | "verifying" | "success" | "error";
 
 function getCookie(name: string): string | null {
   const cookie = document.cookie
@@ -37,17 +33,14 @@ export default function VerifyEmailPage() {
 
     const checkVerificationKey = async () => {
       try {
-        const response = await fetch(
-          "/_allauth/browser/v1/auth/email/verify",
-          {
-            method: "GET",
-            credentials: "same-origin",
-            cache: "no-store",
-            headers: {
-              "X-Email-Verification-Key": verificationKey,
-            },
+        const response = await fetch("/_allauth/browser/v1/auth/email/verify", {
+          method: "GET",
+          credentials: "same-origin",
+          cache: "no-store",
+          headers: {
+            "X-Email-Verification-Key": verificationKey,
           },
-        );
+        });
 
         if (!response.ok) {
           setError(
@@ -61,9 +54,7 @@ export default function VerifyEmailPage() {
       } catch (err) {
         console.error("QuestLog email verification check error:", err);
 
-        setError(
-          "Unable to check your verification link. Please try again.",
-        );
+        setError("Unable to check your verification link. Please try again.");
         setStatus("error");
       }
     };
@@ -84,21 +75,18 @@ export default function VerifyEmailPage() {
         );
       }
 
-      const response = await fetch(
-        "/_allauth/browser/v1/auth/email/verify",
-        {
-          method: "POST",
-          credentials: "same-origin",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRFToken": csrfToken,
-            "X-Email-Verification-Key": verificationKey,
-          },
-          body: JSON.stringify({
-            key: verificationKey,
-          }),
+      const response = await fetch("/_allauth/browser/v1/auth/email/verify", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrfToken,
+          "X-Email-Verification-Key": verificationKey,
         },
-      );
+        body: JSON.stringify({
+          key: verificationKey,
+        }),
+      });
 
       if (response.ok || response.status === 401) {
         setStatus("success");
@@ -133,9 +121,7 @@ export default function VerifyEmailPage() {
     return (
       <main className="flex min-h-screen items-center justify-center p-6">
         <div className="w-full max-w-md text-center">
-          <h1 className="mb-4 text-3xl font-bold">
-            Verification Failed
-          </h1>
+          <h1 className="mb-4 text-3xl font-bold">Verification Failed</h1>
 
           <p className="mb-6 text-red-600">{error}</p>
 
@@ -180,8 +166,8 @@ export default function VerifyEmailPage() {
         <h1 className="mb-4 text-3xl font-bold">Verify Your Email</h1>
 
         <p className="mb-6">
-          Click below to confirm your email address and continue setting up
-          your QuestLog account.
+          Click below to confirm your email address and continue setting up your
+          QuestLog account.
         </p>
 
         <button
