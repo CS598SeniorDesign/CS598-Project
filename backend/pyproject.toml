@@ -18,7 +18,6 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "mypy>=1.14.0",
     "django-stubs[compatible-mypy]>=5.1.0",
     "djangorestframework-stubs[compatible-mypy]>=3.15.0",
     "pytest>=9.1.1",
@@ -73,7 +72,7 @@ known-first-party = ["config", "catalog", "profiles", "tracking"]
 python_version = "3.12"
 files = ["."]
 plugins = ["mypy_django_plugin.main", "mypy_drf_plugin.main"]
-exclude = ["migrations/", "\\.venv/"]
+exclude = ["migrations/", "\\.venv/", ".venv/"]
 check_untyped_defs = true
 disallow_untyped_defs = false # TODO: Update later as typing is updated/fixed
 warn_unused_ignores = true
