@@ -12,8 +12,8 @@ dependencies = [
     "django-redis>=7.0.0",
     "djangorestframework>=3.18.0",
     "requests>=2.34.2",
-    "django-allauth[headless]>=65.19.4",
-    "fido2>=2.2.1"
+    "django-allauth[headless,headless-spec]>=65.19.4",
+    "fido2>=2.2.1",
 ]
 
 [dependency-groups]
@@ -29,7 +29,7 @@ dev = [
     "whitenoise>=6.12.0",
     "django-migration-linter>=6.0.0",
     "complexipy>=8.0.1",
-    "pip-audit>=2.10.1",
+    "pyotp>=2.10.0",
 ]
 [project.optional-dependencies]
 prod = [
