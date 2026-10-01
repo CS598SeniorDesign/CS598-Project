@@ -38,7 +38,7 @@ class IsOwnerOrModerator(BasePermission):
             # related-object hop).
             owner = getattr(access_object, "user", None)
             return owner is not None and owner == user
-        return owner_id == user.id  # type: ignore[union-attr]
+        return owner_id == user.id
 
 
 class IsModeratorOrAdmin(BasePermission):
@@ -56,7 +56,7 @@ class IsModeratorOrAdmin(BasePermission):
         :param view: The view handling the request. Unused, present for signature compatibility.
         :returns: True if the requester is authenticated and a moderator or admin.
         """
-        return bool(request.user and request.user.is_authenticated and request.user.is_moderator)  # type: ignore[union-attr]
+        return bool(request.user and request.user.is_authenticated and request.user.is_moderator)
 
 
 class IsAdminRole(BasePermission):
@@ -74,4 +74,4 @@ class IsAdminRole(BasePermission):
         :param view: The view handling the request. Unused, present for signature compatibility.
         :returns: True if the requester is authenticated and in the admin group.
         """
-        return bool(request.user and request.user.is_authenticated and request.user.is_admin_role)  # type: ignore[union-attr]
+        return bool(request.user and request.user.is_authenticated and request.user.is_admin_role)
