@@ -11,6 +11,9 @@ from tracking.models import LibraryItem, Rating
 
 User = get_user_model()
 
+DEMONSTRATION_USER_EMAIL = "demo@questlog.local"
+DEMONSTRATION_USER_PASSWORD = "password123"
+
 
 class Command(BaseCommand):
     """
@@ -78,5 +81,14 @@ class Command(BaseCommand):
                     replayability=round(random.uniform(1.0, 5.0), 1),
                     enjoyment=round(random.uniform(1.0, 5.0), 1),
                 )
+
+        self.stdout.write(f"Seeding demonstration login ({DEMONSTRATION_USER_EMAIL})...")
+        demonstration_user = User.objects.create_user(
+            email=DEMONSTRATION_USER_EMAIL, password=DEMONSTRATION_USER_PASSWORD
+        )
+        EmailAddress.objects.create(
+            user=demonstration_user, email=DEMONSTRATION_USER_EMAIL, verified=True, primary=True
+        )
+        Profile.objects.create(user=demonstration_user, display_name="Demo Player", privacy_level=Profile.PUBLIC)
 
         self.stdout.write(self.style.SUCCESS("Successfully seeded database with synthetic data!"))

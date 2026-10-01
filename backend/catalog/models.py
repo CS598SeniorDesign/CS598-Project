@@ -156,6 +156,9 @@ class BoardGame(models.Model):
             "minimum_players": get_attribute_value(xml_item, "minplayers"),
             "maximum_players": get_attribute_value(xml_item, "maxplayers"),
             "playing_time": get_attribute_value(xml_item, "playingtime"),
+            "minimum_playtime": get_attribute_value(xml_item, "minplaytime"),
+            "maximum_playtime": get_attribute_value(xml_item, "maxplaytime"),
+            "minimum_age": get_attribute_value(xml_item, "minage"),
             "thumbnail_url": xml_item.findtext("thumbnail"),
             "image_url": xml_item.findtext("image"),
             "average_rating": get_attribute_value(xml_item, "statistics/ratings/average"),
@@ -206,8 +209,8 @@ class BoardGame(models.Model):
                 if bgg_id is None or name is None:
                     continue
 
-                object: tuple[models.Model, bool] | Any = model_class.objects.get_or_create(
-                    bgg_id=bgg_id, defaults={"name": name}
-                )
+                # get_or_create returns an (instance, created) tuple; only the instance can be added to the M2M.
+                linked_attribute: Any
+                linked_attribute, _ = model_class.objects.get_or_create(bgg_id=bgg_id, defaults={"name": name})
 
-                getattr(instance, field_name).add(object)
+                getattr(instance, field_name).add(linked_attribute)
