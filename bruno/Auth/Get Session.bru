@@ -1,0 +1,23 @@
+meta {
+  name: Get Session
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/_allauth/browser/v1/auth/session
+  body: none
+  auth: none
+}
+
+docs {
+  Returns the current session (401 when logged out). Run this first: every allauth browser endpoint
+  sets the `csrf_token` cookie, which the collection script stores as `csrfToken` for later requests.
+}
+
+tests {
+  test("issues a CSRF token", function () {
+    expect([200, 401]).to.include(res.getStatus());
+    expect(bru.getVar("csrfToken")).to.be.a("string").and.not.be.empty;
+  });
+}
