@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('tracking', '0002_rebuild_play_session_tables'),
+        ("tracking", "0002_rebuild_play_session_tables"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='libraryitem',
-            name='house_rules',
-            field=models.TextField(blank=True, db_default='', default=''),
+            model_name="libraryitem",
+            name="house_rules",
+            field=models.TextField(blank=True, db_default="", default=""),
         ),
     ]
