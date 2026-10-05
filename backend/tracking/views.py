@@ -1,23 +1,20 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
-
 from django.db.models import QuerySet
 from rest_framework import status, viewsets
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from core.mixins import OwnedQuerysetMixin
+from core.permissions import IsOwnerOrModerator
 from tracking.models import LibraryItem, LibraryItemAlreadyExistsError
 from tracking.serializers import LibraryItemCreateSerializer, LibraryItemSerializer
-
-if TYPE_CHECKING:
-    from users.models import User
 
 BOOLEAN_QUERY_VALUES = {"true": True, "1": True, "false": False, "0": False}
 
 
-class LibraryItemViewSet(viewsets.ModelViewSet):
+class LibraryItemViewSet(OwnedQuerysetMixin, viewsets.ModelViewSet):
     """Manage the games in the requesting user's library and wishlist.
 
     list:
@@ -31,9 +28,15 @@ class LibraryItemViewSet(viewsets.ModelViewSet):
         Change `ownership` (e.g. move from wishlist to library), `is_played`, or `house_rules`.
     destroy:
         Remove the game from the library or wishlist. The entry is soft-deleted.
+
+    Libraries are private: anonymous requests are rejected, and every user (moderators and admins included) only sees
+    their own entries here. Entries are looked up by game, so letting moderators see every user's rows would make
+    `/library/{bgg_id}/` match one entry per user.
     """
 
-    permission_classes = [IsAuthenticated]
+    queryset = LibraryItem.objects.select_related("game").order_by("-added_at")
+    permission_classes = [IsAuthenticated, IsOwnerOrModerator]
+    moderators_see_all = False
     lookup_field = "game__bgg_id"
     lookup_url_kwarg = "bgg_id"
     lookup_value_regex = r"\d+"
@@ -44,8 +47,7 @@ class LibraryItemViewSet(viewsets.ModelViewSet):
         return LibraryItemSerializer
 
     def get_queryset(self):
-        user = cast("User", self.request.user)
-        queryset = LibraryItem.objects.filter(user=user).select_related("game").order_by("-added_at")
+        queryset = super().get_queryset()
         if self.action != "list":
             return queryset
 
