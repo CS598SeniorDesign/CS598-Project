@@ -268,40 +268,15 @@ jobs:
           path: backend/backend-test-output.txt
           if-no-files-found: warn
 
-      - name: Create Prototype 2 validation summary
-        if: always()
-        working-directory: backend
-        run: |
-          test_result=$(grep -Eo '[0-9]+ passed|[0-9]+ failed|[0-9]+ skipped|[0-9]+ error' backend-test-output.txt 2>/dev/null | paste -sd ', ' - || true)
-          coverage_result=$(grep -E 'TOTAL.*%' backend-test-output.txt 2>/dev/null | tail -n 1 || true)
-          if [ -z "$test_result" ]; then
-            test_result="Test result was not available; see backend-test-log."
-          fi
-          if [ -z "$coverage_result" ]; then
-            coverage_result="Coverage result was not available; see backend-coverage."
-          fi
-          {
-            echo "## Prototype 2: Automated Integration Testing & Validation"
-            echo ""
-            echo "- **Test results:** $test_result"
-            echo "- **Coverage:** $coverage_result"
-            echo "- **Required minimum:** 60%"
-            echo "- **Backend test job:** ${{ job.status }}"
-            echo "- **Artifacts:** \`backend-test-log\` and \`backend-coverage\`"
-          } > prototype-2-test-summary.md
-          cat prototype-2-test-summary.md >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Upload Prototype 2 validation summary
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: prototype-2-test-summary
-          path: backend/prototype-2-test-summary.md
-          if-no-files-found: warn
-
   prototype-2-issue-report:
-    name: Document Prototype 2 validation
-    needs: backend-tests
+    name: Document CI validation
+    needs:
+      - backend-tests
+      - frontend-tests
+      - backend-lint
+      - frontend-lint
+      - docker-compose-smoke-test
+      - secret-scan
     if: always()
     runs-on: ubuntu-latest
     permissions:
@@ -309,29 +284,114 @@ jobs:
       issues: write
 
     steps:
-      - name: Download validation summary
+      - name: Download backend test log
+        if: always()
         uses: actions/download-artifact@v4
         with:
-          name: prototype-2-test-summary
+          name: backend-test-log
+          path: validation-artifacts/backend
 
-      - name: Comment validation results on linked issues
+      - name: Download backend coverage
+        if: always()
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-coverage
+          path: validation-artifacts/backend
+
+      - name: Download frontend test log
+        if: always()
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-test-log
+          path: validation-artifacts/frontend
+
+      - name: Download frontend coverage
+        if: always()
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-coverage
+          path: validation-artifacts/frontend
+
+      - name: Create and publish validation report
+        if: always()
         uses: actions/github-script@v7
         env:
-          SUMMARY_PATH: prototype-2-test-summary.md
           BACKEND_RESULT: ${{ needs.backend-tests.result }}
+          FRONTEND_RESULT: ${{ needs.frontend-tests.result }}
+          BACKEND_LINT_RESULT: ${{ needs.backend-lint.result }}
+          FRONTEND_LINT_RESULT: ${{ needs.frontend-lint.result }}
+          DOCKER_RESULT: ${{ needs.docker-compose-smoke-test.result }}
+          SECRET_SCAN_RESULT: ${{ needs.secret-scan.result }}
         with:
           script: |
             const fs = require('fs');
-            const summary = fs.readFileSync(process.env.SUMMARY_PATH, 'utf8');
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-            const body = [
-              summary.trim(),
+
+            function readFile(filePath, fallback) {
+              try {
+                return fs.readFileSync(filePath, 'utf8');
+              } catch {
+                return fallback;
+              }
+            }
+
+            function testSummary(filePath, fallback) {
+              const text = readFile(filePath, '');
+              const matches = text.match(/\d+\s+(?:passed|failed|skipped|error[s]?)/gi);
+              return matches && matches.length > 0 ? matches.join(', ') : fallback;
+            }
+
+            function coverageSummary(filePath, fallback) {
+              const text = readFile(filePath, '');
+              const lines = text.split(/\r?\n/).filter((line) => /TOTAL.*%/i.test(line));
+              return lines.length > 0 ? lines[lines.length - 1].trim() : fallback;
+            }
+
+            const backendLog = 'validation-artifacts/backend/backend-test-output.txt';
+            const frontendLog = 'validation-artifacts/frontend/frontend-test-output.txt';
+            const backendCoverage = coverageSummary(
+              backendLog,
+              'See the `backend-coverage` artifact.'
+            );
+            const frontendCoverage = coverageSummary(
+              frontendLog,
+              fs.existsSync('validation-artifacts/frontend')
+                ? 'See the `frontend-coverage` artifact.'
+                : 'Frontend coverage artifact was not available.'
+            );
+
+            const report = [
+              '## CI Validation Report',
               '',
-              `- **CI backend job result:** \`${process.env.BACKEND_RESULT}\``,
-              `- **Workflow run and attached artifacts:** [Open GitHub Actions run](${runUrl})`,
+              `**Commit:** \`${context.sha.slice(0, 7)}\``,
+              `**Workflow run:** [Open GitHub Actions run](${runUrl})`,
               '',
-              `Automated report for commit \`${context.sha.slice(0, 7)}\`.`
+              '### Automated tests',
+              '',
+              '| Area | Result | Test summary | Coverage |',
+              '| --- | --- | --- | --- |',
+              `| Backend | \`${process.env.BACKEND_RESULT}\` | ${testSummary(backendLog, 'See the `backend-test-log` artifact.')} | ${backendCoverage} |`,
+              `| Frontend | \`${process.env.FRONTEND_RESULT}\` | ${testSummary(frontendLog, 'See the `frontend-test-log` artifact.')} | ${frontendCoverage} |`,
+              '',
+              '### Validation checks',
+              '',
+              `- Backend lint: \`${process.env.BACKEND_LINT_RESULT}\``,
+              `- Frontend lint, type check, and formatting: \`${process.env.FRONTEND_LINT_RESULT}\``,
+              `- Docker Compose smoke test: \`${process.env.DOCKER_RESULT}\``,
+              `- Secret scan: \`${process.env.SECRET_SCAN_RESULT}\``,
+              '',
+              '### Artifacts',
+              '',
+              '- `backend-test-log` — complete backend test output',
+              '- `backend-coverage` — backend XML coverage report',
+              '- `frontend-test-log` — complete frontend test output',
+              '- `frontend-coverage` — frontend coverage report',
+              '',
+              'The artifacts can be downloaded from the linked workflow run.'
             ].join('\n');
+
+            fs.writeFileSync('ci-validation-report.md', `${report}\n`);
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${report}\n`);
 
             let pullRequests = [];
             if (context.payload.pull_request) {
@@ -367,10 +427,18 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: issueNumber,
-                body
+                body: report
               });
-              core.info(`Posted Prototype 2 validation report to issue #${issueNumber}.`);
+              core.info(`Posted CI validation report to issue #${issueNumber}.`);
             }
+
+      - name: Upload combined CI validation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-validation-report
+          path: ci-validation-report.md
+          if-no-files-found: warn
 
   frontend-tests:
     name: Frontend unit tests
@@ -531,7 +599,7 @@ jobs:
         run: npm ci --prefix frontend
 
       - name: Audit JavaScript dependencies
-        run: npm audit --omit=dev --audit-level=moderate --prefix frontend
+        run: npm audit --audit-level=moderate --prefix frontend
 
   qa-validation:
     name: QA validation
