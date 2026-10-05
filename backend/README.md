@@ -364,9 +364,9 @@ Pull requests run `uv audit` against the locked backend environment and fail whe
 Minimum coverage threshold is enforced at 60% (`--cov-fail-under=60` via `[tool.coverage.report]` in `pyproject.toml`).
 
 CI writes the complete backend test execution log to `backend-test-output.txt` and publishes it with the XML
-coverage report as workflow artifacts. 
-
-Attach both artifacts to the GitHub/GitLab Issue for the integration-test milestone so the Issue records the pass/fail summary and measured coverage for each run.
+coverage report as workflow artifacts. The workflow finds issues referenced by the associated pull request's
+closing keywords (`Closes`, `Fixes`, or `Resolves`) and posts the test result, measured coverage, 60% threshold,
+and workflow-artifact link to each linked issue after every backend test run.
 
 The same commands can be run inside the Docker `dev` container via `docker compose exec backend uv run <command>` — see the [root README](../README.md#running-tests--linting).
 

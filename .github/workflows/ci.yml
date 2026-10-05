@@ -268,6 +268,110 @@ jobs:
           path: backend/backend-test-output.txt
           if-no-files-found: warn
 
+      - name: Create Prototype 2 validation summary
+        if: always()
+        working-directory: backend
+        run: |
+          test_result=$(grep -Eo '[0-9]+ passed|[0-9]+ failed|[0-9]+ skipped|[0-9]+ error' backend-test-output.txt 2>/dev/null | paste -sd ', ' - || true)
+          coverage_result=$(grep -E 'TOTAL.*%' backend-test-output.txt 2>/dev/null | tail -n 1 || true)
+          if [ -z "$test_result" ]; then
+            test_result="Test result was not available; see backend-test-log."
+          fi
+          if [ -z "$coverage_result" ]; then
+            coverage_result="Coverage result was not available; see backend-coverage."
+          fi
+          {
+            echo "## Prototype 2: Automated Integration Testing & Validation"
+            echo ""
+            echo "- **Test results:** $test_result"
+            echo "- **Coverage:** $coverage_result"
+            echo "- **Required minimum:** 60%"
+            echo "- **Backend test job:** ${{ job.status }}"
+            echo "- **Artifacts:** \`backend-test-log\` and \`backend-coverage\`"
+          } > prototype-2-test-summary.md
+          cat prototype-2-test-summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Prototype 2 validation summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: prototype-2-test-summary
+          path: backend/prototype-2-test-summary.md
+          if-no-files-found: warn
+
+  prototype-2-issue-report:
+    name: Document Prototype 2 validation
+    needs: backend-tests
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
+      - name: Download validation summary
+        uses: actions/download-artifact@v4
+        with:
+          name: prototype-2-test-summary
+
+      - name: Comment validation results on linked issues
+        uses: actions/github-script@v7
+        env:
+          SUMMARY_PATH: prototype-2-test-summary.md
+          BACKEND_RESULT: ${{ needs.backend-tests.result }}
+        with:
+          script: |
+            const fs = require('fs');
+            const summary = fs.readFileSync(process.env.SUMMARY_PATH, 'utf8');
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = [
+              summary.trim(),
+              '',
+              `- **CI backend job result:** \`${process.env.BACKEND_RESULT}\``,
+              `- **Workflow run and attached artifacts:** [Open GitHub Actions run](${runUrl})`,
+              '',
+              `Automated report for commit \`${context.sha.slice(0, 7)}\`.`
+            ].join('\n');
+
+            let pullRequests = [];
+            if (context.payload.pull_request) {
+              pullRequests = [context.payload.pull_request];
+            } else {
+              const response = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                commit_sha: context.sha,
+                per_page: 100
+              });
+              pullRequests = response.data;
+            }
+
+            const issueNumbers = new Set();
+            for (const pullRequest of pullRequests) {
+              const pullRequestBody = pullRequest.body || '';
+              const references = pullRequestBody.matchAll(
+                /(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#(\d+)/gi
+              );
+              for (const reference of references) {
+                issueNumbers.add(Number(reference[1]));
+              }
+            }
+
+            if (issueNumbers.size === 0) {
+              core.notice('No linked issue found in the associated pull request body.');
+              return;
+            }
+
+            for (const issueNumber of issueNumbers) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body
+              });
+              core.info(`Posted Prototype 2 validation report to issue #${issueNumber}.`);
+            }
+
   frontend-tests:
     name: Frontend unit tests
     runs-on: ubuntu-latest
@@ -506,6 +610,7 @@ jobs:
       - frontend-tests
       - qa-validation
       - production-gate
+      - prototype-2-issue-report
     if: always()
     runs-on: ubuntu-latest
 
