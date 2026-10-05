@@ -26,13 +26,10 @@ UNKNOWN_PLAYER_NAME = "Unknown Player"
 
 
 class LibraryItemQuerySet(models.QuerySet["LibraryItem"]):
-    """
-    Query helpers for filtering library items by ownership and play status.
-    """
+    """Query helpers for filtering library items by ownership and play status."""
 
     def active(self) -> LibraryItemQuerySet:
-        """
-        Exclude soft-deleted items.
+        """Exclude soft-deleted items.
 
         :returns: Items that have not been removed by their user.
         :rtype: tracking.models.LibraryItemQuerySet
@@ -40,8 +37,7 @@ class LibraryItemQuerySet(models.QuerySet["LibraryItem"]):
         return self.filter(deleted_at__isnull=True)
 
     def owned(self) -> LibraryItemQuerySet:
-        """
-        Restrict to games the user owns (their library).
+        """Restrict to games the user owns in their library.
 
         :returns: Items with OWNED ownership.
         :rtype: tracking.models.LibraryItemQuerySet
@@ -49,8 +45,7 @@ class LibraryItemQuerySet(models.QuerySet["LibraryItem"]):
         return self.filter(ownership=LibraryItem.OWNED)
 
     def wishlisted(self) -> LibraryItemQuerySet:
-        """
-        Restrict to games the user wants (their wishlist).
+        """Restrict to games the user wants in thier wishlist.
 
         :returns: Items with WISHLISTED ownership.
         :rtype: tracking.models.LibraryItemQuerySet
@@ -74,15 +69,13 @@ class ActiveLibraryItemManager(models.Manager.from_queryset(LibraryItemQuerySet)
 
 
 class LibraryItem(models.Model):
-    """
-    A game in a user's library (owned) or wishlist (wanted), and whether they have played it.
+    """A game in a user's library (owned) or wishlist (wanted), and whether they have played it.
 
     Ownership and play status are independent: a user can own a game they have never played, or wishlist a game they
     have already played elsewhere. Each user has at most one active entry per game; moving a game from the wishlist to
     the library updates that entry rather than creating a second one.
 
-    Entries are soft-deleted (``deleted_at`` is set) rather than removed. ``objects`` hides soft-deleted entries;
-    ``all_objects`` includes them.
+    Entries are soft-deleted (deleted_at is set) rather than removed. objects hides soft-deleted entries; all_objects includes them.
     """
 
     OWNED = "OWNED"
@@ -138,7 +131,7 @@ class LibraryItem(models.Model):
         :type user: users.models.User
         :param game: The game being added.
         :type game: catalog.models.BoardGame
-        :param fields: Values for ``ownership``, ``is_played`` and ``house_rules``; omitted fields use model defaults.
+        :param fields: Values for ownership, is_played and house_rules; omitted fields use model defaults.
         :returns: The created or restored LibraryItem.
         :rtype: tracking.models.LibraryItem
         :raises LibraryItemAlreadyExistsError: If the game is already active in the user's library or wishlist.
@@ -178,9 +171,7 @@ class LibraryItem(models.Model):
 
 
 class LibraryItemAlreadyExistsError(Exception):
-    """
-    Raised when adding a game that is already active in the user's library or wishlist.
-    """
+    """Raised when adding a game that is already active in the user's library or wishlist."""
 
     def __init__(self, game: BoardGame) -> None:
         """
