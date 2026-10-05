@@ -53,9 +53,9 @@ def fetch_bgg_plays(user: User, bgg_username: str) -> tuple[bool, str]:
     except requests.RequestException as exception:
         logger.warning("BGG API fetch failed for user %s: %s", bgg_username, exception)
         return False, "Connection to BGG failed. Please try again later."
-    except (AttributeError, ElementTree.ParseError, OSError, TypeError, ValueError) as exception:
+    except ElementTree.ParseError as exception:
         logger.error("Malformed BGG XML for user %s: %s", bgg_username, exception)
-        return False, "An internal error occured during synchronization.
+        return False, "An internal error occurred during synchronization."
     except (AttributeError, OSError, TypeError, ValueError) as exception:
         logger.exception("Unexpected error during BGG sync for %s: %s", bgg_username, exception)
         return False, "An internal error occurred during synchronization."
