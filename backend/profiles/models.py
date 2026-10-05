@@ -1,5 +1,9 @@
+from typing import ClassVar
+
 from django.conf import settings
 from django.db import models
+from django.db.models import Q
+from django.db.models.functions import Lower
 
 
 class Profile(models.Model):
@@ -22,6 +26,19 @@ class Profile(models.Model):
     bio = models.TextField(null=True, blank=True)
     privacy_level = models.CharField(max_length=10, choices=PRIVACY_LEVEL_CHOICES, default=PUBLIC)
     friends = models.ManyToManyField(to="self", blank=True)
+    # The BoardGameGeek account whose plays this user imports. Empty when the user has not linked a BGG account.
+    bgg_username = models.CharField(max_length=100, blank=True, default="", db_default="")
+
+    class Meta:
+        constraints: ClassVar[list[models.BaseConstraint]] = [
+            # One QuestLog account per BGG account (ignoring letter case), so nobody can import another person's plays
+            # into their own statistics. Blank usernames are excluded because most users will not link BGG.
+            models.UniqueConstraint(
+                Lower("bgg_username"),
+                condition=~Q(bgg_username=""),
+                name="unique_linked_bgg_username",
+            ),
+        ]
 
     def __str__(self) -> str:
         """
