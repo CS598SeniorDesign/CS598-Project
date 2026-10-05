@@ -264,6 +264,10 @@ MIGRATION_LINTER_OPTIONS = {
         # profiles: adds a partial unique index on bgg_username. Every existing value is blank (excluded from the
         # index), so it cannot fail.
         "0002_add_profile_bgg_username",
+        # tracking: drops the legacy library item status column, which 0005 has already copied into ownership and
+        # is_played, and adds a unique constraint that 0005 guarantees existing rows satisfy. Rolling back re-adds and
+        # repopulates status.
+        "0006_library_item_remove_status",
     ],
 }
 

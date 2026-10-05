@@ -70,7 +70,8 @@ class Command(BaseCommand):
                 LibraryItem.objects.create(
                     user=user,
                     game=game,
-                    status=random.choice([LibraryItem.OWNED, LibraryItem.WISHLISTED, LibraryItem.UNPLAYED]),
+                    ownership=random.choice([LibraryItem.OWNED, LibraryItem.WISHLISTED]),
+                    is_played=random.choice([True, False]),
                 )
 
                 Rating.objects.create(

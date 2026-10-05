@@ -27,6 +27,7 @@ urlpatterns = [
     path("health/", HealthCheckView.as_view(), name="health-check"),
     path("ready/", ReadinessCheckView.as_view(), name="readiness-check"),
     path("api/v1/", include("catalog.urls")),
+    path("api/v1/", include("tracking.urls")),
 ]
 
 if settings.ADMIN_ENABLED:
