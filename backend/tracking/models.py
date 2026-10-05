@@ -75,7 +75,8 @@ class LibraryItem(models.Model):
     have already played elsewhere. Each user has at most one active entry per game; moving a game from the wishlist to
     the library updates that entry rather than creating a second one.
 
-    Entries are soft-deleted (deleted_at is set) rather than removed. objects hides soft-deleted entries; all_objects includes them.
+    Entries are soft-deleted (deleted_at is set) rather than removed.
+    objects hides soft-deleted entries; all_objects includes them.
     """
 
     OWNED = "OWNED"
