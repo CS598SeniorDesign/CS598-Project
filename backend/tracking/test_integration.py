@@ -34,7 +34,7 @@ class PlaySyncTransactionTests(TestCase):
 
         assert result == (2, 2)
         assert PlaySession.objects.count() == 2
-        assert PlaySession.objects.get(pk=101).game == self.game
+        assert PlaySession.objects.get(bgg_play_id=101).game == self.game
         get.assert_called_once()
 
     @patch("tracking.utils.requests.get")
