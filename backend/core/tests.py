@@ -25,6 +25,12 @@ class HealthEndpointContractTests(TestCase):
         assert response.json() == {"status": "ok", "checks": {"database": "ok", "redis": "ok"}}
         cursor.assert_called_once()
 
+    def test_readiness_checks_live_dependencies(self):
+        response = self.client.get("/ready/")
+
+        assert response.status_code == 200
+        assert response.json() == {"status": "ok", "checks": {"database": "ok", "redis": "ok"}}
+
     def test_readiness_returns_service_unavailable_when_database_fails(self):
         database_error = RuntimeError("database unavailable")
         with (
