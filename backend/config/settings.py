@@ -209,7 +209,10 @@ HEADLESS_FRONTEND_URLS = {
     "account_reset_password_from_key": f"{FRONTEND_URL}/account/password/reset/key/{{key}}",
     "account_signup": f"{FRONTEND_URL}/account/signup",
 }
+HEADLESS_SERVE_SPECIFICATION = True
 
+MFA_SUPPORTED_TYPES = ["totp", "recovery_codes", "webauthn"]
+MFA_PASSKEY_LOGIN_ENABLED = True
 MFA_TOTP_ISSUER = "Questlog"
 
 SMTP_HOST = env.str("SMTP_HOST", default="")
@@ -253,6 +256,15 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": ("rest_framework.authentication.SessionAuthentication",),
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "60/min",
+        "user": "300/min",
+        "bgg-sync": "3/min",
+    },
 }
 
 # Prevents browsers from MIME-sniffing a response away from the declared content-type

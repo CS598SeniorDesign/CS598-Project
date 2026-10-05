@@ -1,0 +1,30 @@
+meta {
+  name: Login
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/_allauth/browser/v1/auth/login
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "{{userEmail}}",
+    "password": "{{userPassword}}"
+  }
+}
+
+docs {
+  Logs in with the seeded demo account. On success Django sets the `sessionid` cookie, which Bruno's
+  cookie jar sends automatically on every later request.
+}
+
+tests {
+  test("logs in the demo user", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().data.user.email).to.equal(bru.getEnvVar("userEmail"));
+  });
+}

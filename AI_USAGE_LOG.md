@@ -170,3 +170,32 @@ AI generated `DEVELOPER_ONBOARDING.md`, a full onboarding guide covering: prereq
 
 ### Verification & Testing Method:
 * Cross-referenced generated folder structure and env var names against actual `docker-compose.yml` and project conventions on file.
+
+---
+
+## Entry 5: Prototype 2 — Catalog API Serializer Split
+
+* **Date:** September 24, 2026
+* **Team Member:** Brandon Nguyen (`@Meynok`)
+* **Tool Used:** Gemini 1.5 Pro
+* **Associated Git Issue:** Closes `#67`
+* **Associated Feature Branch:** `feat/catalog-get-endpoints`
+
+### Exact Prompt Submitted:
+
+> "i need to show my `BoardGame` model via api endpoints. how would you recommend configuring django REST Framework to include all the nested metadata when querying a single game by id"
+
+### AI Output Summary & Code Generated:
+
+AI recommended creating two separate serializers and overriding `get_serializer_class` in a `ModelViewSet` or `GenericViewSet`. It generated boilerplate for a list serializer and a detail serializer, mapping the HTTP actions (`list` vs `retrieve`) to the appropriate class.
+
+### Human Review, Refactoring & Modifications Made:
+
+* Created `BoardGameListSerializer` mapping only core fields like `bgg_id` and `average_rating`.
+* Created `BoardGameDetailSerializer` mapping full arrays for categories, mechanics, and other attributes using a nested `BGGAttributeSerializer`.
+* Implemented `BoardGameViewSet` in `views.py` routing to the list serializer on `self.action == "list"`.
+
+### Verification & Testing Method:
+
+* Requested `/api/v1/games/` and confirmed nested M2M arrays were omitted.
+* Requested `/api/v1/games/13/` and confirmed full payload returned.
