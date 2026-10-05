@@ -15,14 +15,14 @@ class PlaySyncTransactionTests(TestCase):
         self.game = BoardGame.objects.create(bgg_id=123, primary_name="Test Game")
         self.response = Mock(
             status_code=200,
-            content=b'''<plays total="2">
+            content=b"""<plays total="2">
                 <play id="101" date="2026-09-28" length="45">
                     <item objectid="123" name="Test Game" />
                 </play>
                 <play id="102" date="2026-09-29" length="60">
                     <item objectid="123" name="Test Game" />
                 </play>
-            </plays>''',
+            </plays>""",
         )
 
     @patch("tracking.utils.requests.get")

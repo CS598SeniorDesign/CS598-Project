@@ -14,8 +14,10 @@ class HealthEndpointContractTests(TestCase):
         assert response.headers["Content-Type"] == "application/json"
 
     def test_readiness_returns_dependency_status_contract(self):
-        with patch.object(connection, "cursor") as cursor, patch.object(cache, "set"), patch.object(
-            cache, "get", return_value="ok"
+        with (
+            patch.object(connection, "cursor") as cursor,
+            patch.object(cache, "set"),
+            patch.object(cache, "get", return_value="ok"),
         ):
             response = self.client.get("/ready/")
 
@@ -25,8 +27,10 @@ class HealthEndpointContractTests(TestCase):
 
     def test_readiness_returns_service_unavailable_when_database_fails(self):
         database_error = RuntimeError("database unavailable")
-        with patch.object(connection, "cursor", side_effect=database_error), patch.object(cache, "set"), patch.object(
-            cache, "get", return_value="ok"
+        with (
+            patch.object(connection, "cursor", side_effect=database_error),
+            patch.object(cache, "set"),
+            patch.object(cache, "get", return_value="ok"),
         ):
             response = self.client.get("/ready/")
 
