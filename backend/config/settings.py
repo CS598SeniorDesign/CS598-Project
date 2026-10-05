@@ -209,7 +209,10 @@ HEADLESS_FRONTEND_URLS = {
     "account_reset_password_from_key": f"{FRONTEND_URL}/account/password/reset/key/{{key}}",
     "account_signup": f"{FRONTEND_URL}/account/signup",
 }
+HEADLESS_SERVE_SPECIFICATION = True
 
+MFA_SUPPORTED_TYPES = ["totp", "recovery_codes", "webauthn"]
+MFA_PASSKEY_LOGIN_ENABLED = True
 MFA_TOTP_ISSUER = "Questlog"
 
 SMTP_HOST = env.str("SMTP_HOST", default="")
@@ -249,10 +252,34 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
+# django-migration-linter (`manage.py lintmigrations`): only lint QuestLog's own apps, since third-party migrations
+# (Django, allauth) are outside our control. Migrations listed in "ignore_name" were flagged but reviewed.
+# Every entry must say why it is safe.
+MIGRATION_LINTER_OPTIONS = {
+    "include_apps": ["catalog", "core", "profiles", "tracking", "users"],
+    "ignore_name": [
+        # tracking: drops and recreates the play session tables to replace the BGG-based primary key. The tables held
+        # no data in any environment, and rolling back recreates them.
+        "0002_rebuild_play_session_tables",
+        # profiles: adds a partial unique index on bgg_username. Every existing value is blank (excluded from the
+        # index), so it cannot fail.
+        "0002_add_profile_bgg_username",
+    ],
+}
+
 # Established default authentication and permission classes if one is not specified
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": ("rest_framework.authentication.SessionAuthentication",),
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "60/min",
+        "user": "300/min",
+        "bgg-sync": "3/min",
+    },
 }
 
 # Prevents browsers from MIME-sniffing a response away from the declared content-type

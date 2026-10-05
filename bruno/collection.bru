@@ -1,0 +1,36 @@
+meta {
+  name: QuestLog API
+}
+
+headers {
+  X-CSRFToken: {{csrfToken}}
+}
+
+docs {
+  # QuestLog API
+
+  The backend authenticates with **allauth headless session cookies + CSRF** (not JWT).
+
+  ## First-time setup
+  1. `docker compose up -d backend`
+  2. `docker compose exec backend python manage.py seed` — creates the `demo@questlog.local` login used here.
+  3. Select the **Local** environment.
+
+  ## Usage
+  Run **Auth → Get Session** then **Auth → Login** once; Bruno's cookie jar keeps the `sessionid`
+  cookie, and the collection script below keeps `csrfToken` in sync for every later request.
+
+  Or run everything from the CLI: `cd bruno && npx @usebruno/cli run --env Local`
+}
+
+script:post-response {
+  // Django sets/rotates the `csrf_token` cookie (CSRF_COOKIE_NAME in settings.py) on allauth browser
+  // endpoints and on login. Capture it so the collection-level X-CSRFToken header is always current.
+  const setCookieHeader = res.getHeader("set-cookie") || [];
+  const cookies = Array.isArray(setCookieHeader) ? setCookieHeader : [setCookieHeader];
+  const csrfCookie = cookies.find((cookie) => cookie.startsWith("csrf_token="));
+
+  if (csrfCookie) {
+    bru.setVar("csrfToken", csrfCookie.split(";")[0].split("=")[1]);
+  }
+}
