@@ -33,8 +33,60 @@ function getLoginErrorMessage(status: number): string {
   return "Something went wrong. Please try again.";
 }
 
+function getLoginDestination(): string {
+  const searchParams = new URLSearchParams(window.location.search);
+
+  return searchParams.get("setup") === "mfa"
+    ? "/mfa-setup"
+    : "/avatar-selection";
+}
+
+async function loginUser(
+  email: string,
+  password: string,
+): Promise<AuthResponse> {
+  const sessionResponse = await fetch("/_allauth/browser/v1/auth/session", {
+    credentials: "same-origin",
+    cache: "no-store",
+  });
+
+  if (!sessionResponse.ok && sessionResponse.status !== 401) {
+    throw new Error("Unable to connect to the server. Please try again.");
+  }
+
+  const csrfToken = getCookie("csrf_token");
+
+  if (!csrfToken) {
+    throw new Error(
+      "Unable to initialize the login security. Please refresh and try again!",
+    );
+  }
+
+  const response = await fetch("/_allauth/browser/v1/auth/login", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": csrfToken,
+    },
+    body: JSON.stringify({
+      email: email.trim(),
+      password,
+    }),
+  });
+
+  const result: AuthResponse = await response.json();
+
+  if (!response.ok) {
+    throw new Error(getLoginErrorMessage(response.status));
+  }
+
+  return result;
+}
+
 export default function LoginPage() {
   const router = useRouter();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -46,51 +98,15 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      //browser session and getting the CSRF cookie
-      const sessionResponse = await fetch("/_allauth/browser/v1/auth/session", {
-        credentials: "same-origin",
-        cache: "no-store",
-      });
-
-      if (!sessionResponse.ok && sessionResponse.status !== 401) {
-        throw new Error("Unable to connect to the server. Please try again.");
-      }
-
-      const csrfToken = getCookie("csrf_token");
-
-      if (!csrfToken) {
-        throw new Error(
-          "Unable to initialize the login security. Please refresh and try again!",
-        );
-      }
-
-      const response = await fetch("/_allauth/browser/v1/auth/login", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRFToken": csrfToken,
-        },
-        body: JSON.stringify({
-          email: email.trim(),
-          password,
-        }),
-      });
-
-      const result: AuthResponse = await response.json();
-
-      if (!response.ok) {
-        setError(getLoginErrorMessage(response.status));
-        return;
-      }
+      const result = await loginUser(email, password);
 
       if (result.meta?.is_authenticated === true) {
-        router.push("/avatar-selection");
+        router.push(getLoginDestination());
         return;
       }
 
       setError(
-        "Your account requires another verification steps before you can proceed.",
+        "Your account requires another verification step before you can proceed.",
       );
     } catch (err) {
       console.error("QuestLog login error:", err);
