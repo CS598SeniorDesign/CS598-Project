@@ -3,7 +3,6 @@
 import Image from "next/image";
 import { useState } from "react";
 
-
 const libraryGames = [
   { name: "Root", image: "/images/root.webp", rating: 4 },
   { name: "Munchkin", image: "/images/munchkin.webp", rating: 5 },
@@ -17,7 +16,11 @@ const libraryGames = [
   { name: "Monopoly", image: "/images/monopoly.webp", rating: 4 },
   { name: "Azul", image: "/images/azul.webp", rating: 5 },
   { name: "Terraforming Mars", image: "/images/terraforming.webp", rating: 5 },
-  { name: "Betrayal at House on the Hill", image: "/images/betrayal.webp", rating: 4 },
+  {
+    name: "Betrayal at House on the Hill",
+    image: "/images/betrayal.webp",
+    rating: 4,
+  },
   { name: "Botany", image: "/images/botany.webp", rating: 4 },
   { name: "Stardew Valley", image: "/images/stardew.webp", rating: 3 },
   { name: "Life in Reterra", image: "/images/lifeinreterra.webp", rating: 5 },
@@ -28,14 +31,18 @@ const libraryGames = [
   { name: "Command of Nature", image: "/images/command.webp", rating: 4 },
   { name: "Lairs", image: "/images/lairs.webp", rating: 3 },
   { name: "Excursions", image: "/images/excursions.webp", rating: 2 },
-  { name: "The Lord of the Rings", image: "/images/lordofrings.webp", rating: 4 },
+  {
+    name: "The Lord of the Rings",
+    image: "/images/lordofrings.webp",
+    rating: 4,
+  },
 ];
 
 export default function LibraryPage() {
   const [query, setQuery] = useState("");
 
   const filteredGames = libraryGames.filter((game) =>
-    game.name.toLowerCase().includes(query.trim().toLowerCase())
+    game.name.toLowerCase().includes(query.trim().toLowerCase()),
   );
   return (
     <div className="min-h-screen bg-[#0F172A] px-8 py-10 text-white">
@@ -93,9 +100,7 @@ export default function LibraryPage() {
           ))}
         </div>
       ) : (
-        <p className="text-center mt-10 text-gray-400">
-          No games found 😢
-        </p>
+        <p className="text-center mt-10 text-gray-400">No games found 😢</p>
       )}
     </div>
   );
