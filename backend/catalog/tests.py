@@ -1,4 +1,5 @@
 from unittest.mock import patch
+from xml.etree.ElementTree import fromstring
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -20,6 +21,27 @@ def detail_url(bgg_id: int) -> str:
 class CatalogSmokeTest(TestCase):
     def test_django_test_environment_loads(self):
         self.assertTrue(self.client)
+
+
+class BoardGameXMLParsingTest(TestCase):
+    @staticmethod
+    def thing_xml(average_weight: str) -> str:
+        return f"""
+            <item type="boardgame" id="13">
+                <name type="primary" value="Catan" />
+                <statistics><ratings><averageweight value="{average_weight}" /></ratings></statistics>
+            </item>
+        """
+
+    def test_parses_complexity_weight(self):
+        game = BoardGame.create_from_xml(fromstring(self.thing_xml("2.2973")))
+
+        self.assertEqual(str(game.average_weight), "2.297")
+
+    def test_unvoted_complexity_weight_is_stored_as_unknown(self):
+        game = BoardGame.create_from_xml(fromstring(self.thing_xml("0")))
+
+        self.assertIsNone(game.average_weight)
 
 
 class CatalogAnonymousAccessTest(APITestCase):

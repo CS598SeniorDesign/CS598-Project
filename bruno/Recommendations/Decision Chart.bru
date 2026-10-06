@@ -1,0 +1,32 @@
+meta {
+  name: Decision Chart
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/recommendations/?strategy=decision_chart&players=4&max_play_time=60&complexity=medium
+  body: none
+  auth: none
+}
+
+params:query {
+  strategy: decision_chart
+  players: 4
+  max_play_time: 60
+  complexity: medium
+  ~mood: cooperative
+  ~owned_only: true
+}
+
+docs {
+  Games that fit the group tonight. `complexity` is `light`, `medium`, or `heavy`; `mood` is one of the moods from
+  **Get Options**. `owned_only=true` limits results to the user's library and requires opting in.
+}
+
+tests {
+  test("returns matching games", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().strategy).to.equal("decision_chart");
+  });
+}

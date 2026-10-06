@@ -1,0 +1,36 @@
+meta {
+  name: Get Recommendations
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/recommendations/?strategy=for_you&limit=10
+  body: none
+  auth: none
+}
+
+params:query {
+  strategy: for_you
+  limit: 10
+  ~period: month
+  ~year: 2025
+  ~days: 90
+}
+
+docs {
+  Recommends games with the given strategy (default `for_you`). See **Get Options** for every strategy.
+  - `popular`: `period` (`month`, `six_months`, `year`) or a calendar `year`
+  - `similar_to_recent`, `not_played_recently`: `days` look-back window
+
+  `strategy` in the response is the strategy actually used; it differs from `requested_strategy` after a fallback.
+}
+
+tests {
+  test("returns recommendations with reasons", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().requested_strategy).to.equal("for_you");
+    expect(res.getBody().results).to.be.an("array");
+    res.getBody().results.forEach((item) => expect(item.reason).to.be.a("string"));
+  });
+}
