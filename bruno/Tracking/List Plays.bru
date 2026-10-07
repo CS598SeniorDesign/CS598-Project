@@ -1,0 +1,23 @@
+meta {
+  name: List Plays
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/plays/
+  body: none
+  auth: none
+}
+
+tests {
+  test("returns the user's play sessions", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.be.an("array");
+  });
+}
+
+docs {
+  Lists every play session the logged-in user logged or took part in, most recent first. Each session
+  includes the game played and its players (registered users have `user` set; guests have `guest_name`).
+}
