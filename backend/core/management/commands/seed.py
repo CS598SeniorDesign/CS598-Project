@@ -1,5 +1,6 @@
 import random
 
+import environ
 from allauth.account.models import EmailAddress
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
@@ -10,6 +11,7 @@ from profiles.models import Profile
 from tracking.models import LibraryItem, Rating
 
 User = get_user_model()
+env = environ.Env()
 
 DEMONSTRATION_USER_EMAIL = "demo@questlog.local"
 DEMONSTRATION_USER_PASSWORD = "password123"
@@ -91,4 +93,29 @@ class Command(BaseCommand):
         )
         Profile.objects.create(user=demonstration_user, display_name="Demo Player", privacy_level=Profile.PUBLIC)
 
+        self._seed_superuser()
+
         self.stdout.write(self.style.SUCCESS("Successfully seeded database with synthetic data!"))
+
+    def _seed_superuser(self) -> None:
+        """
+        Create a superuser from the DJANGO_SUPERUSER_EMAIL and DJANGO_SUPERUSER_PASSWORD environment variables.
+
+        Seeding deletes every user, so recreating the superuser here keeps each developer's admin login across reseeds.
+        The credentials come from the environment rather than this file so that no known admin password is committed.
+        These are the same variables Django's ``createsuperuser --noinput`` reads. Skipped when either is unset.
+
+        :returns: None
+        """
+        superuser_email = env.str("DJANGO_SUPERUSER_EMAIL", default="")
+        superuser_password = env.str("DJANGO_SUPERUSER_PASSWORD", default="")
+
+        if not superuser_email or not superuser_password:
+            self.stdout.write("Skipping superuser: set DJANGO_SUPERUSER_EMAIL and DJANGO_SUPERUSER_PASSWORD to create one.")
+            return
+
+        self.stdout.write(f"Seeding superuser ({superuser_email})...")
+        superuser = User.objects.create_superuser(email=superuser_email, password=superuser_password)
+        # A verified address is required to log in through allauth (the frontend and Bruno), not just the admin site.
+        EmailAddress.objects.create(user=superuser, email=superuser.email, verified=True, primary=True)
+        Profile.objects.create(user=superuser, display_name="Admin")
