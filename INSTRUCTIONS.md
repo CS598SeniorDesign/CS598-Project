@@ -79,10 +79,10 @@
    - [x] **Git Issues Communication:** All test results, identified API bugs, and refactoring needs must be logged as Git Issues and linked directly to fixing PRs.
 2. **Code Quality Metrics & Supply Chain Security:**
    - [x] **Static Code Analysis Caps:** Enforcement of cognitive and cyclomatic complexity limits via static analysis tools (e.g., SonarQube/CodeClimate).
-   - [ ] **Supply Chain Auditing:** Integration of automated dependency scanning (e.g., Dependabot, Snyk, `npm audit`) in CI/CD to block pull requests containing known CVEs.
+   - [x] **Supply Chain Auditing:** Integration of automated dependency scanning (e.g., Dependabot, Snyk, `npm audit`) in CI/CD to block pull requests containing known CVEs.
 3. **Authentication, OWASP Audit & Data Privacy:**
    - [x] Secure user authentication workflows (JWT, OAuth2, session handling) with secret key encryption.
-   - [ ] OWASP Top 10 security audit and vulnerability mitigations.
+   - [x] OWASP Top 10 security audit and vulnerability mitigations.
    - [x] **Data Privacy Controls:** Implementation of basic PII protection, secure password hashing (Bcrypt/Argon2), and soft-delete mechanics (`deleted_at` timestamps) instead of destructive hard deletes.
 4. **Automated Integration Testing & Validation Logs:**
    - [ ] Comprehensive integration test suite verifying end-to-end API response contracts and database transactions.
