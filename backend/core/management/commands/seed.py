@@ -111,7 +111,9 @@ class Command(BaseCommand):
         superuser_password = env.str("DJANGO_SUPERUSER_PASSWORD", default="")
 
         if not superuser_email or not superuser_password:
-            self.stdout.write("Skipping superuser: set DJANGO_SUPERUSER_EMAIL and DJANGO_SUPERUSER_PASSWORD to create one.")
+            self.stdout.write(
+                "Skipping superuser: set DJANGO_SUPERUSER_EMAIL and DJANGO_SUPERUSER_PASSWORD to create one."
+            )
             return
 
         self.stdout.write(f"Seeding superuser ({superuser_email})...")
