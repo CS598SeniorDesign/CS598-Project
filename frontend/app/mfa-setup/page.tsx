@@ -7,9 +7,7 @@ import { QRCodeSVG } from "qrcode.react";
 type TOTPResponse = {
   status?: number;
   data?: {
-    flows?: Array<{
-      id?: string;
-    }>;
+    flows?: Array<{ id?: string }>;
   };
   meta?: {
     secret?: string;
@@ -18,21 +16,17 @@ type TOTPResponse = {
   };
 };
 
+type RecoveryCodesResponse = {
+  data?: {
+    unused_codes?: string[];
+  };
+};
+
 type TOTPSetupResult =
-  | {
-      action: "setup";
-      secret: string;
-      totpUrl: string;
-    }
-  | {
-      action: "login";
-    }
-  | {
-      action: "configured";
-    }
-  | {
-      action: "error";
-    };
+  | { action: "setup"; secret: string; totpUrl: string }
+  | { action: "login" }
+  | { action: "configured" }
+  | { action: "error" };
 
 type MFAActivationResult =
   "success" | "invalid-code" | "reauthenticate" | "login" | "error";
@@ -92,9 +86,7 @@ async function reauthenticatePassword(password: string): Promise<Response> {
       "Content-Type": "application/json",
       "X-CSRFToken": csrfToken,
     },
-    body: JSON.stringify({
-      password,
-    }),
+    body: JSON.stringify({ password }),
   });
 }
 
@@ -142,9 +134,7 @@ async function activateTOTP(code: string): Promise<MFAActivationResult> {
         "Content-Type": "application/json",
         "X-CSRFToken": csrfToken,
       },
-      body: JSON.stringify({
-        code,
-      }),
+      body: JSON.stringify({ code }),
     },
   );
 
@@ -163,11 +153,180 @@ async function activateTOTP(code: string): Promise<MFAActivationResult> {
   return "error";
 }
 
+async function getRecoveryCodes(): Promise<string[]> {
+  const response = await fetch(
+    "/_allauth/browser/v1/account/authenticators/recovery-codes",
+    {
+      method: "GET",
+      credentials: "same-origin",
+      cache: "no-store",
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error("Unable to load recovery codes. Please try again.");
+  }
+
+  const result: RecoveryCodesResponse = await response.json();
+  const codes = result.data?.unused_codes;
+
+  if (
+    !Array.isArray(codes) ||
+    codes.length === 0 ||
+    !codes.every((code) => typeof code === "string")
+  ) {
+    throw new Error(
+      "No recovery codes were returned. Please try again or contact support.",
+    );
+  }
+
+  return codes;
+}
+
 function MFALoadingScreen() {
   return (
     <main className="min-h-screen bg-gray-900 text-white">
       <div className="flex min-h-[calc(100vh-80px)] items-center justify-center px-6">
         <p className="text-gray-400">Loading MFA setup...</p>
+      </div>
+    </main>
+  );
+}
+
+type RecoveryCodesScreenProps = {
+  codes: string[] | null;
+  error: string;
+  isLoading: boolean;
+  copied: boolean;
+  saved: boolean;
+  onRetry: () => void;
+  onCopy: () => void;
+  onSavedChange: (saved: boolean) => void;
+  onContinue: () => void;
+};
+
+function RecoveryCodesScreen({
+  codes,
+  error,
+  isLoading,
+  copied,
+  saved,
+  onRetry,
+  onCopy,
+  onSavedChange,
+  onContinue,
+}: RecoveryCodesScreenProps) {
+  return (
+    <main className="min-h-screen bg-gray-900 text-white">
+      <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col justify-center px-6 py-12">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold text-white">
+            MFA Enabled Successfully!
+          </h1>
+
+          <p className="mt-3 text-gray-400">
+            Your QuestLog account is now protected with two-factor
+            authentication.
+          </p>
+        </div>
+
+        <div className="mt-8 rounded-xl border border-amber-700 bg-amber-950/30 p-5">
+          <h2 className="font-semibold text-amber-200">
+            Important: Save Your Recovery Codes
+          </h2>
+
+          <p className="mt-2 text-sm text-amber-100/80">
+            Recovery codes can help you sign in if you lose access to your
+            authenticator app. Each code can only be used once. Keep them in a
+            safe, private place, such as a password manager.
+          </p>
+
+          <p className="mt-2 text-sm text-amber-100/80">
+            Do not share these codes with anyone.
+          </p>
+        </div>
+
+        {error && (
+          <div
+            role="alert"
+            className="mt-6 rounded-lg border border-red-800 bg-red-950/40 px-4 py-3 text-sm text-red-300"
+          >
+            {error}
+          </div>
+        )}
+
+        {codes ? (
+          <>
+            <div className="mt-6 rounded-xl border border-gray-700 bg-black/30 p-6">
+              <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+                <h2 className="text-lg font-semibold">Your Recovery Codes</h2>
+
+                <button
+                  type="button"
+                  onClick={onCopy}
+                  className="rounded-lg border border-gray-600 px-4 py-2 text-sm font-medium transition hover:bg-gray-800"
+                >
+                  {copied ? "✓ Copied!" : "Copy All Codes"}
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {codes.map((code, index) => (
+                  <div
+                    key={index}
+                    className="rounded-lg border border-gray-700 bg-gray-800 px-4 py-3 text-center"
+                  >
+                    <code className="break-all font-mono text-sm text-gray-100">
+                      {code}
+                    </code>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <label className="mt-7 flex cursor-pointer items-start gap-3 rounded-lg border border-gray-700 p-4">
+              <input
+                type="checkbox"
+                checked={saved}
+                onChange={(event) => onSavedChange(event.target.checked)}
+                className="mt-1 h-4 w-4 accent-indigo-600"
+              />
+
+              <span className="text-sm text-gray-300">
+                I have saved my recovery codes in a secure location and
+                understand that I may need them if I lose access to my
+                authenticator app.
+              </span>
+            </label>
+
+            <button
+              type="button"
+              onClick={onContinue}
+              disabled={!saved}
+              className="mt-6 rounded-lg bg-indigo-600 px-7 py-3 font-medium transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Continue to Avatar Selection
+            </button>
+          </>
+        ) : (
+          <div className="mt-8 text-center">
+            <p className="text-gray-400">
+              {isLoading
+                ? "Loading your recovery codes..."
+                : "Your MFA is enabled, but your recovery codes could not be displayed."}
+            </p>
+
+            {!isLoading && (
+              <button
+                type="button"
+                onClick={onRetry}
+                className="mt-5 rounded-lg bg-indigo-600 px-6 py-3 font-medium transition hover:bg-indigo-500"
+              >
+                Retry Loading Recovery Codes
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </main>
   );
@@ -188,6 +347,12 @@ export default function MFASetup() {
 
   const [passwordConfirmed, setPasswordConfirmed] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  const [mfaActivated, setMfaActivated] = useState(false);
+  const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
+  const [recoveryCodesCopied, setRecoveryCodesCopied] = useState(false);
+  const [recoveryCodesSaved, setRecoveryCodesSaved] = useState(false);
+  const [isLoadingRecoveryCodes, setIsLoadingRecoveryCodes] = useState(false);
 
   useEffect(() => {
     const loadTOTPSetup = async () => {
@@ -222,6 +387,25 @@ export default function MFASetup() {
     void loadTOTPSetup();
   }, [router]);
 
+  const loadRecoveryCodes = async () => {
+    setError("");
+    setIsLoadingRecoveryCodes(true);
+
+    try {
+      const codes = await getRecoveryCodes();
+      setRecoveryCodes(codes);
+    } catch (err) {
+      console.error("QuestLog recovery codes error:", err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to load recovery codes. Please try again.",
+      );
+    } finally {
+      setIsLoadingRecoveryCodes(false);
+    }
+  };
+
   const handleCopySecret = async () => {
     if (!secret) {
       return;
@@ -237,6 +421,21 @@ export default function MFASetup() {
     } catch (err) {
       console.error("Unable to copy MFA setup key:", err);
       setError("Unable to copy the setup key. Please copy it manually.");
+    }
+  };
+
+  const handleCopyRecoveryCodes = async () => {
+    if (!recoveryCodes) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(recoveryCodes.join("\n"));
+      setRecoveryCodesCopied(true);
+      setError("");
+    } catch (err) {
+      console.error("Unable to copy recovery codes:", err);
+      setError("Unable to copy recovery codes. Please save them manually.");
     }
   };
 
@@ -276,7 +475,6 @@ export default function MFASetup() {
       setError("");
     } catch (err) {
       console.error("QuestLog reauthentication error:", err);
-
       setError(
         err instanceof Error
           ? err.message
@@ -303,7 +501,12 @@ export default function MFASetup() {
       const result = await activateTOTP(code);
 
       if (result === "success") {
-        router.push("/avatar-selection");
+        setMfaActivated(true);
+        setSecret("");
+        setTotpUrl("");
+        setCode("");
+        setPassword("");
+        await loadRecoveryCodes();
         return;
       }
 
@@ -331,7 +534,6 @@ export default function MFASetup() {
       setError("Unable to enable MFA. Please try again.");
     } catch (err) {
       console.error("QuestLog MFA activation error:", err);
-
       setError(
         err instanceof Error
           ? err.message
@@ -355,6 +557,22 @@ export default function MFASetup() {
 
   if (isLoading) {
     return <MFALoadingScreen />;
+  }
+
+  if (mfaActivated) {
+    return (
+      <RecoveryCodesScreen
+        codes={recoveryCodes}
+        error={error}
+        isLoading={isLoadingRecoveryCodes}
+        copied={recoveryCodesCopied}
+        saved={recoveryCodesSaved}
+        onRetry={() => void loadRecoveryCodes()}
+        onCopy={() => void handleCopyRecoveryCodes()}
+        onSavedChange={setRecoveryCodesSaved}
+        onContinue={() => router.push("/avatar-selection")}
+      />
+    );
   }
 
   return (

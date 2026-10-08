@@ -9,7 +9,7 @@ type AuthResponse = {
     is_authenticated?: boolean;
   };
   data?: {
-    flows?: Array<{ id: string }>;
+    flows?: Array<{ id: string; is_pending?: boolean }>;
   };
 };
 
@@ -41,9 +41,18 @@ function getLoginDestination(): string {
     : "/avatar-selection";
 }
 
-async function loginUser(
-  email: string,
-  password: string,
+function requiresMFA(result: AuthResponse): boolean {
+  return (
+    result.status === 401 &&
+    result.data?.flows?.some(
+      (flow) => flow.id === "mfa_authenticate" && flow.is_pending !== false,
+    ) === true
+  );
+}
+
+async function submitAuthentication(
+  endpoint: string,
+  body: Record<string, string>,
 ): Promise<AuthResponse> {
   const sessionResponse = await fetch("/_allauth/browser/v1/auth/session", {
     credentials: "same-origin",
@@ -62,20 +71,21 @@ async function loginUser(
     );
   }
 
-  const response = await fetch("/_allauth/browser/v1/auth/login", {
+  const response = await fetch(endpoint, {
     method: "POST",
     credentials: "same-origin",
     headers: {
       "Content-Type": "application/json",
       "X-CSRFToken": csrfToken,
     },
-    body: JSON.stringify({
-      email: email.trim(),
-      password,
-    }),
+    body: JSON.stringify(body),
   });
 
   const result: AuthResponse = await response.json();
+
+  if (response.status === 401 && requiresMFA(result)) {
+    return result;
+  }
 
   if (!response.ok) {
     throw new Error(getLoginErrorMessage(response.status));
@@ -89,6 +99,8 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [mfaCode, setMfaCode] = useState("");
+  const [requiresMfaCode, setRequiresMfaCode] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -98,60 +110,107 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const result = await loginUser(email, password);
+      const result = requiresMfaCode
+        ? await submitAuthentication(
+            "/_allauth/browser/v1/auth/2fa/authenticate",
+            { code: mfaCode.trim() },
+          )
+        : await submitAuthentication("/_allauth/browser/v1/auth/login", {
+            email: email.trim(),
+            password,
+          });
 
       if (result.meta?.is_authenticated === true) {
-        router.push(getLoginDestination());
+        router.push(
+          requiresMfaCode ? "/avatar-selection" : getLoginDestination(),
+        );
         return;
       }
 
-      setError(
-        "Your account requires another verification step before you can proceed.",
-      );
-    } catch (err) {
-      console.error("QuestLog login error:", err);
+      if (requiresMFA(result)) {
+        setRequiresMfaCode(true);
+        setMfaCode("");
+        return;
+      }
 
+      setError("Your account requires another authentication step.");
+    } catch (err) {
       setError(
         err instanceof Error
           ? err.message
-          : "Could not complete login. Please check your connection and try again.",
+          : "Could not complete login. Please try again.",
       );
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleBack = () => {
+    setRequiresMfaCode(false);
+    setMfaCode("");
+    setPassword("");
+    setError("");
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-black text-white">
       <div className="w-full max-w-md bg-gray-900 p-8 rounded-xl">
-        <h1 className="text-3xl font-bold mb-6">Login</h1>
+        <h1 className="text-3xl font-bold mb-6">
+          {requiresMfaCode ? "Verify Your Identity" : "Login"}
+        </h1>
+
+        {requiresMfaCode && (
+          <p className="text-gray-400 mb-6">
+            Enter the code from your authenticator app to finish signing in.
+          </p>
+        )}
 
         <form
           onSubmit={handleSubmit}
           autoComplete="off"
           className="flex flex-col gap-4"
         >
-          <input
-            type="email"
-            placeholder="Email"
-            autoComplete="off"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            className="p-3 rounded bg-gray-800 border border-gray-700"
-            required
-            disabled={isLoading}
-          />
+          {requiresMfaCode ? (
+            <input
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              placeholder="6-digit authenticator code"
+              value={mfaCode}
+              onChange={(event) =>
+                setMfaCode(event.target.value.replace(/\D/g, "").slice(0, 6))
+              }
+              className="p-3 rounded bg-gray-800 border border-gray-700"
+              maxLength={6}
+              pattern="[0-9]{6}"
+              required
+              disabled={isLoading}
+            />
+          ) : (
+            <>
+              <input
+                type="email"
+                placeholder="Email"
+                autoComplete="off"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                className="p-3 rounded bg-gray-800 border border-gray-700"
+                required
+                disabled={isLoading}
+              />
 
-          <input
-            type="password"
-            placeholder="Password"
-            autoComplete="new-password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            className="p-3 rounded bg-gray-800 border border-gray-700"
-            required
-            disabled={isLoading}
-          />
+              <input
+                type="password"
+                placeholder="Password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                className="p-3 rounded bg-gray-800 border border-gray-700"
+                required
+                disabled={isLoading}
+              />
+            </>
+          )}
 
           {error && (
             <p role="alert" className="text-sm text-red-400">
@@ -164,16 +223,33 @@ export default function LoginPage() {
             disabled={isLoading}
             className="bg-primary py-2 rounded-lg hover:opacity-90"
           >
-            {isLoading ? "Signing In..." : "Sign In"}
+            {isLoading
+              ? "Please wait..."
+              : requiresMfaCode
+                ? "Verify Code"
+                : "Sign In"}
           </button>
+
+          {requiresMfaCode && (
+            <button
+              type="button"
+              onClick={handleBack}
+              disabled={isLoading}
+              className="text-sm text-gray-400 hover:text-white"
+            >
+              Back to Login
+            </button>
+          )}
         </form>
 
-        <p className="text-sm text-gray-400 mt-6 text-center">
-          Don&apos;t have an account?{" "}
-          <a href="/signup" className="text-indigo-400 hover:underline">
-            Sign Up
-          </a>
-        </p>
+        {!requiresMfaCode && (
+          <p className="text-sm text-gray-400 mt-6 text-center">
+            Don&apos;t have an account?{" "}
+            <a href="/signup" className="text-indigo-400 hover:underline">
+              Sign Up
+            </a>
+          </p>
+        )}
       </div>
     </div>
   );
