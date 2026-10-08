@@ -1,10 +1,9 @@
 from unittest.mock import patch
 
-from django.core.cache import cache
-from django.db import connection
-from django.test import TestCase
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser, Group
+from django.core.cache import cache
+from django.db import connection
 from django.test import TestCase
 from rest_framework.request import Request
 from rest_framework.test import APIRequestFactory
