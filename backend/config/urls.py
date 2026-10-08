@@ -21,13 +21,16 @@ from django.urls import include, path
 
 from core.views import HealthCheckView, ReadinessCheckView
 
+API_PREFIX = "api/v1/"
+
 urlpatterns = [
     path("accounts/", include("allauth.urls")),
     path("_allauth/", include("allauth.headless.urls")),
     path("health/", HealthCheckView.as_view(), name="health-check"),
     path("ready/", ReadinessCheckView.as_view(), name="readiness-check"),
-    path("api/v1/", include("catalog.urls")),
-    path("api/v1/", include("tracking.urls")),
+    path(API_PREFIX, include("catalog.urls")),
+    path(API_PREFIX, include("tracking.urls")),
+    path(API_PREFIX, include("analytics.urls")),
 ]
 
 if settings.ADMIN_ENABLED:
