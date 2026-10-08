@@ -75,6 +75,50 @@ class Rating(models.Model):
         return f"Rating for {self.game} by {self.user}"
 
 
+class ActivePlaySessionManager(models.Manager["PlaySession"]):
+    """
+    Default manager for PlaySession that hides soft-deleted sessions.
+    """
+
+    def get_queryset(self) -> models.QuerySet[PlaySession]:
+        """
+        Return only sessions that have not been soft-deleted.
+
+        :returns: A queryset of play sessions whose ``deleted_at`` is empty.
+        :rtype: django.db.models.QuerySet[tracking.models.PlaySession]
+        """
+        return super().get_queryset().filter(deleted_at__isnull=True)
+
+    def visible_to(self, user: User) -> models.QuerySet[PlaySession]:
+        """
+        Return the sessions a user is allowed to see: those they logged and those they played in.
+
+        Participation is matched with a subquery rather than a join, so a session never appears twice in the results.
+
+        :param user: The user viewing the sessions.
+        :type user: users.models.User
+        :returns: A queryset of active play sessions the user created or participated in as a registered player.
+        :rtype: django.db.models.QuerySet[tracking.models.PlaySession]
+        """
+        participated_session_ids = SessionPlayer.objects.filter(user=user).values("session_id")
+        return self.get_queryset().filter(Q(created_by=user) | Q(pk__in=participated_session_ids))
+
+
+class ActiveSessionPlayerManager(models.Manager["SessionPlayer"]):
+    """
+    Default manager for SessionPlayer that hides participants of soft-deleted sessions.
+    """
+
+    def get_queryset(self) -> models.QuerySet[SessionPlayer]:
+        """
+        Return only participants whose session has not been soft-deleted.
+
+        :returns: A queryset of session players belonging to active sessions.
+        :rtype: django.db.models.QuerySet[tracking.models.SessionPlayer]
+        """
+        return super().get_queryset().filter(session__deleted_at__isnull=True)
+
+
 class PlaySession(models.Model):
     """
     Records one or more plays of a board game by a group of players.
@@ -82,6 +126,9 @@ class PlaySession(models.Model):
     A session is either logged manually in QuestLog or imported from BoardGameGeek. Imported sessions store their BGG
     play ID in ``bgg_play_id`` so that syncing again updates them instead of creating duplicates; manually logged
     sessions leave it empty.
+
+    Sessions are soft-deleted by setting ``deleted_at``. The default ``objects`` manager hides them; use
+    ``all_objects`` only when deleted sessions must be included.
     """
 
     game = models.ForeignKey(to=BoardGame, on_delete=models.CASCADE)
@@ -100,6 +147,11 @@ class PlaySession(models.Model):
     is_incomplete = models.BooleanField(default=False)
     location = models.CharField(max_length=255, blank=True, default="")
     notes = models.TextField(blank=True, default="")
+    # Not indexed: almost every row is NULL, so an index could not narrow the "deleted_at IS NULL" filter.
+    deleted_at = models.DateTimeField(null=True, blank=True)
+
+    objects: ClassVar[ActivePlaySessionManager] = ActivePlaySessionManager()
+    all_objects: ClassVar[models.Manager[PlaySession]] = models.Manager()
 
     class Meta:
         indexes: ClassVar[list[models.Index]] = [
@@ -124,6 +176,7 @@ class PlaySession(models.Model):
 
         Sessions are matched on their BGG play ID, so importing the same play again updates it in place. Plays with a
         missing play ID, game ID, or date are skipped and logged, since they cannot be stored or matched reliably.
+        Plays the user has deleted in QuestLog are also skipped, so a later sync does not bring them back.
 
         :param xml_item: The XML element representing a specific play session.
         :type xml_item: xml.etree.ElementTree.Element
@@ -146,6 +199,10 @@ class PlaySession(models.Model):
                 get_attribute(xml_item, "item", "objectid"),
                 get_attribute(xml_item, ".", "date"),
             )
+            return None
+
+        if cls.all_objects.filter(bgg_play_id=bgg_play_id, deleted_at__isnull=False).exists():
+            logger.info("Skipping BGG play %s because it was deleted in QuestLog.", bgg_play_id)
             return None
 
         backup_name = get_attribute(xml_item, "item", "name") or "Unknown"
@@ -263,6 +320,9 @@ class SessionPlayer(models.Model):
     A participant is either a registered QuestLog user (``user`` set) or a guest identified only by name
     (``guest_name`` set), never both. Most imported BGG plays include people without QuestLog accounts, and dropping
     them would make win rates and head-to-head statistics wrong.
+
+    The default ``objects`` manager hides participants of soft-deleted sessions, so statistics built from it never count
+    deleted plays.
     """
 
     session = models.ForeignKey(to=PlaySession, on_delete=models.CASCADE, related_name="players")
@@ -270,6 +330,9 @@ class SessionPlayer(models.Model):
     guest_name = models.CharField(max_length=100, blank=True, default="")
     score = models.FloatField(null=True, blank=True)
     is_winner = models.BooleanField(default=False)
+
+    objects: ClassVar[ActiveSessionPlayerManager] = ActiveSessionPlayerManager()
+    all_objects: ClassVar[models.Manager[SessionPlayer]] = models.Manager()
 
     class Meta:
         constraints: ClassVar[list[models.BaseConstraint]] = [
