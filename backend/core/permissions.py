@@ -19,6 +19,15 @@ class IsOwnerOrModerator(BasePermission):
 
     message = "You do not have permission to access this resource."
 
+    def has_permission(self, request: Request, view: APIView) -> bool:
+        """Reject anonymous requests outright, since an anonymous user can never own an object.
+
+        :param request: The incoming DRF request.
+        :param view: The view handling the request. Unused, present for signature compatibility.
+        :returns: True if the requester is authenticated.
+        """
+        return bool(request.user and request.user.is_authenticated)
+
     def has_object_permission(self, request: Request, view: APIView, access_object: Model) -> bool:
         """Check whether the requesting user owns object or holds a moderating role.
 
@@ -28,7 +37,9 @@ class IsOwnerOrModerator(BasePermission):
         :returns: True if the requester is a moderator/admin or owns the object.
         """
         user = request.user
-        if user.is_moderator:  # type: ignore[union-attr]
+        if not (user and user.is_authenticated):
+            return False
+        if user.is_moderator:
             return True
 
         owner_id = getattr(access_object, "user_id", None)

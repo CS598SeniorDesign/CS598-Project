@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.test import TestCase
 from django.urls import reverse
 from rest_framework import status
@@ -200,3 +201,69 @@ class LibraryItemAPITest(APITestCase):
 
         self.assertEqual(readd_response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(LibraryItem.all_objects.filter(user=self.user, game=self.catan).count(), 1)
+
+
+class LibraryItemAnonymousAccessTest(APITestCase):
+    """Libraries are private: anonymous users can neither read nor change them."""
+
+    def setUp(self):
+        self.owner = User.objects.create_user(email="player@example.com", password="password123")
+        self.game = BoardGame.objects.create(bgg_id=13, primary_name="Catan")
+        self.item = LibraryItem.add_for_user(self.owner, self.game)
+
+    def test_anonymous_cannot_read_libraries(self):
+        self.assertEqual(self.client.get(LIST_URL).status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(self.client.get(detail_url(self.game.bgg_id)).status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_anonymous_cannot_add_update_or_remove(self):
+        other_game = BoardGame.objects.create(bgg_id=822, primary_name="Carcassonne")
+
+        responses = [
+            self.client.post(LIST_URL, {"game_id": other_game.bgg_id}, format="json"),
+            self.client.patch(detail_url(self.game.bgg_id), {"is_played": True}, format="json"),
+            self.client.put(detail_url(self.game.bgg_id), {"is_played": True}, format="json"),
+            self.client.delete(detail_url(self.game.bgg_id)),
+        ]
+
+        self.assertEqual({response.status_code for response in responses}, {status.HTTP_403_FORBIDDEN})
+        self.item.refresh_from_db()
+        self.assertFalse(self.item.is_played)
+        self.assertIsNone(self.item.deleted_at)
+        self.assertEqual(LibraryItem.all_objects.count(), 1)
+
+
+class LibraryItemRoleAccessTest(APITestCase):
+    """Moderators and admins manage only their own library through this endpoint."""
+
+    def setUp(self):
+        self.moderator = User.objects.create_user(email="mod@example.com", password="password123")
+        self.moderator.groups.add(Group.objects.get_or_create(name="moderator")[0])
+        self.player = User.objects.create_user(email="player@example.com", password="password123")
+        self.game = BoardGame.objects.create(bgg_id=13, primary_name="Catan")
+        self.client.force_authenticate(self.moderator)
+
+    def test_moderator_lists_only_their_own_entries(self):
+        LibraryItem.add_for_user(self.player, self.game)
+
+        response = self.client.get(LIST_URL)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, [])
+
+    def test_moderator_detail_lookup_is_unambiguous_when_others_own_the_game(self):
+        LibraryItem.add_for_user(self.player, self.game, ownership=LibraryItem.WISHLISTED)
+        LibraryItem.add_for_user(self.moderator, self.game, ownership=LibraryItem.OWNED)
+
+        response = self.client.get(detail_url(self.game.bgg_id))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["ownership"], LibraryItem.OWNED)
+
+    def test_moderator_cannot_change_another_users_entry(self):
+        item = LibraryItem.add_for_user(self.player, self.game)
+
+        response = self.client.delete(detail_url(self.game.bgg_id))
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        item.refresh_from_db()
+        self.assertIsNone(item.deleted_at)
