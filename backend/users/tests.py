@@ -1,9 +1,14 @@
 import pytest
 from allauth.account.models import EmailAddress
 from django.contrib.auth import get_user_model
-from django.test import Client
+from django.test import Client, override_settings
 
 LOGIN = "/_allauth/browser/v1/auth/login"
+
+TEST_CACHES = {
+    "default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"},
+    "sessions": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"},
+}
 
 
 @pytest.fixture
@@ -13,6 +18,7 @@ def user(db):
     return test_user
 
 
+@override_settings(CACHES=TEST_CACHES)
 def test_login_sets_httponly_lax_cookie(user):
     response = Client().post(
         LOGIN, {"email": "a@example.com", "password": "S3cure-pass!x"}, content_type="application/json"

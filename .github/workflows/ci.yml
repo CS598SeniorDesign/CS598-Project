@@ -250,7 +250,7 @@ jobs:
       - name: Run Django tests
         run: |
           set -o pipefail
-          uv run pytest --cov=. --cov-report=term-missing --cov-report=xml:coverage.xml --cov-fail-under=10 -v 2>&1 | tee backend-test-output.txt
+          uv run pytest --cov=. --cov-report=term-missing --cov-report=xml:coverage.xml --cov-fail-under=60 -v 2>&1 | tee backend-test-output.txt
 
       - name: Upload backend coverage report
         if: always()
@@ -266,6 +266,178 @@ jobs:
         with:
           name: backend-test-log
           path: backend/backend-test-output.txt
+          if-no-files-found: warn
+
+  prototype-2-issue-report:
+    name: Document CI validation
+    needs:
+      - backend-tests
+      - frontend-tests
+      - backend-lint
+      - frontend-lint
+      - docker-compose-smoke-test
+      - secret-scan
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
+      - name: Download backend test log
+        if: always()
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-test-log
+          path: validation-artifacts/backend
+
+      - name: Download backend coverage
+        if: always()
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-coverage
+          path: validation-artifacts/backend
+
+      - name: Download frontend test log
+        if: always()
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-test-log
+          path: validation-artifacts/frontend
+
+      - name: Download frontend coverage
+        if: always()
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-coverage
+          path: validation-artifacts/frontend
+
+      - name: Create and publish validation report
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          BACKEND_RESULT: ${{ needs.backend-tests.result }}
+          FRONTEND_RESULT: ${{ needs.frontend-tests.result }}
+          BACKEND_LINT_RESULT: ${{ needs.backend-lint.result }}
+          FRONTEND_LINT_RESULT: ${{ needs.frontend-lint.result }}
+          DOCKER_RESULT: ${{ needs.docker-compose-smoke-test.result }}
+          SECRET_SCAN_RESULT: ${{ needs.secret-scan.result }}
+        with:
+          script: |
+            const fs = require('fs');
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+
+            function readFile(filePath, fallback) {
+              try {
+                return fs.readFileSync(filePath, 'utf8');
+              } catch {
+                return fallback;
+              }
+            }
+
+            function testSummary(filePath, fallback) {
+              const text = readFile(filePath, '');
+              const matches = text.match(/\d+\s+(?:passed|failed|skipped|error[s]?)/gi);
+              return matches && matches.length > 0 ? matches.join(', ') : fallback;
+            }
+
+            function coverageSummary(filePath, fallback) {
+              const text = readFile(filePath, '');
+              const lines = text.split(/\r?\n/).filter((line) => /TOTAL.*%/i.test(line));
+              return lines.length > 0 ? lines[lines.length - 1].trim() : fallback;
+            }
+
+            const backendLog = 'validation-artifacts/backend/backend-test-output.txt';
+            const frontendLog = 'validation-artifacts/frontend/frontend-test-output.txt';
+            const backendCoverage = coverageSummary(
+              backendLog,
+              'See the `backend-coverage` artifact.'
+            );
+            const frontendCoverage = coverageSummary(
+              frontendLog,
+              fs.existsSync('validation-artifacts/frontend')
+                ? 'See the `frontend-coverage` artifact.'
+                : 'Frontend coverage artifact was not available.'
+            );
+
+            const report = [
+              '## CI Validation Report',
+              '',
+              `**Commit:** \`${context.sha.slice(0, 7)}\``,
+              `**Workflow run:** [Open GitHub Actions run](${runUrl})`,
+              '',
+              '### Automated tests',
+              '',
+              '| Area | Result | Test summary | Coverage |',
+              '| --- | --- | --- | --- |',
+              `| Backend | \`${process.env.BACKEND_RESULT}\` | ${testSummary(backendLog, 'See the `backend-test-log` artifact.')} | ${backendCoverage} |`,
+              `| Frontend | \`${process.env.FRONTEND_RESULT}\` | ${testSummary(frontendLog, 'See the `frontend-test-log` artifact.')} | ${frontendCoverage} |`,
+              '',
+              '### Validation checks',
+              '',
+              `- Backend lint: \`${process.env.BACKEND_LINT_RESULT}\``,
+              `- Frontend lint, type check, and formatting: \`${process.env.FRONTEND_LINT_RESULT}\``,
+              `- Docker Compose smoke test: \`${process.env.DOCKER_RESULT}\``,
+              `- Secret scan: \`${process.env.SECRET_SCAN_RESULT}\``,
+              '',
+              '### Artifacts',
+              '',
+              '- `backend-test-log` — complete backend test output',
+              '- `backend-coverage` — backend XML coverage report',
+              '- `frontend-test-log` — complete frontend test output',
+              '- `frontend-coverage` — frontend coverage report',
+              '',
+              'The artifacts can be downloaded from the linked workflow run.'
+            ].join('\n');
+
+            fs.writeFileSync('ci-validation-report.md', `${report}\n`);
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${report}\n`);
+
+            let pullRequests = [];
+            if (context.payload.pull_request) {
+              pullRequests = [context.payload.pull_request];
+            } else {
+              const response = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                commit_sha: context.sha,
+                per_page: 100
+              });
+              pullRequests = response.data;
+            }
+
+            const issueNumbers = new Set();
+            for (const pullRequest of pullRequests) {
+              const pullRequestBody = pullRequest.body || '';
+              const references = pullRequestBody.matchAll(
+                /(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#(\d+)/gi
+              );
+              for (const reference of references) {
+                issueNumbers.add(Number(reference[1]));
+              }
+            }
+
+            if (issueNumbers.size === 0) {
+              core.notice('No linked issue found in the associated pull request body.');
+              return;
+            }
+
+            for (const issueNumber of issueNumbers) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body: report
+              });
+              core.info(`Posted CI validation report to issue #${issueNumber}.`);
+            }
+
+      - name: Upload combined CI validation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-validation-report
+          path: ci-validation-report.md
           if-no-files-found: warn
 
   frontend-tests:
@@ -506,6 +678,7 @@ jobs:
       - frontend-tests
       - qa-validation
       - production-gate
+      - prototype-2-issue-report
     if: always()
     runs-on: ubuntu-latest
 
