@@ -1,0 +1,50 @@
+meta {
+  name: Update Play
+  type: http
+  seq: 6
+}
+
+put {
+  url: {{baseUrl}}/api/v1/plays/{{loggedPlayId}}/
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "game": {{bggGameId}},
+    "play_date": "2026-10-02",
+    "play_time_minutes": 75,
+    "location": "Game Café",
+    "players": [
+      { "guest_name": "Alex", "score": 8 },
+      { "guest_name": "Sam", "score": 11, "is_winner": true }
+    ]
+  }
+}
+
+tests {
+  test("replaces the play's details", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().id).to.equal(Number(bru.getVar("loggedPlayId")));
+    expect(res.getBody()).to.include({ play_date: "2026-10-02", play_time_minutes: 75, location: "Game Café" });
+  });
+
+  test("clears optional fields that were left out", function () {
+    expect(res.getBody().notes).to.equal("");
+  });
+
+  test("replaces the player list", function () {
+    const guestNames = res.getBody().players.map((player) => player.guest_name);
+    expect(guestNames).to.have.members(["Alex", "Sam"]);
+    const sam = res.getBody().players.find((player) => player.guest_name === "Sam");
+    expect(sam.is_winner).to.equal(true);
+  });
+}
+
+docs {
+  Replaces every field of the play created by **Log Play**, including the full player list. Fields left out
+  return to their defaults (here `notes` is cleared and Jordan is removed).
+
+  Only the user who logged a play can change it; anyone else who can see it gets 403.
+}

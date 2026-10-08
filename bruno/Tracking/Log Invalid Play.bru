@@ -1,0 +1,41 @@
+meta {
+  name: Log Invalid Play
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/v1/plays/
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "game": {{bggGameId}},
+    "play_date": "2026-10-01",
+    "quantity": 0,
+    "players": [
+      { "guest_name": "Alex" },
+      { "guest_name": "alex" },
+      { "guest_name": "" }
+    ]
+  }
+}
+
+tests {
+  test("rejects the play with a 400", function () {
+    expect(res.getStatus()).to.equal(400);
+  });
+
+  test("reports every problem at once, keyed by field", function () {
+    expect(res.getBody()).to.have.all.keys("quantity", "players");
+    expect(res.getBody().players).to.include("Player 2: this player is already in the session.");
+    expect(res.getBody().players).to.include("Player 3: a guest player needs a name.");
+  });
+}
+
+docs {
+  Sends a play that breaks several rules (quantity below 1, the same guest listed twice ignoring case, a guest
+  without a name) to show the error format. Nothing is saved; every problem is returned in one 400 response.
+}
