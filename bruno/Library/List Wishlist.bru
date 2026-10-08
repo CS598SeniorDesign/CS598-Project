@@ -1,0 +1,34 @@
+meta {
+  name: List Wishlist
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/library/?ownership=WISHLISTED
+  body: none
+  auth: none
+}
+
+params:query {
+  ownership: WISHLISTED
+  ~is_played: false
+  ~search: {{searchTerm}}
+}
+
+docs {
+  Lists the user's entries, newest first. Optional filters:
+  - `ownership`: `OWNED` (library) or `WISHLISTED` (wishlist); omit for both
+  - `is_played`: `true` or `false`
+  - `search`: case-insensitive match on the game name
+}
+
+tests {
+  test("returns only wishlisted games, including the one just added", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.be.an("array");
+    res.getBody().forEach((entry) => expect(entry.ownership).to.equal("WISHLISTED"));
+    const ids = res.getBody().map((entry) => entry.game.bgg_id);
+    expect(ids).to.include(Number(bru.getEnvVar("bggGameId")));
+  });
+}
