@@ -82,3 +82,12 @@ class PlaySyncTransactionTests(TestCase):
 
         assert result == (False, "An internal error occurred during synchronization.")
         assert PlaySession.objects.count() == 0
+
+    @patch("tracking.utils.requests.get")
+    def test_sync_passes_username_as_encoded_query_parameter(self, get):
+        get.return_value = Mock(status_code=200, content=b'<plays total="0" />')
+
+        _sync_plays_page(self.user, "player&username=victim", 1)
+
+        assert get.call_args.kwargs["url"] == "https://boardgamegeek.com/xmlapi2/plays"
+        assert get.call_args.kwargs["params"] == {"username": "player&username=victim", "page": 1}

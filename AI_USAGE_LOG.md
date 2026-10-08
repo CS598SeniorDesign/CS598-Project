@@ -199,3 +199,32 @@ AI recommended creating two separate serializers and overriding `get_serializer_
 
 * Requested `/api/v1/games/` and confirmed nested M2M arrays were omitted.
 * Requested `/api/v1/games/13/` and confirmed full payload returned.
+
+---
+
+## Entry 8: Prototype 2 — Security audit
+
+* **Date:** October 8, 2026
+* **Team Member:** Jennifer Isobe (`@jisobe`)
+* **Tool Used:** Claude Sonnet 5
+* **Associated Git Issue:** Closes 101
+* **Associated Feature Branch:** feature/prototype-2-security-check
+
+### Exact Prompt Submitted:
+
+> "Perform a complete audit of the repository using the OWASP Top 10 as reference, suggest mitigatino steps"
+
+### AI Output Summary & Code Generated:
+
+Performed a complete security audit for the entire code repository for each of the OWASP Top 10 items. Create docs/SECURITY_AUDIT.md with status, controls, open issues and mitigations for each item.
+
+### Human Review, Refactoring & Modifications Made:
+
+* Review the full security audit document to understand identified issues
+* Confirmed tested OWASP items against the official list
+* Review code that was identified as problematic
+* Added some changes to address some issues
+
+### Verification & Testing Method:
+
+* Reran test locally and through the CI pipeline

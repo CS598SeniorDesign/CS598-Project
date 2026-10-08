@@ -76,6 +76,18 @@ cp frontend/.env.example frontend/.env
 
 None of the real `.env` files are committed — only the `*.example` templates. Never commit real secret values.
 
+### Feature Flags
+
+Incomplete features are hidden behind `FEATURE_<NAME>` variables that are **off unless set**. The `.env.example` templates turn them on for local development; leave them unset in qa and production until the feature is finished.
+
+| Variable | File | Effect when off |
+| :--- | :--- | :--- |
+| `FEATURE_ANALYTICS`, `FEATURE_BGG_SYNC`, `FEATURE_RECOMMENDATIONS` | `/.env` | Endpoints using `FeatureFlagPermission` return 404 |
+| `FEATURE_ANALYTICS` | `/frontend/.env` | `/analytics` returns 404 |
+| `FEATURE_MFA_SETUP` | `/frontend/.env` | `/mfa-setup` redirects to `/login` |
+
+Backend values are `True`/`False`; frontend values must be exactly `true`. Changing a flag only needs a container restart.
+
 ### Running with Docker Compose
 
 The backend and frontend Dockerfiles are both multi-stage, with separate `dev` and `production` build targets. Local development uses the `dev` target for both, which enables hot-reload (Django's `runserver` and Next.js's `next dev`) via bind-mounted source code.
@@ -201,4 +213,5 @@ The same `--target production` pattern applies to `./backend`.
 
 - [`backend/README.md`](backend/README.md) — backend setup, dependency management, app structure, and test commands
 - [`frontend/README.md`](frontend/README.md) — frontend setup, dependency management, app structure, and test commands
+- [`docs/SECURITY_AUDIT.md`](docs/SECURITY_AUDIT.md) — OWASP Top 10 audit, dependency scanning policy, and open security items
 - `AI_USAGE_LOG.md` — required log of all generative AI usage across this project
