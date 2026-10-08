@@ -26,6 +26,7 @@ class HealthCheckView(APIView):
 
     permission_classes = [AllowAny]
     authentication_classes = []
+    throttle_classes = []
 
     def get(self, request):
         return Response({"status": "ok"}, status=status.HTTP_200_OK)
@@ -36,6 +37,7 @@ class ReadinessCheckView(APIView):
 
     permission_classes = [AllowAny]
     authentication_classes = []
+    throttle_classes = []
 
     def get(self, request):
         checks = {}
