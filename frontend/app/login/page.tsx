@@ -41,18 +41,9 @@ function getLoginDestination(): string {
     : "/avatar-selection";
 }
 
-function requiresMFA(result: AuthResponse): boolean {
-  return (
-    result.status === 401 &&
-    result.data?.flows?.some(
-      (flow) => flow.id === "mfa_authenticate" && flow.is_pending !== false,
-    ) === true
-  );
-}
-
-async function submitAuthentication(
-  endpoint: string,
-  body: Record<string, string>,
+async function loginUser(
+  email: string,
+  password: string,
 ): Promise<AuthResponse> {
   const sessionResponse = await fetch("/_allauth/browser/v1/auth/session", {
     credentials: "same-origin",
@@ -71,21 +62,20 @@ async function submitAuthentication(
     );
   }
 
-  const response = await fetch(endpoint, {
+  const response = await fetch("/_allauth/browser/v1/auth/login", {
     method: "POST",
     credentials: "same-origin",
     headers: {
       "Content-Type": "application/json",
       "X-CSRFToken": csrfToken,
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify({
+      email: email.trim(),
+      password,
+    }),
   });
 
   const result: AuthResponse = await response.json();
-
-  if (response.status === 401 && requiresMFA(result)) {
-    return result;
-  }
 
   if (!response.ok) {
     throw new Error(getLoginErrorMessage(response.status));
@@ -110,30 +100,16 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const result = requiresMfaCode
-        ? await submitAuthentication(
-            "/_allauth/browser/v1/auth/2fa/authenticate",
-            { code: mfaCode.trim() },
-          )
-        : await submitAuthentication("/_allauth/browser/v1/auth/login", {
-            email: email.trim(),
-            password,
-          });
+      const result = await loginUser(email, password);
 
       if (result.meta?.is_authenticated === true) {
-        router.push(
-          requiresMfaCode ? "/avatar-selection" : getLoginDestination(),
-        );
+        router.push(getLoginDestination());
         return;
       }
 
-      if (requiresMFA(result)) {
-        setRequiresMfaCode(true);
-        setMfaCode("");
-        return;
-      }
-
-      setError("Your account requires another authentication step.");
+      setError(
+        "Your account requires another verification step before you can proceed.",
+      );
     } catch (err) {
       setError(
         err instanceof Error
