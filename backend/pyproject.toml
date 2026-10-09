@@ -14,6 +14,8 @@ dependencies = [
     "requests>=2.34.2",
     "django-allauth[headless,headless-spec]>=65.19.4",
     "fido2>=2.2.1",
+    "pandas>=3.0.6",
+    "scikit-learn>=1.9.1",
 ]
 
 [dependency-groups]
@@ -66,7 +68,7 @@ max-complexity = 10
 "**/views.py" = ["RUF012"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["config", "catalog", "profiles", "tracking"]
+known-first-party = ["config", "catalog", "profiles", "tracking", "recommendations"]
 
 [tool.mypy]
 python_version = "3.12"
@@ -90,7 +92,7 @@ django_settings_module = "config.settings"
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings"
 python_files = ["test_*.py", "*_test.py", "tests.py", "*_tests.py", "test_*.py"]
-testpaths = ["catalog", "profiles", "tracking", "core", "users"]
+testpaths = ["catalog", "profiles", "tracking", "core", "users", "recommendations"]
 addopts = "--reuse-db --nomigrations"
 filterwarnings = [
     "ignore:No directory at:UserWarning",

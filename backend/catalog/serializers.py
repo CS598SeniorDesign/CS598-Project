@@ -73,6 +73,7 @@ class BoardGameDetailSerializer(serializers.ModelSerializer):
             "image_url",
             "average_rating",
             "bgg_rank",
+            "average_weight",
             "categories",
             "mechanics",
             "publishers",

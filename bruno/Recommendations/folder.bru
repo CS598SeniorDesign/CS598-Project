@@ -1,0 +1,11 @@
+meta {
+  name: Recommendations
+  seq: 5
+}
+
+docs {
+  Game recommendations for the signed-in user. Personalized strategies require opting in first (**Opt In**);
+  until then they fall back to basic recommendations and say why in `fallback_reason`.
+
+  Run **Catalog → Get Game** first so `bggGameId` is in the local catalog for the feedback requests.
+}

@@ -199,3 +199,82 @@ AI recommended creating two separate serializers and overriding `get_serializer_
 
 * Requested `/api/v1/games/` and confirmed nested M2M arrays were omitted.
 * Requested `/api/v1/games/13/` and confirmed full payload returned.
+
+---
+
+## Entry 6: Prototype 2 — Recommendation Engine (Phase I)
+
+* **Date:** October 3, 2026
+* **Team Member:** Jennifer Isobe (`@Jisobe`)
+* **Tool Used:** Claude Code (Claude Opus 5.5)
+* **Associated Git Issue:** Closes `#76`
+* **Associated Feature Branch:** `feature/KAN-251-Add-basic-recommendations-based-on-overall-rating-from-BGG`
+
+### Exact Prompt Submitted:
+
+> "I am working on implementing a basic recommender system. I am planning to use context filtering with cosine similarity, what would be the best tools to use for this implementation? Should another app be created should additional models be created"
+
+### AI Output Summary & Code Generated:
+
+Suggesting adding a `recommendations` Django app. Phase I (content-based filtering) recommended tools include pandas and scikit-learn: TF-IDF weighted category, mechanic, and designer vectors and scaled player count, play time, and complexity, ranked by cosine similarity. Provided example code for TF-IDF vector weights and basic content filtering setup using pandas and scikit.
+
+### Human Review, Refactoring & Modifications Made:
+
+* Review suggestions to determine if they fit the project architecture and needs
+* Review provided code to understand how implementation should work for QuestLog
+
+### Verification & Testing Method:
+
+* Researched cosine similarity and TF-IDF weighted vectors to better understand thier implementation
+* Created a recommendations app and updated models with basic views and serializers
+
+## Entry 7: Prototype 2 — Recommendation Engine (Phase I)
+
+* **Date:** October 3, 2026
+* **Team Member:** Jennifer Isobe (`@Jisobe`)
+* **Tool Used:** Claude Code (Claude Opus 5.5)
+* **Associated Git Issue:** Closes `#76`
+* **Associated Feature Branch:** `feature/KAN-251-Add-basic-recommendations-based-on-overall-rating-from-BGG`
+
+### Exact Prompt Submitted:
+
+> "I am also working on implementing filters for the recommendations. I think it would be easiest to work on implemeting this early rather than waitng unti later, does this make sense? How can the phase I recommendations be incorporated with the filters." **Provided notes from last semester containing ideas and plans for implementation**
+
+### AI Output Summary & Code Generated:
+
+Suggested creating files for filter metrics, updates for opt-in consent with a basic fallback, an optional onboarding profile for new users, recommendation feedback, Redis caching, an `average_weight` (complexity) field on `BoardGame` based on provided notes.
+
+### Human Review, Refactoring & Modifications Made:
+
+* Review suggestions to determine if they fit the project architecture and needs
+* Created new files to add the filtering criteria
+* Updated recommendation models, views, and serializers to use filtering criteria
+
+### Verification & Testing Method:
+
+* Added tests for recommendations and updated filtering and opt-in
+
+## Entry 8: Prototype 2 — Recommendation Engine (Phase I)
+
+* **Date:** October 4, 2026
+* **Team Member:** Jennifer Isobe (`@Jisobe`)
+* **Tool Used:** Claude Code (Claude Opus 5.5)
+* **Associated Git Issue:** Closes `#76`
+* **Associated Feature Branch:** `feature/KAN-251-Add-basic-recommendations-based-on-overall-rating-from-BGG`
+
+### Exact Prompt Submitted:
+
+> "How does getting the boardgame information for the recommendations work? how do I format the data in a way tha tis usable by the context filter and later phases based on previously provided notes"
+
+### AI Output Summary & Code Generated:
+
+Outlined implementation of data retrieval pipeline and implementation of data.py to create pandas dataframes from queried boardgame data.
+
+### Human Review, Refactoring & Modifications Made:
+
+* Walked through data.py line by line to understand the implementation and its use.
+* Updated functions and variable to match existing backend architecture
+
+### Verification & Testing Method:
+
+* Added tests to the test.py file in recommendations.

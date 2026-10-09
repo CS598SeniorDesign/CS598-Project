@@ -79,6 +79,7 @@ INSTALLED_APPS = [
     "core",
     "tracking",
     "users",
+    "recommendations",
 ]
 
 SITE_ID = 1
@@ -256,7 +257,7 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 # (Django, allauth) are outside our control. Migrations listed in "ignore_name" were flagged but reviewed.
 # Every entry must say why it is safe.
 MIGRATION_LINTER_OPTIONS = {
-    "include_apps": ["catalog", "core", "profiles", "tracking", "users"],
+    "include_apps": ["catalog", "core", "profiles", "recommendations", "tracking", "users"],
     "ignore_name": [
         # tracking: drops and recreates the play session tables to replace the BGG-based primary key. The tables held
         # no data in any environment, and rolling back recreates them.
@@ -283,6 +284,7 @@ REST_FRAMEWORK = {
         "anon": "60/min",
         "user": "300/min",
         "bgg-sync": "3/min",
+        "recommendations": "60/min",
     },
 }
 
