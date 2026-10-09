@@ -17,9 +17,18 @@ body:json {
   }
 }
 
+script:post-response {
+  // Remember the signed-in user's ID so requests can list them as a play session player.
+  if (res.getStatus() === 200) {
+    bru.setVar("userId", res.getBody().data.user.id);
+  }
+}
+
 docs {
   Logs in with the seeded demo account. On success Django sets the `sessionid` cookie, which Bruno's
   cookie jar sends automatically on every later request.
+
+  Also stores the user's ID in `userId` for the Play Sessions requests.
 }
 
 tests {

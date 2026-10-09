@@ -12,6 +12,7 @@ from catalog.models import BoardGame, Category, Mechanic
 from profiles.models import Profile
 from recommendations.models import RecommendationProfile
 from tracking.models import LibraryItem, PlaySession, Rating, SessionPlayer
+from tracking.services import PlaySessionDetails, PlaySessionService, SessionPlayerDetails
 
 User = get_user_model()
 env = environ.Env()
@@ -119,9 +120,55 @@ class Command(BaseCommand):
         Profile.objects.create(user=demonstration_user, display_name="Demo Player", privacy_level=Profile.PUBLIC)
         RecommendationProfile.objects.create(user=demonstration_user, use_personal_data=True)
 
+        self.stdout.write("Seeding play sessions for the demonstration login...")
+        self._seed_demonstration_play_sessions(fake, demonstration_user, games)
+
         self._seed_superuser()
 
         self.stdout.write(self.style.SUCCESS("Successfully seeded database with synthetic data!"))
+
+    def _seed_demonstration_play_sessions(self, fake: Faker, demonstration_user, games: list[BoardGame]) -> None:
+        """
+        Create fake play sessions.
+
+        Each session includes the demonstration user, two seeded users, and one guest; the highest score wins.
+
+        :param fake: The Faker instance used for guest names.
+        :type fake: faker.Faker
+        :param demonstration_user: The demonstration login that logs and plays in every session.
+        :type demonstration_user: users.models.User
+        :param games: The seeded board games to choose from.
+        :type games: list[catalog.models.BoardGame]
+        :returns: None
+        """
+        companions = list(User.objects.exclude(pk=demonstration_user.pk)[:2])
+        registered_players = [demonstration_user, *companions]
+
+        for session_number in range(1, 6):
+            scores = [random.randint(20, 120) for _ in range(len(registered_players) + 1)]  # NOSONAR (S2245)
+            highest_score = max(scores)
+
+            players = [
+                SessionPlayerDetails(user=user, score=score, is_winner=score == highest_score)
+                for user, score in zip(registered_players, scores, strict=False)
+            ]
+
+            players.append(
+                SessionPlayerDetails(
+                    guest_name=fake.first_name(), score=scores[-1], is_winner=scores[-1] == highest_score
+                )
+            )
+
+            PlaySessionService.create_session(
+                demonstration_user,
+                PlaySessionDetails(
+                    game=random.choice(games),  # NOSONAR (S2245)
+                    play_date=timezone.localdate() - timedelta(days=session_number * 3),
+                    play_time_minutes=random.randint(30, 150),  # NOSONAR (S2245)
+                    location=random.choice(["Home", "Game Café", "Friend's place"]),  # NOSONAR (S2245)
+                ),
+                players,
+            )
 
     @staticmethod
     def _seed_plays(user, game):

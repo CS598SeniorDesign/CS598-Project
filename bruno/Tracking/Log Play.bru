@@ -1,0 +1,59 @@
+meta {
+  name: Log Play
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/v1/plays/
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "game": {{bggGameId}},
+    "play_date": "2026-10-01",
+    "play_time_minutes": 60,
+    "location": "Home",
+    "notes": "Logged from Bruno",
+    "players": [
+      { "guest_name": "Alex", "score": 12, "is_winner": true },
+      { "guest_name": "Sam", "score": 9 },
+      { "guest_name": "Jordan", "score": 7 }
+    ]
+  }
+}
+
+script:post-response {
+  // Remember the new session so the requests after this one act on it, not on seeded data.
+  if (res.getStatus() === 201) {
+    bru.setVar("loggedPlayId", res.getBody().id);
+  }
+}
+
+tests {
+  test("logs the play and returns it", function () {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().game.bgg_id).to.equal(Number(bru.getEnvVar("bggGameId")));
+    expect(res.getBody()).to.include({ play_date: "2026-10-01", location: "Home", bgg_play_id: null });
+  });
+  
+  test("saves every player with their score and result", function () {
+    const players = res.getBody().players;
+    expect(players).to.have.lengthOf(3);
+    const alex = players.find((player) => player.guest_name === "Alex");
+    expect(alex).to.include({ user: null, score: 12, is_winner: true });
+  });
+}
+
+docs {
+  Logs a new play session with its players in one atomic request. Requires **Auth → Login** and
+  **Catalog → Get Game** (games must be in the local catalog before a play can reference them).
+  
+  Each player is either `{ "user_id": "<uuid>" }` for a QuestLog user or `{ "guest_name": "..." }` for a guest,
+  with optional `score` and `is_winner`. Any number of players may win, including none. This request uses guests
+  only so it does not depend on a user ID.
+  
+  Stores the new play's ID in `loggedPlayId` for the requests that follow.
+}

@@ -1,0 +1,25 @@
+meta {
+  name: Get Play
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/plays/{{loggedPlayId}}/
+  body: none
+  auth: none
+}
+
+tests {
+  test("returns the requested play with its game and players", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().id).to.equal(Number(bru.getVar("loggedPlayId")));
+    expect(res.getBody().game).to.have.property("primary_name");
+    expect(res.getBody().players).to.have.lengthOf(3);
+  });
+}
+
+docs {
+  Fetches the play created by **Log Play** by its QuestLog ID. Plays the user neither logged nor played in,
+  and deleted plays, return 404.
+}

@@ -1,0 +1,21 @@
+meta {
+  name: Get Deleted Play
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/api/v1/plays/{{loggedPlayId}}/
+  body: none
+  auth: none
+}
+
+tests {
+  test("a deleted play is no longer found", function () {
+    expect(res.getStatus()).to.equal(404);
+  });
+}
+
+docs {
+  Confirms that **Delete Play** worked: the deleted play now returns 404.
+}
