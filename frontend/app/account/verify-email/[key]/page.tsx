@@ -150,7 +150,7 @@ export default function VerifyEmailPage() {
 
           <button
             type="button"
-            onClick={() => router.push("/mfa-setup")}
+            onClick={() => router.push("/login?setup=mfa")}
             className="rounded-lg bg-blue-600 px-6 py-3 text-white"
           >
             Continue to MFA Setup

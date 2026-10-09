@@ -1,0 +1,25 @@
+meta {
+  name: Get Options
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/recommendations/options/
+  body: none
+  auth: none
+}
+
+docs {
+  Lists every strategy (with whether it needs personal data and which parameters it reads), the decision chart
+  choices (periods, complexities, moods), and the categories and mechanics available for the onboarding form.
+}
+
+tests {
+  test("describes the strategies", function () {
+    expect(res.getStatus()).to.equal(200);
+    const keys = res.getBody().strategies.map((strategy) => strategy.key);
+    expect(keys).to.include("for_you");
+    expect(keys).to.include("decision_chart");
+  });
+}
