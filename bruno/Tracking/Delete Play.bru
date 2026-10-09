@@ -1,0 +1,24 @@
+meta {
+  name: Delete Play
+  type: http
+  seq: 8
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/plays/{{loggedPlayId}}/
+  body: none
+  auth: none
+}
+
+tests {
+  test("deletes the play", function () {
+    expect(res.getStatus()).to.equal(204);
+  });
+}
+
+docs {
+  Soft-deletes the play created by **Log Play**. It disappears from **List Plays**, **Get Play**, and statistics;
+  if it had been imported from BoardGameGeek, later syncs would not bring it back.
+
+  Only the user who logged a play can delete it.
+}

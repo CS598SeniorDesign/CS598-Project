@@ -1,0 +1,29 @@
+meta {
+  name: Sync Plays
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/plays/sync/
+  body: none
+  auth: none
+}
+
+tests {
+  test("responds with a sync status message", function () {
+    expect([200, 400, 502]).to.include(res.getStatus());
+    expect(res.getBody()).to.have.property("detail");
+  });
+}
+
+docs {
+  Imports the logged-in user's plays from BoardGameGeek, then run **List Plays** to see them. Plays
+  already imported are updated in place, not duplicated.
+  
+  Uses the BGG username linked to the user's profile (`Profile.bgg_username`); the seeded demo user has
+  none, so this returns 400 until one is set (e.g. via the admin). Also requires a valid `BGG_API_TOKEN`
+  in the root `.env`, otherwise BGG rejects the request and this returns 502.
+  
+  Throttled to 3 requests per minute per user (429 after that).
+}
