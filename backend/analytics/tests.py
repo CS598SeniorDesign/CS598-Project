@@ -133,8 +133,14 @@ class TestTotals:
         assert summary.average_session_minutes == 60.0
 
     def test_counts_owned_games_from_the_library(self, player, catan, azul):
-        LibraryItem.objects.create(user=player, game=catan, status=LibraryItem.OWNED)
-        LibraryItem.objects.create(user=player, game=azul, status=LibraryItem.WISHLISTED)
+        LibraryItem.objects.create(user=player, game=catan, ownership=LibraryItem.OWNED)
+        LibraryItem.objects.create(user=player, game=azul, ownership=LibraryItem.WISHLISTED)
+
+        assert PlayerStatisticsService.build_summary(player).games_owned == 1
+
+    def test_does_not_count_games_removed_from_the_library(self, player, catan, azul):
+        LibraryItem.objects.create(user=player, game=catan, ownership=LibraryItem.OWNED)
+        LibraryItem.objects.create(user=player, game=azul, ownership=LibraryItem.OWNED).soft_delete()
 
         assert PlayerStatisticsService.build_summary(player).games_owned == 1
 

@@ -6,20 +6,23 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('profiles', '0001_initial'),
+        ("profiles", "0001_initial"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='profile',
-            name='bgg_username',
-            field=models.CharField(blank=True, db_default='', default='', max_length=100),
+            model_name="profile",
+            name="bgg_username",
+            field=models.CharField(blank=True, db_default="", default="", max_length=100),
         ),
         migrations.AddConstraint(
-            model_name='profile',
-            constraint=models.UniqueConstraint(django.db.models.functions.text.Lower('bgg_username'), condition=models.Q(('bgg_username', ''), _negated=True), name='unique_linked_bgg_username'),
+            model_name="profile",
+            constraint=models.UniqueConstraint(
+                django.db.models.functions.text.Lower("bgg_username"),
+                condition=models.Q(("bgg_username", ""), _negated=True),
+                name="unique_linked_bgg_username",
+            ),
         ),
     ]

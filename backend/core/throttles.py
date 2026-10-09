@@ -1,4 +1,4 @@
-from rest_framework.throttling import UserRateThrottle
+from rest_framework.throttling import ScopedRateThrottle, UserRateThrottle
 
 
 class BggSyncRateThrottle(UserRateThrottle):
@@ -11,3 +11,11 @@ class BggSyncRateThrottle(UserRateThrottle):
     """
 
     scope = "bgg-sync"
+
+
+class RecommendationRateThrottle(ScopedRateThrottle):
+    """Throttle for the recommendation endpoint, which can train models on a cache miss.
+    Uses the "recommendations" rate from REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"].
+    """
+
+    scope = "recommendations"

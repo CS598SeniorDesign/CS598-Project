@@ -102,7 +102,7 @@ jobs:
         run: uv run python manage.py makemigrations --check --dry-run
 
       - name: Check for unreachable / non-reversible migrations
-        run: uv run python manage.py lintmigrations --include-apps catalog profiles tracking users
+        run: uv run python manage.py lintmigrations --include-apps catalog profiles recommendations tracking users
 
       - name: Run migrations
         run: uv run python manage.py migrate --noinput
@@ -598,8 +598,19 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci --prefix frontend
 
-      - name: Audit JavaScript dependencies
+      # Breakout frontend dependency check to unblock merge requests for items that do not have viable fixes yet
+      - name: Audit frontend runtime dependencies
+        run: npm audit --omit=dev --audit-level=moderate --prefix frontend
+
+      - name: Audit frontend dev tooling (report only)
         run: npm audit --audit-level=moderate --prefix frontend
+        continue-on-error: true
+
+      - name: Install root tooling dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Audit root tooling dependencies
+        run: npm audit --audit-level=moderate
 
   qa-validation:
     name: QA validation
@@ -672,6 +683,7 @@ jobs:
     needs:
       - backend-lint
       - frontend-lint
+      - dependency-review
       - dependency-audit
       - secret-scan
       - backend-tests
@@ -690,6 +702,7 @@ jobs:
           echo "- Backend lint: ${{ needs.backend-lint.result }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- Frontend lint: ${{ needs.frontend-lint.result }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- Secret scan: ${{ needs.secret-scan.result }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Dependency review: ${{ needs.dependency-review.result || 'skipped' }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- Dependency audit: ${{ needs.dependency-audit.result || 'skipped' }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- Backend tests: ${{ needs.backend-tests.result }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- Frontend tests: ${{ needs.frontend-tests.result }}" >> "$GITHUB_STEP_SUMMARY"

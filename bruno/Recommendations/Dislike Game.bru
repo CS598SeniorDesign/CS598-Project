@@ -1,0 +1,31 @@
+meta {
+  name: Dislike Game
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/v1/recommendations/feedback/
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "game_id": {{bggGameId}},
+    "sentiment": "DISLIKE",
+    "strategy": "for_you"
+  }
+}
+
+docs {
+  Reacts to a recommended game with `LIKE` or `DISLIKE`. Disliked games are never recommended again. Reacting to the
+  same game again replaces the earlier reaction (200 instead of 201).
+}
+
+tests {
+  test("records the reaction", function () {
+    expect([200, 201]).to.include(res.getStatus());
+    expect(res.getBody().sentiment).to.equal("DISLIKE");
+  });
+}

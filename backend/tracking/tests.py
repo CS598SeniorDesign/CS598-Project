@@ -1,424 +1,269 @@
-from __future__ import annotations
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
+from django.test import TestCase
+from django.urls import reverse
+from rest_framework import status
+from rest_framework.test import APITestCase
 
-from datetime import date
-from unittest.mock import patch
-from xml.etree.ElementTree import fromstring
+from catalog.models import BoardGame
+from tracking.models import LibraryItem, LibraryItemAlreadyExistsError
 
-import pytest
-from django.core.cache import cache
-from django.core.exceptions import ValidationError
+User = get_user_model()
 
-from profiles.models import GameGroup
-from tracking.models import PlaySession, SessionPlayer
-from tracking.services import PlaySessionDetails, PlaySessionService, SessionPlayerDetails
-
-pytestmark = pytest.mark.django_db
-
-LIST_URL = "/api/v1/plays/"
-LOCAL_MEMORY_CACHE = {
-    "default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"},
-    "sessions": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"},
-}
+LIST_URL = reverse("library-item-list")
 
 
-def detail_url(session_id: int) -> str:
-    """
-    Build the URL for a single play session.
-    """
-    return f"{LIST_URL}{session_id}/"
+def detail_url(bgg_id: int) -> str:
+    return reverse("library-item-detail", kwargs={"bgg_id": bgg_id})
 
 
-def session_body(players: list[dict], **overrides) -> dict:
-    """
-    Build a request body for logging or replacing a session of the default test game (BGG ID 13).
-    """
-    body = {"game": 13, "play_date": "2026-10-01", "players": players}
-    body.update(overrides)
-    return body
+class LibraryItemModelTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(email="player@example.com", password="password123")
+        self.game = BoardGame.objects.create(bgg_id=13, primary_name="Catan")
+
+    def test_soft_deleted_items_are_hidden_from_default_manager(self):
+        item = LibraryItem.add_for_user(self.user, self.game)
+        item.soft_delete()
+
+        self.assertFalse(LibraryItem.objects.filter(pk=item.pk).exists())
+        self.assertTrue(LibraryItem.all_objects.filter(pk=item.pk, deleted_at__isnull=False).exists())
+
+    def test_add_for_user_rejects_active_duplicate(self):
+        LibraryItem.add_for_user(self.user, self.game)
+
+        with self.assertRaises(LibraryItemAlreadyExistsError):
+            LibraryItem.add_for_user(self.user, self.game, ownership=LibraryItem.WISHLISTED)
+
+    def test_add_for_user_restores_removed_item_with_new_values(self):
+        original = LibraryItem.add_for_user(self.user, self.game, is_played=True, house_rules="No robber")
+        original.soft_delete()
+
+        restored = LibraryItem.add_for_user(self.user, self.game, ownership=LibraryItem.WISHLISTED)
+
+        self.assertEqual(restored.pk, original.pk)
+        self.assertIsNone(restored.deleted_at)
+        self.assertEqual(restored.ownership, LibraryItem.WISHLISTED)
+        self.assertFalse(restored.is_played)
+        self.assertEqual(restored.house_rules, "")
+        self.assertEqual(LibraryItem.all_objects.count(), 1)
+
+    def test_queryset_helpers_split_library_and_wishlist(self):
+        other_game = BoardGame.objects.create(bgg_id=822, primary_name="Carcassonne")
+        owned = LibraryItem.add_for_user(self.user, self.game)
+        wanted = LibraryItem.add_for_user(self.user, other_game, ownership=LibraryItem.WISHLISTED)
+
+        self.assertEqual(list(LibraryItem.objects.owned()), [owned])
+        self.assertEqual(list(LibraryItem.objects.wishlisted()), [wanted])
 
 
-@pytest.fixture(autouse=True)
-def local_memory_cache(settings):
-    """
-    Keep API throttling state in memory so these tests do not depend on Redis, matching test_integration.py.
-    """
-    settings.CACHES = LOCAL_MEMORY_CACHE
-    cache.clear()
+class LibraryItemAPITest(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(email="player@example.com", password="password123")
+        self.other_user = User.objects.create_user(email="other@example.com", password="password123")
+        self.catan = BoardGame.objects.create(bgg_id=13, primary_name="Catan")
+        self.carcassonne = BoardGame.objects.create(bgg_id=822, primary_name="Carcassonne")
+        self.azul = BoardGame.objects.create(bgg_id=230802, primary_name="Azul")
+        self.client.force_authenticate(self.user)
 
+    def test_requires_authentication(self):
+        self.client.force_authenticate(None)
 
-class TestCreateEndpoint:
-    def test_requires_sign_in(self, api_client, game):
-        response = api_client.post(LIST_URL, session_body([{"guest_name": "Alex"}]), format="json")
+        response = self.client.get(LIST_URL)
 
-        assert response.status_code == 403
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_logs_the_session_with_every_player(self, api_client, owner, friend, game):
-        api_client.force_authenticate(owner)
-        players = [
-            {"user_id": str(owner.pk), "score": 10, "is_winner": True},
-            {"user_id": str(friend.pk), "score": 8},
-            {"guest_name": "Alex", "score": 5},
-        ]
+    def test_add_game_to_library_defaults_to_owned_and_unplayed(self):
+        response = self.client.post(LIST_URL, {"game_id": self.catan.bgg_id}, format="json")
 
-        response = api_client.post(LIST_URL, session_body(players, location="Home"), format="json")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["game"]["bgg_id"], self.catan.bgg_id)
+        self.assertEqual(response.data["game"]["primary_name"], "Catan")
+        self.assertEqual(response.data["ownership"], LibraryItem.OWNED)
+        self.assertFalse(response.data["is_played"])
+        self.assertNotIn("game_id", response.data)
 
-        assert response.status_code == 201
-        session = PlaySession.objects.get(pk=response.data["id"])
-        assert session.created_by == owner
-        assert session.location == "Home"
-        assert {(player["user"], player["guest_name"], player["score"]) for player in response.data["players"]} == {
-            (owner.pk, "", 10),
-            (friend.pk, "", 8),
-            (None, "Alex", 5),
-        }
-
-    def test_rejects_a_game_missing_from_the_catalog(self, api_client, owner, game):
-        api_client.force_authenticate(owner)
-
-        response = api_client.post(LIST_URL, session_body([{"guest_name": "Alex"}], game=999999), format="json")
-
-        assert response.status_code == 400
-        assert "game" in response.data
-
-    def test_returns_service_errors_as_a_bad_request_and_saves_nothing(self, api_client, owner, game):
-        api_client.force_authenticate(owner)
-        players = [{"user_id": str(owner.pk)}, {"user_id": str(owner.pk)}, {"guest_name": ""}]
-
-        response = api_client.post(LIST_URL, session_body(players, quantity=0), format="json")
-
-        assert response.status_code == 400
-        assert set(response.data) == {"quantity", "players"}
-        assert PlaySession.all_objects.count() == 0
-
-    def test_rejects_a_group_the_user_does_not_belong_to(self, api_client, owner, friend, game):
-        group = GameGroup.objects.create(name="Friend's group", created_by=friend)
-        group.members.add(friend)
-        api_client.force_authenticate(owner)
-
-        response = api_client.post(LIST_URL, session_body([{"guest_name": "Alex"}], group=group.pk), format="json")
-
-        assert response.status_code == 400
-        assert "group" in response.data
-
-
-class TestUpdateEndpoints:
-    def test_put_replaces_every_field_and_the_player_list(self, api_client, log_session, owner, other_game):
-        session = log_session(location="Home", notes="First game")
-        api_client.force_authenticate(owner)
-
-        response = api_client.put(
-            detail_url(session.pk),
-            session_body([{"guest_name": "Sam", "is_winner": True}], game=other_game.bgg_id, play_date="2026-10-02"),
+    def test_add_played_game_to_wishlist(self):
+        response = self.client.post(
+            LIST_URL,
+            {"game_id": self.azul.bgg_id, "ownership": LibraryItem.WISHLISTED, "is_played": True},
             format="json",
         )
 
-        assert response.status_code == 200
-        assert response.data["game"]["bgg_id"] == other_game.bgg_id
-        assert response.data["location"] == ""
-        assert response.data["notes"] == ""
-        assert [player["guest_name"] for player in response.data["players"]] == ["Sam"]
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        item = LibraryItem.objects.get(user=self.user, game=self.azul)
+        self.assertEqual(item.ownership, LibraryItem.WISHLISTED)
+        self.assertTrue(item.is_played)
 
-    def test_put_requires_the_player_list(self, api_client, log_session, owner):
-        session = log_session()
-        api_client.force_authenticate(owner)
+    def test_add_duplicate_game_returns_conflict(self):
+        LibraryItem.add_for_user(self.user, self.catan, ownership=LibraryItem.WISHLISTED)
 
-        response = api_client.put(detail_url(session.pk), {"game": 13, "play_date": "2026-10-02"}, format="json")
+        response = self.client.post(LIST_URL, {"game_id": self.catan.bgg_id}, format="json")
 
-        assert response.status_code == 400
-        assert "players" in response.data
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(LibraryItem.objects.filter(user=self.user).count(), 1)
 
-    def test_patch_changes_only_the_fields_sent(self, api_client, log_session, owner, friend):
-        session = log_session(
-            players=[SessionPlayerDetails(user=owner), SessionPlayerDetails(user=friend)], location="Home"
+    def test_add_game_not_in_catalog_returns_bad_request(self):
+        response = self.client.post(LIST_URL, {"game_id": 999999}, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("game_id", response.data)
+        self.assertFalse(BoardGame.objects.filter(bgg_id=999999).exists())
+
+    def test_add_with_invalid_ownership_returns_bad_request(self):
+        response = self.client.post(LIST_URL, {"game_id": self.catan.bgg_id, "ownership": "BORROWED"}, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("ownership", response.data)
+
+    def test_list_only_includes_own_active_items(self):
+        LibraryItem.add_for_user(self.user, self.catan)
+        LibraryItem.add_for_user(self.user, self.azul).soft_delete()
+        LibraryItem.add_for_user(self.other_user, self.carcassonne)
+
+        response = self.client.get(LIST_URL)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual([entry["game"]["bgg_id"] for entry in response.data], [self.catan.bgg_id])
+
+    def test_list_filters_by_ownership_and_played(self):
+        LibraryItem.add_for_user(self.user, self.catan, is_played=True)
+        LibraryItem.add_for_user(self.user, self.carcassonne, is_played=False)
+        LibraryItem.add_for_user(self.user, self.azul, ownership=LibraryItem.WISHLISTED)
+
+        wishlist = self.client.get(LIST_URL, {"ownership": "wishlisted"})
+        unplayed_library = self.client.get(LIST_URL, {"ownership": "OWNED", "is_played": "false"})
+
+        self.assertEqual([entry["game"]["bgg_id"] for entry in wishlist.data], [self.azul.bgg_id])
+        self.assertEqual([entry["game"]["bgg_id"] for entry in unplayed_library.data], [self.carcassonne.bgg_id])
+
+    def test_list_searches_by_game_name(self):
+        LibraryItem.add_for_user(self.user, self.catan)
+        LibraryItem.add_for_user(self.user, self.carcassonne)
+
+        response = self.client.get(LIST_URL, {"search": "carc"})
+
+        self.assertEqual([entry["game"]["bgg_id"] for entry in response.data], [self.carcassonne.bgg_id])
+
+    def test_list_rejects_invalid_filters(self):
+        self.assertEqual(self.client.get(LIST_URL, {"ownership": "BORROWED"}).status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(self.client.get(LIST_URL, {"is_played": "maybe"}).status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_retrieve_by_bgg_id(self):
+        LibraryItem.add_for_user(self.user, self.catan, house_rules="Start with 2 extra wood")
+
+        response = self.client.get(detail_url(self.catan.bgg_id))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["house_rules"], "Start with 2 extra wood")
+
+    def test_cannot_access_another_users_item(self):
+        LibraryItem.add_for_user(self.other_user, self.catan)
+
+        self.assertEqual(self.client.get(detail_url(self.catan.bgg_id)).status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(
+            self.client.patch(detail_url(self.catan.bgg_id), {"is_played": True}, format="json").status_code,
+            status.HTTP_404_NOT_FOUND,
         )
-        api_client.force_authenticate(owner)
+        self.assertEqual(self.client.delete(detail_url(self.catan.bgg_id)).status_code, status.HTTP_404_NOT_FOUND)
 
-        response = api_client.patch(detail_url(session.pk), {"notes": "  Close game  "}, format="json")
+    def test_move_from_wishlist_to_library_and_mark_played(self):
+        LibraryItem.add_for_user(self.user, self.catan, ownership=LibraryItem.WISHLISTED)
 
-        assert response.status_code == 200
-        assert response.data["notes"] == "Close game"
-        assert response.data["location"] == "Home"
-        assert len(response.data["players"]) == 2
-
-    def test_patch_returns_service_errors_as_a_bad_request(self, api_client, log_session, owner):
-        session = log_session()
-        api_client.force_authenticate(owner)
-
-        response = api_client.patch(detail_url(session.pk), {"quantity": 0}, format="json")
-
-        assert response.status_code == 400
-        assert "quantity" in response.data
-
-    def test_a_player_who_did_not_log_the_session_cannot_edit_it(self, api_client, log_session, owner, friend):
-        session = log_session(players=[SessionPlayerDetails(user=owner), SessionPlayerDetails(user=friend)])
-        api_client.force_authenticate(friend)
-
-        response = api_client.patch(detail_url(session.pk), {"notes": "Mine now"}, format="json")
-
-        assert response.status_code == 403
-
-    def test_an_unrelated_user_cannot_find_the_session(self, api_client, log_session, stranger):
-        session = log_session()
-        api_client.force_authenticate(stranger)
-
-        response = api_client.patch(detail_url(session.pk), {"notes": "Hello"}, format="json")
-
-        assert response.status_code == 404
-
-
-class TestDeleteEndpoint:
-    def test_soft_deletes_the_session(self, api_client, log_session, owner):
-        session = log_session()
-        api_client.force_authenticate(owner)
-
-        response = api_client.delete(detail_url(session.pk))
-
-        assert response.status_code == 204
-        assert PlaySession.all_objects.get(pk=session.pk).deleted_at is not None
-
-    def test_a_player_who_did_not_log_the_session_cannot_delete_it(self, api_client, log_session, owner, friend):
-        session = log_session(players=[SessionPlayerDetails(user=owner), SessionPlayerDetails(user=friend)])
-        api_client.force_authenticate(friend)
-
-        response = api_client.delete(detail_url(session.pk))
-
-        assert response.status_code == 403
-        assert PlaySession.objects.filter(pk=session.pk).exists()
-
-    def test_deleted_sessions_disappear_from_the_list_and_detail_endpoints(self, api_client, log_session, owner):
-        deleted_session = log_session()
-        kept_session = log_session()
-        api_client.force_authenticate(owner)
-
-        api_client.delete(detail_url(deleted_session.pk))
-
-        assert [session["id"] for session in api_client.get(LIST_URL).data] == [kept_session.pk]
-        assert api_client.get(detail_url(deleted_session.pk)).status_code == 404
-        assert api_client.delete(detail_url(deleted_session.pk)).status_code == 404
-
-
-def failing_bulk_create():
-    """
-    Patch the participant insert to fail, simulating a database error partway through a write.
-    """
-    return patch.object(SessionPlayer.objects, "bulk_create", side_effect=RuntimeError("insert failed"))
-
-
-class TestCreateSession:
-    def test_saves_session_and_every_player(self, owner, friend, game):
-        session = PlaySessionService.create_session(
-            owner,
-            PlaySessionDetails(game=game, play_date=date(2026, 10, 1), play_time_minutes=60, location="  Home  "),
-            [
-                SessionPlayerDetails(user=owner, score=10, is_winner=True),
-                SessionPlayerDetails(guest_name="  Alex  ", score=7),
-                SessionPlayerDetails(user=friend, score=10, is_winner=True),
-            ],
+        response = self.client.patch(
+            detail_url(self.catan.bgg_id), {"ownership": LibraryItem.OWNED, "is_played": True}, format="json"
         )
 
-        assert session.created_by == owner
-        assert session.bgg_play_id is None
-        assert session.location == "Home"
-        assert session.players.count() == 3
-        assert session.players.filter(is_winner=True).count() == 2
-        assert session.players.get(user__isnull=True).guest_name == "Alex"
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        item = LibraryItem.objects.get(user=self.user, game=self.catan)
+        self.assertEqual(item.ownership, LibraryItem.OWNED)
+        self.assertTrue(item.is_played)
 
-    def test_allows_a_session_with_no_winner(self, owner, game):
-        session = PlaySessionService.create_session(
-            owner,
-            PlaySessionDetails(game=game, play_date=date(2026, 10, 1), is_incomplete=True),
-            [SessionPlayerDetails(user=owner)],
-        )
+    def test_update_cannot_change_game(self):
+        LibraryItem.add_for_user(self.user, self.catan)
 
-        assert not session.players.filter(is_winner=True).exists()
+        response = self.client.patch(detail_url(self.catan.bgg_id), {"game_id": self.azul.bgg_id}, format="json")
 
-    def test_rolls_back_the_session_when_a_player_insert_fails(self, owner, game):
-        play_session = PlaySessionDetails(game=game, play_date=date(2026, 10, 1))
-        session_details = [SessionPlayerDetails(user=owner)]
-        with failing_bulk_create(), pytest.raises(RuntimeError):
-            PlaySessionService.create_session(owner, play_session, session_details)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["game"]["bgg_id"], self.catan.bgg_id)
 
-        assert PlaySession.all_objects.count() == 0
-        assert SessionPlayer.all_objects.count() == 0
+    def test_delete_soft_deletes_and_game_can_be_re_added(self):
+        item = LibraryItem.add_for_user(self.user, self.catan)
 
+        delete_response = self.client.delete(detail_url(self.catan.bgg_id))
+        item.refresh_from_db()
 
-class TestValidation:
-    def test_reports_every_problem_at_once_and_writes_nothing(self, owner, game):
-        play_session = PlaySessionDetails(game=game, play_date=date(2026, 10, 1), quantity=0, play_time_minutes=0)
-        session_details = [SessionPlayerDetails(user=owner), SessionPlayerDetails()]
-        with pytest.raises(ValidationError) as error_info:
-            PlaySessionService.create_session(
-                owner,
-                play_session,
-                session_details,
-            )
+        self.assertEqual(delete_response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertIsNotNone(item.deleted_at)
+        self.assertEqual(self.client.get(detail_url(self.catan.bgg_id)).status_code, status.HTTP_404_NOT_FOUND)
 
-        assert set(error_info.value.message_dict) == {"quantity", "play_time_minutes", "players"}
-        assert PlaySession.all_objects.count() == 0
+        readd_response = self.client.post(LIST_URL, {"game_id": self.catan.bgg_id}, format="json")
 
-    def test_rejects_an_empty_player_list(self, owner, game):
-        with pytest.raises(ValidationError) as error_info:
-            PlaySessionService.create_session(owner, PlaySessionDetails(game=game, play_date=date(2026, 10, 1)), [])
-
-        assert error_info.value.message_dict == {"players": ["A play session needs at least one player."]}
-
-    def test_rejects_a_location_over_the_length_limit(self, owner, game):
-        with pytest.raises(ValidationError) as error_info:
-            PlaySessionService.create_session(
-                owner,
-                PlaySessionDetails(game=game, play_date=date(2026, 10, 1), location="x" * 256),
-                [SessionPlayerDetails(user=owner)],
-            )
-
-        assert "location" in error_info.value.message_dict
-
-    @pytest.mark.parametrize(
-        ("build_players", "expected_message"),
-        [
-            pytest.param(
-                lambda owner: [SessionPlayerDetails(user=owner, guest_name="Alex")],
-                "Player 1: a player must be either a registered user or a guest, not both.",
-                id="user-and-guest-name",
-            ),
-            pytest.param(
-                lambda owner: [SessionPlayerDetails(guest_name="   ")],
-                "Player 1: a guest player needs a name.",
-                id="blank-guest-name",
-            ),
-            pytest.param(
-                lambda owner: [SessionPlayerDetails(guest_name="x" * 101)],
-                "Player 1: guest name cannot be longer than 100 characters.",
-                id="guest-name-too-long",
-            ),
-            pytest.param(
-                lambda owner: [SessionPlayerDetails(user=owner, score=float("nan"))],
-                "Player 1: score must be a finite number.",
-                id="score-not-finite",
-            ),
-            pytest.param(
-                lambda owner: [SessionPlayerDetails(user=owner), SessionPlayerDetails(user=owner)],
-                "Player 2: this player is already in the session.",
-                id="duplicate-user",
-            ),
-            pytest.param(
-                lambda owner: [SessionPlayerDetails(guest_name="Alex"), SessionPlayerDetails(guest_name=" ALEX ")],
-                "Player 2: this player is already in the session.",
-                id="duplicate-guest-ignoring-case",
-            ),
-        ],
-    )
-    def test_rejects_invalid_players(self, owner, game, build_players, expected_message):
-        with pytest.raises(ValidationError) as error_info:
-            PlaySessionService.create_session(
-                owner, PlaySessionDetails(game=game, play_date=date(2026, 10, 1)), build_players(owner)
-            )
-
-        assert error_info.value.message_dict == {"players": [expected_message]}
+        self.assertEqual(readd_response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(LibraryItem.all_objects.filter(user=self.user, game=self.catan).count(), 1)
 
 
-class TestUpdateSession:
-    def test_replaces_details_and_players(self, log_session, owner, friend, other_game):
-        session = log_session()
+class LibraryItemAnonymousAccessTest(APITestCase):
+    """Libraries are private: anonymous users can neither read nor change them."""
 
-        updated = PlaySessionService.update_session(
-            session,
-            PlaySessionDetails(game=other_game, play_date=date(2026, 10, 2), notes="  Rematch  "),
-            [SessionPlayerDetails(user=friend, is_winner=True), SessionPlayerDetails(guest_name="Sam")],
-        )
+    def setUp(self):
+        self.owner = User.objects.create_user(email="player@example.com", password="password123")
+        self.game = BoardGame.objects.create(bgg_id=13, primary_name="Catan")
+        self.item = LibraryItem.add_for_user(self.owner, self.game)
 
-        updated.refresh_from_db()
-        assert updated.game == other_game
-        assert updated.play_date == date(2026, 10, 2)
-        assert updated.notes == "Rematch"
-        assert updated.players.count() == 2
-        assert not updated.players.filter(user=owner).exists()
-        assert updated.players.get(user=friend).is_winner
+    def test_anonymous_cannot_read_libraries(self):
+        self.assertEqual(self.client.get(LIST_URL).status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(self.client.get(detail_url(self.game.bgg_id)).status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_keeps_players_when_none_are_given(self, log_session, owner, friend, game):
-        session = log_session(players=[SessionPlayerDetails(user=owner), SessionPlayerDetails(user=friend)])
+    def test_anonymous_cannot_add_update_or_remove(self):
+        other_game = BoardGame.objects.create(bgg_id=822, primary_name="Carcassonne")
 
-        PlaySessionService.update_session(session, PlaySessionDetails(game=game, play_date=date(2026, 10, 5)))
+        responses = [
+            self.client.post(LIST_URL, {"game_id": other_game.bgg_id}, format="json"),
+            self.client.patch(detail_url(self.game.bgg_id), {"is_played": True}, format="json"),
+            self.client.put(detail_url(self.game.bgg_id), {"is_played": True}, format="json"),
+            self.client.delete(detail_url(self.game.bgg_id)),
+        ]
 
-        assert session.players.count() == 2
-
-    def test_rolls_back_every_change_when_a_player_insert_fails(self, log_session, owner, friend, other_game):
-        session = log_session(players=[SessionPlayerDetails(user=owner), SessionPlayerDetails(user=friend)])
-
-        with failing_bulk_create(), pytest.raises(RuntimeError):
-            PlaySessionService.update_session(
-                session,
-                PlaySessionDetails(game=other_game, play_date=date(2026, 10, 9)),
-                [SessionPlayerDetails(guest_name="Sam")],
-            )
-
-        session.refresh_from_db()
-        assert session.game_id == 13
-        assert session.play_date == date(2026, 10, 1)
-        assert set(session.players.values_list("user", flat=True)) == {owner.pk, friend.pk}
-
-    def test_does_not_write_when_validation_fails(self, log_session, owner, other_game):
-        session = log_session()
-
-        with pytest.raises(ValidationError):
-            PlaySessionService.update_session(
-                session, PlaySessionDetails(game=other_game, play_date=date(2026, 10, 9), quantity=0), []
-            )
-
-        session.refresh_from_db()
-        assert session.game_id == 13
-        assert session.players.count() == 1
-
-    def test_refuses_to_update_a_deleted_session(self, log_session, game):
-        session = log_session()
-        PlaySessionService.delete_session(session)
-
-        with pytest.raises(PlaySession.DoesNotExist):
-            PlaySessionService.update_session(session, PlaySessionDetails(game=game, play_date=date(2026, 10, 9)))
+        self.assertEqual({response.status_code for response in responses}, {status.HTTP_403_FORBIDDEN})
+        self.item.refresh_from_db()
+        self.assertFalse(self.item.is_played)
+        self.assertIsNone(self.item.deleted_at)
+        self.assertEqual(LibraryItem.all_objects.count(), 1)
 
 
-class TestDeleteSession:
-    def test_hides_the_session_and_its_players_but_keeps_the_rows(self, log_session, owner):
-        session = log_session()
+class LibraryItemRoleAccessTest(APITestCase):
+    """Moderators and admins manage only their own library through this endpoint."""
 
-        PlaySessionService.delete_session(session)
+    def setUp(self):
+        self.moderator = User.objects.create_user(email="mod@example.com", password="password123")
+        self.moderator.groups.add(Group.objects.get_or_create(name="moderator")[0])
+        self.player = User.objects.create_user(email="player@example.com", password="password123")
+        self.game = BoardGame.objects.create(bgg_id=13, primary_name="Catan")
+        self.client.force_authenticate(self.moderator)
 
-        assert session.deleted_at is not None
-        assert not PlaySession.objects.filter(pk=session.pk).exists()
-        assert not SessionPlayer.objects.filter(user=owner).exists()
-        assert PlaySession.all_objects.filter(pk=session.pk).exists()
-        assert SessionPlayer.all_objects.filter(user=owner).count() == 1
+    def test_moderator_lists_only_their_own_entries(self):
+        LibraryItem.add_for_user(self.player, self.game)
 
-    def test_refuses_to_delete_twice(self, log_session):
-        session = log_session()
-        PlaySessionService.delete_session(session)
+        response = self.client.get(LIST_URL)
 
-        with pytest.raises(PlaySession.DoesNotExist):
-            PlaySessionService.delete_session(session)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, [])
 
-    def test_bgg_sync_does_not_recreate_a_deleted_play(self, owner, game):
-        play_xml = fromstring('<play id="555" date="2026-09-28"><item objectid="13" name="Catan" /></play>')
-        imported_session = PlaySession.create_from_xml(play_xml, owner, "owner")
-        assert imported_session is not None
-        PlaySessionService.delete_session(imported_session)
+    def test_moderator_detail_lookup_is_unambiguous_when_others_own_the_game(self):
+        LibraryItem.add_for_user(self.player, self.game, ownership=LibraryItem.WISHLISTED)
+        LibraryItem.add_for_user(self.moderator, self.game, ownership=LibraryItem.OWNED)
 
-        assert PlaySession.create_from_xml(play_xml, owner, "owner") is None
-        assert PlaySession.all_objects.filter(bgg_play_id=555).count() == 1
-        assert PlaySession.all_objects.get(bgg_play_id=555).deleted_at is not None
+        response = self.client.get(detail_url(self.game.bgg_id))
 
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["ownership"], LibraryItem.OWNED)
 
-class TestVisibleTo:
-    def test_includes_logged_and_participated_sessions_once(self, log_session, owner, friend, stranger):
-        logged_and_played = log_session(players=[SessionPlayerDetails(user=owner), SessionPlayerDetails(user=friend)])
-        logged_only = log_session(players=[SessionPlayerDetails(guest_name="Alex")])
-        played_only = log_session(created_by=friend, players=[SessionPlayerDetails(user=owner)])
-        log_session(created_by=stranger)
+    def test_moderator_cannot_change_another_users_entry(self):
+        item = LibraryItem.add_for_user(self.player, self.game)
 
-        visible_session_ids = list(PlaySession.objects.visible_to(owner).values_list("id", flat=True))
+        response = self.client.delete(detail_url(self.game.bgg_id))
 
-        assert sorted(visible_session_ids) == sorted([logged_and_played.pk, logged_only.pk, played_only.pk])
-
-    def test_excludes_deleted_sessions(self, log_session, owner):
-        session = log_session()
-        PlaySessionService.delete_session(session)
-
-        assert not PlaySession.objects.visible_to(owner).exists()
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        item.refresh_from_db()
+        self.assertIsNone(item.deleted_at)

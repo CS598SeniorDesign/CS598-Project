@@ -151,7 +151,7 @@ class PlayerStatisticsService:
             total_play_time_minutes=int(known_play_times.sum()),
             average_session_minutes=round(float(known_play_times.mean()), 1) if len(known_play_times) else None,
             games_played=int(sessions["game_id"].nunique()),
-            games_owned=LibraryItem.objects.filter(user=user, status=LibraryItem.OWNED).count(),
+            games_owned=LibraryItem.objects.filter(user=user, ownership=LibraryItem.OWNED).count(),
             most_played_games=cls._most_played_games(sessions),
             top_categories=cls._top_categories(user),
             monthly_activity=cls._monthly_activity(sessions, month_keys),

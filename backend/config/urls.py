@@ -31,6 +31,7 @@ urlpatterns = [
     path(API_PREFIX, include("catalog.urls")),
     path(API_PREFIX, include("tracking.urls")),
     path(API_PREFIX, include("analytics.urls")),
+    path(API_PREFIX, include("recommendations.urls")),
 ]
 
 if settings.ADMIN_ENABLED:

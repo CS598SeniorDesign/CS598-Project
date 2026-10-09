@@ -1,0 +1,21 @@
+meta {
+  name: Remove Feedback
+  type: http
+  seq: 6
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/recommendations/feedback/{{bggGameId}}/
+  body: none
+  auth: none
+}
+
+docs {
+  Removes the user's reaction to a game, so it can be recommended again.
+}
+
+tests {
+  test("removes the reaction", function () {
+    expect(res.getStatus()).to.equal(204);
+  });
+}

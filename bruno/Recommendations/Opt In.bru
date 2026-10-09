@@ -1,0 +1,32 @@
+meta {
+  name: Opt In
+  type: http
+  seq: 2
+}
+
+patch {
+  url: {{baseUrl}}/api/v1/recommendations/profile/
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "use_personal_data": true,
+    "preferred_player_count": 4,
+    "preferred_max_play_time": 90,
+    "preferred_complexity": "2.5"
+  }
+}
+
+docs {
+  Opts in to personalized recommendations and saves optional onboarding answers. `preferred_categories` and
+  `preferred_mechanics` take lists of BGG IDs from **Get Options**. Send `"use_personal_data": false` to opt out.
+}
+
+tests {
+  test("opts in", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().use_personal_data).to.equal(true);
+  });
+}
