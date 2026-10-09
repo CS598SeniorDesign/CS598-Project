@@ -13,12 +13,16 @@ Checks dependencies such as Postgres and Redis and is used by a load balancer/or
 whether to route traffic here.
 """
 
+import logging
+
 from django.core.cache import cache
 from django.db import connection
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+logger = logging.getLogger(__name__)
 
 
 class HealthCheckView(APIView):
@@ -48,8 +52,9 @@ class ReadinessCheckView(APIView):
             with connection.cursor() as cursor:
                 cursor.execute("SELECT 1")
             checks["database"] = "ok"
-        except Exception as exc:
-            checks["database"] = f"error: {exc}"
+        except Exception:
+            logger.exception("Readiness check: database unreachable")
+            checks["database"] = "error"
             healthy = False
 
         # Redis check (via Django's cache framework)
@@ -58,8 +63,9 @@ class ReadinessCheckView(APIView):
             if cache.get("health_check_probe") != "ok":
                 raise RuntimeError("cache read/write mismatch")
             checks["redis"] = "ok"
-        except Exception as exc:
-            checks["redis"] = f"error: {exc}"
+        except Exception:
+            logger.exception("Readiness check: Redis unreachable")
+            checks["redis"] = "error"
             healthy = False
 
         response_status = status.HTTP_200_OK if healthy else status.HTTP_503_SERVICE_UNAVAILABLE

@@ -54,6 +54,12 @@ ADMIN_ENABLED = env.bool("ADMIN_ENABLED", default=DEBUG)
 
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS")
 
+FEATURE_FLAGS: dict[str, bool] = {
+    "ANALYTICS": env.bool("FEATURE_ANALYTICS", default=False),
+    "BGG_SYNC": env.bool("FEATURE_BGG_SYNC", default=False),
+    "RECOMMENDATIONS": env.bool("FEATURE_RECOMMENDATIONS", default=False),
+}
+
 
 # Application definition
 
