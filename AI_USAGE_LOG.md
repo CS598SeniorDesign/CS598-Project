@@ -350,3 +350,43 @@ While checking the diagrams against the code, AI corrected its first draft of th
 
 * AI rendered every diagram with the Mermaid CLI (`@mermaid-js/mermaid-cli`), the same renderer GitHub uses. The first run failed on a semicolon in the login sequence diagram, which Mermaid treats as a statement separator. After that fix, all 13 diagrams rendered without errors.
 * AI converted the system context, domain class and request pipeline diagrams to images and checked them for readability
+
+---
+
+## Entry 11: Prototype 2 — Fix frontend CI failures from Dependabot major-version bumps
+
+* **Date:** October 9, 2026
+* **Team Member:** Brandon Nguyen (`@Meynok`)
+* **Tool Used:** Gemini 1.5 Pro
+* **Associated Git Issue:** Closes `#122`
+* **Associated Feature Branch:** `fix/frontend-ci-dependency-majors`
+
+### Exact Prompt Submitted:
+
+> "fix ci error"
+
+### AI Output Summary & Code Generated:
+
+AI ran every CI step locally against `main` to find which ones were failing. The backend job passed. The frontend job failed in ESLint, Jest and `next build`. AI traced each failure to one of three Dependabot pull requests merged the same day that each moved a tool up a major version:
+
+1. **TypeScript 5.9.3 → 7.0.2:** `typescript-eslint` refuses to run on TypeScript 7, and `ts-node` (which Jest uses to load `jest.config.ts`) crashes on it. This broke ESLint and Jest.
+2. **ESLint 9.39.4 → 10.12.0:** ESLint 10 removed `context.getFilename()`, which the `eslint-plugin-react` bundled with `eslint-config-next` still calls. This crashed ESLint.
+3. **Tailwind CSS 3.4.19 → 4.3.3:** Tailwind 4 moved its PostCSS plugin to a separate `@tailwindcss/postcss` package and replaced the `@tailwind` directives. The frontend still uses the Tailwind 3 setup, so `next build` failed.
+
+Changes made:
+
+* `frontend/package.json`: rolled `typescript` back to `^5`, `eslint` to `^9` and `tailwindcss` to `^3.4.19`, the exact ranges from before the bumps.
+* `frontend/package-lock.json`: regenerated with npm. AI compared it package by package against `main` to confirm that only those three packages, their own sub-dependencies, and two small patch updates (`hasown`, `is-core-module`) changed.
+* `.github/dependabot.yml`: added `ignore` rules for major updates of those three packages only, each with a comment explaining why, so Dependabot does not reopen the same upgrades. Minor and patch updates still arrive.
+
+AI also found that a local Prettier failure was a false alarm caused by Windows line endings (CRLF) in the local checkout. The files are stored with LF in Git, which is what CI sees.
+
+### Human Review, Refactoring & Modifications Made:
+
+* Reviewed the changes, made sure they were safe.
+
+### Verification & Testing Method:
+
+* AI ran each frontend CI step the same way CI runs it: `npm ci`, `npm run lint`, `npm run typecheck`, the Prettier format check (with LF line endings, as CI sees them), `npm run test:coverage` (2 suites, 9 tests) and `npm run build`. All passed, and `npm audit --omit=dev` found 0 vulnerabilities.
+* AI ran the backend CI steps (Ruff lint and format, complexity caps, mypy, migration drift and linting, Django system check, pytest with the 60% coverage gate). All passed: 158 tests, 92.5% coverage.
+* AI parsed the edited `dependabot.yml` to confirm it is valid YAML and that the three ignore rules load correctly.
