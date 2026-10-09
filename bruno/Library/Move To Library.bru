@@ -1,0 +1,32 @@
+meta {
+  name: Move To Library
+  type: http
+  seq: 3
+}
+
+patch {
+  url: {{baseUrl}}/api/v1/library/{{bggGameId}}/
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "ownership": "OWNED",
+    "is_played": true,
+    "house_rules": "Start with one extra resource card."
+  }
+}
+
+docs {
+  Updates an entry: move it between the wishlist and library (`ownership`), mark it played or unplayed
+  (`is_played`), or edit `house_rules`. The game itself cannot be changed.
+}
+
+tests {
+  test("moves the game into the library as played", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().ownership).to.equal("OWNED");
+    expect(res.getBody().is_played).to.equal(true);
+  });
+}
