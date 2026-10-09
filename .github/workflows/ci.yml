@@ -314,7 +314,7 @@ jobs:
 
       - name: Create and publish validation report
         if: always()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           BACKEND_RESULT: ${{ needs.backend-tests.result }}
           FRONTEND_RESULT: ${{ needs.frontend-tests.result }}
