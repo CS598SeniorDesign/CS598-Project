@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('catalog', '0001_initial'),
+        ("catalog", "0001_initial"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='boardgame',
-            name='average_weight',
+            model_name="boardgame",
+            name="average_weight",
             field=models.DecimalField(blank=True, decimal_places=3, max_digits=4, null=True),
         ),
     ]

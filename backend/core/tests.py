@@ -1,21 +1,20 @@
 from unittest.mock import patch
 
+import pytest
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser, Group
-import pytest
 from django.core.cache import cache
 from django.core.exceptions import ImproperlyConfigured
 from django.db import connection
 from django.test import TestCase, override_settings
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.test import APIRequestFactory, force_authenticate
 from rest_framework.views import APIView
 
-from core.feature_flags import FeatureFlagPermission, is_feature_enabled
-from rest_framework.request import Request
-
 from catalog.models import BoardGame
+from core.feature_flags import FeatureFlagPermission, is_feature_enabled
 from core.mixins import OwnedQuerysetMixin
 from core.permissions import IsAdminRole, IsModeratorOrAdmin, IsOwnerOrModerator
 from tracking.models import LibraryItem
