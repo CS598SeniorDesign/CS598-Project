@@ -80,6 +80,7 @@ INSTALLED_APPS = [
     "allauth.socialaccount",
     "allauth.mfa",
     # Apps/Models
+    "analytics",
     "profiles",
     "catalog",
     "core",
