@@ -193,6 +193,7 @@ class ContentModelTest(CatalogFixture, TestCase):
     def test_most_similar_explains_by_shared_tags(self):
         match = self.model.most_similar(self.caylus.bgg_id, [self.codenames.bgg_id, self.agricola.bgg_id])
 
+        assert match is not None
         self.assertEqual(match[0], self.agricola.bgg_id)
 
     def test_empty_catalog_builds(self):
@@ -422,7 +423,7 @@ class RecommendationAPITest(CatalogFixture, APITestCase):
             self.assertEqual(self.client.get(url).status_code, status.HTTP_403_FORBIDDEN)
 
     def test_list_returns_games_with_reasons(self):
-        response = self.client.get(LIST_URL, {"strategy": "top_rated", "limit": 2})
+        response = self.client.get(LIST_URL, {"strategy": "top_rated", "limit": "2"})
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["strategy"], "top_rated")
@@ -439,7 +440,7 @@ class RecommendationAPITest(CatalogFixture, APITestCase):
         self.assertFalse(response.data["personalized"])
 
     def test_invalid_parameters_are_rejected(self):
-        for params in ({"strategy": "nope"}, {"limit": 500}, {"period": "month", "year": 2024}, {"mood": "grumpy"}):
+        for params in ({"strategy": "nope"}, {"limit": "500"}, {"period": "month", "year": "2024"}, {"mood": "grumpy"}):
             response = self.client.get(LIST_URL, {"strategy": "popular", **params})
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, params)
 

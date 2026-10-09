@@ -6,6 +6,8 @@ Everything here requires authentication, and each user only ever sees and change
 
 from __future__ import annotations
 
+from typing import cast
+
 from rest_framework import generics, mixins, status, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -26,6 +28,7 @@ from recommendations.serializers import (
 )
 from recommendations.services import RecommendationResult, RecommendationService
 from recommendations.strategies import STRATEGIES
+from users.models import User
 
 
 class RecommendationListView(APIView):
@@ -139,7 +142,9 @@ class RecommendationProfileView(generics.RetrieveUpdateAPIView):
     http_method_names = ["get", "patch", "head", "options"]
 
     def get_object(self):
-        profile, _ = RecommendationProfile.objects.get_or_create(user=self.request.user)
+        # IsAuthenticated has already rejected anonymous users, so request.user is always a User here.
+        user = cast(User, self.request.user)
+        profile, _ = RecommendationProfile.objects.get_or_create(user=user)
         return profile
 
 
