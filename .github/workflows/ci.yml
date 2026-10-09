@@ -286,28 +286,28 @@ jobs:
     steps:
       - name: Download backend test log
         if: always()
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: backend-test-log
           path: validation-artifacts/backend
 
       - name: Download backend coverage
         if: always()
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: backend-coverage
           path: validation-artifacts/backend
 
       - name: Download frontend test log
         if: always()
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: frontend-test-log
           path: validation-artifacts/frontend
 
       - name: Download frontend coverage
         if: always()
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: frontend-coverage
           path: validation-artifacts/frontend
