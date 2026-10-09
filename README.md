@@ -18,6 +18,18 @@ QuestLog uses a monorepo split into two top-level applications orchestrated toge
 | **Orchestration** | Docker Compose (local dev), multi-stage Dockerfiles per service (`dev` / `production` targets) |
 | **CI/CD** | GitHub Actions — linting, type checking, secret scanning, automated tests on every PR |
 
+```mermaid
+flowchart LR
+    browser(["Browser"]) -- ":3000" --> next["Next.js frontend"]
+    next -- "/_allauth/* · /api/*" --> django["Django + DRF backend"]
+    django --> pg[("PostgreSQL")]
+    django --> redis[("Redis")]
+    django -- "XML API2" --> bgg["BoardGameGeek"]
+```
+
+Full architecture and UML diagrams (containers, module structure, class diagrams, ERDs, request pipeline, sequence
+flows and CI/CD) are in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+
 All backend tool configuration (dependencies, Ruff, mypy, pytest, coverage) lives in `backend/pyproject.toml` as the single source of truth — there are no separate `requirements.txt`, `mypy.ini`, or `pytest.ini` files.
 
 ## Repository Structure
@@ -213,5 +225,6 @@ The same `--target production` pattern applies to `./backend`.
 
 - [`backend/README.md`](backend/README.md) — backend setup, dependency management, app structure, and test commands
 - [`frontend/README.md`](frontend/README.md) — frontend setup, dependency management, app structure, and test commands
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — architecture, UML class diagrams, ERDs, sequence diagrams, and CI/CD pipeline
 - [`docs/SECURITY_AUDIT.md`](docs/SECURITY_AUDIT.md) — OWASP Top 10 audit, dependency scanning policy, and open security items
 - `AI_USAGE_LOG.md` — required log of all generative AI usage across this project

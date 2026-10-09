@@ -307,3 +307,46 @@ Performed a complete security audit for the entire code repository for each of t
 ### Verification & Testing Method:
 
 * Reran test locally and through the CI pipeline
+
+---
+
+## Entry 10: Prototype 2 — Architecture & UML Diagrams
+
+* **Date:** October 8, 2026
+* **Team Member:** Jennifer Isobe (`@jisobe`)
+* **Tool Used:** Claude Code (Claude Opus 5.5)
+* **Associated Git Issue:** Closes `#`
+* **Associated Feature Branch:** `feature/prototype-2-security-check`
+
+### Exact Prompt Submitted:
+
+> "Create visualizations for the front and backend architectures, dataflows and pipelines, etc. then add an entry to the AI_USAGE_LOG file"
+
+### AI Output Summary & Code Generated:
+
+AI read the models, migrations, URL routes, views, permissions, mixins, recommendation services, frontend pages, `docker-compose.yml` and `ci.yml`, then created `docs/ARCHITECTURE.md` with 13 Mermaid diagrams that GitHub renders directly from the Markdown:
+
+1. System context (browser → Next.js → Django → PostgreSQL / Redis / BoardGameGeek / SMTP), with a table of Redis database uses
+2. Docker Compose runtime (containers, ports, health-check start order, volumes)
+3. Backend module structure (Django apps and their import dependencies)
+4. UML class diagram of the domain models (fields, methods, inheritance, multiplicities)
+5. UML class diagram of the API layer (viewsets, permission classes, mixins, throttles, recommendation services)
+6. Two entity relationship diagrams (accounts/roles/social; catalog/tracking/recommendations)
+7. Request and authorization pipeline, with the status code returned at each check
+8. Sequence diagrams for sign up → email verification → login → MFA setup, game lookup with BGG fallback, and library add / soft delete
+9. Activity diagram of the recommendation engine (cache, consent check, fallback, invalidation)
+10. CI/CD pipeline jobs and dependencies
+
+AI also added a small overview diagram and links to `docs/ARCHITECTURE.md` in the `README.md` Architecture Overview and Further Documentation sections.
+
+While checking the diagrams against the code, AI corrected its first draft of the login sequence diagram: the frontend sends users to `/login?setup=mfa` after email verification, and the login page does not yet submit MFA codes to `/auth/2fa/authenticate`. The diagram shows this gap instead of an MFA login step that does not exist. AI also flagged that the library page does not call the API yet, a stray `backend/core/tests 2.py` file, and two places where `docs/SECURITY_AUDIT.md` no longer matched the merged code.
+
+### Human Review, Refactoring & Modifications Made:
+
+* Reviewed each diagram against the current code base and project design
+* Removed the stray `backend/core/tests 2.py` duplicate file flagged during the review
+
+### Verification & Testing Method:
+
+* AI rendered every diagram with the Mermaid CLI (`@mermaid-js/mermaid-cli`), the same renderer GitHub uses. The first run failed on a semicolon in the login sequence diagram, which Mermaid treats as a statement separator. After that fix, all 13 diagrams rendered without errors.
+* AI converted the system context, domain class and request pipeline diagrams to images and checked them for readability
