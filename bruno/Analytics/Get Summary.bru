@@ -1,0 +1,61 @@
+meta {
+  name: Get Summary
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/analytics/summary/
+  body: none
+  auth: none
+}
+
+tests {
+  test("returns the user's statistics", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.all.keys(
+      "total_sessions",
+      "total_plays",
+      "plays_this_month",
+      "wins",
+      "losses",
+      "win_rate",
+      "total_play_time_minutes",
+      "average_session_minutes",
+      "games_played",
+      "games_owned",
+      "most_played_games",
+      "top_categories",
+      "monthly_activity",
+    );
+  });
+
+  test("keeps wins and losses consistent with the win rate", function () {
+    const body = res.getBody();
+    const completedSessions = body.wins + body.losses;
+    if (completedSessions === 0) {
+      expect(body.win_rate).to.equal(null);
+    } else {
+      expect(body.win_rate).to.be.closeTo((body.wins / completedSessions) * 100, 0.1);
+    }
+  });
+
+  test("reports the last 12 months, oldest first", function () {
+    const months = res.getBody().monthly_activity.map((month) => month.month);
+    expect(months).to.have.lengthOf(12);
+    expect(months).to.deep.equal([...months].sort());
+  });
+}
+
+docs {
+  Returns the signed-in user's play statistics for the analytics page. Requires **Auth → Login**.
+
+  Only sessions the user played in count (not ones they only logged for others), and deleted sessions are
+  ignored. Incomplete sessions count toward plays and play time but not wins, losses, or win rate.
+
+  - `win_rate` values are percentages (0–100), or `null` when there are no completed sessions.
+  - `most_played_games` and `top_categories` list up to 5 entries, most sessions first.
+  - `monthly_activity` covers the last 12 months, oldest first, including months with no plays.
+
+  After running `seed`, the demo user has five sessions from the last couple of weeks.
+}
