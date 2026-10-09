@@ -112,7 +112,7 @@ jobs:
 
       - name: Upload backend lint log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: backend-lint-log
           path: backend/ruff-output.txt
@@ -149,7 +149,7 @@ jobs:
 
       - name: Upload frontend lint log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: frontend-lint-log
           path: frontend-lint-output.txt
@@ -176,7 +176,7 @@ jobs:
 
       - name: Upload secret scan log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: secret-scan-log
           path: trufflehog-output.txt
@@ -254,7 +254,7 @@ jobs:
 
       - name: Upload backend coverage report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: backend-coverage
           path: backend/coverage.xml
@@ -262,7 +262,7 @@ jobs:
 
       - name: Upload backend test log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: backend-test-log
           path: backend/backend-test-output.txt
@@ -434,7 +434,7 @@ jobs:
 
       - name: Upload combined CI validation report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ci-validation-report
           path: ci-validation-report.md
@@ -465,7 +465,7 @@ jobs:
 
       - name: Upload frontend coverage report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: frontend-coverage
           path: frontend/coverage/
@@ -473,7 +473,7 @@ jobs:
 
       - name: Upload frontend test log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: frontend-test-log
           path: frontend-test-output.txt
