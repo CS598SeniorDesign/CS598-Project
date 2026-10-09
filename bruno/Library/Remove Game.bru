@@ -1,0 +1,22 @@
+meta {
+  name: Remove Game
+  type: http
+  seq: 4
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/library/{{bggGameId}}/
+  body: none
+  auth: none
+}
+
+docs {
+  Removes the game from the library or wishlist. The entry is soft-deleted (`deleted_at` is set); adding the
+  game again restores it with the new values.
+}
+
+tests {
+  test("removes the game", function () {
+    expect(res.getStatus()).to.equal(204);
+  });
+}

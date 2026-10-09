@@ -102,7 +102,7 @@ jobs:
         run: uv run python manage.py makemigrations --check --dry-run
 
       - name: Check for unreachable / non-reversible migrations
-        run: uv run python manage.py lintmigrations --include-apps catalog profiles tracking users
+        run: uv run python manage.py lintmigrations --include-apps catalog profiles recommendations tracking users
 
       - name: Run migrations
         run: uv run python manage.py migrate --noinput
