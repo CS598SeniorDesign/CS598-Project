@@ -79,8 +79,10 @@ def _sync_plays_page(user: User, bgg_username: str, page: int) -> tuple[int, int
     :raises requests.HTTPError: If the API returns an error status code.
     """
 
-    url = f"https://boardgamegeek.com/xmlapi2/plays?username={bgg_username}&page={page}"
-    response = requests.get(url=url, headers=REQUEST_HEADERS, timeout=15)
+    # Pass  username through params to encode it in URL
+    url = "https://boardgamegeek.com/xmlapi2/plays"
+    params: dict[str, str | int] = {"username": bgg_username, "page": page}
+    response = requests.get(url=url, params=params, headers=REQUEST_HEADERS, timeout=15)
     response.raise_for_status()
 
     if response.status_code not in VALID_STATUS_CODES:

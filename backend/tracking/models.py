@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import logging
 from datetime import date, datetime
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from django.conf import settings
-from django.db import models, transaction
+from django.db import IntegrityError, models, transaction
 from django.db.models import Q
+from django.db.models.functions import Now
+from django.utils import timezone
 
 from catalog.models import BoardGame
 from catalog.utils import get_existing_board_game
@@ -23,32 +25,162 @@ logger = logging.getLogger(__name__)
 UNKNOWN_PLAYER_NAME = "Unknown Player"
 
 
-class LibraryItem(models.Model):
+class LibraryItemQuerySet(models.QuerySet["LibraryItem"]):
+    """Query helpers for filtering library items by ownership and play status."""
+
+    def active(self) -> LibraryItemQuerySet:
+        """Exclude soft-deleted items.
+
+        :returns: Items that have not been removed by their user.
+        :rtype: tracking.models.LibraryItemQuerySet
+        """
+        return self.filter(deleted_at__isnull=True)
+
+    def owned(self) -> LibraryItemQuerySet:
+        """Restrict to games the user owns in their library.
+
+        :returns: Items with OWNED ownership.
+        :rtype: tracking.models.LibraryItemQuerySet
+        """
+        return self.filter(ownership=LibraryItem.OWNED)
+
+    def wishlisted(self) -> LibraryItemQuerySet:
+        """Restrict to games the user wants in thier wishlist.
+
+        :returns: Items with WISHLISTED ownership.
+        :rtype: tracking.models.LibraryItemQuerySet
+        """
+        return self.filter(ownership=LibraryItem.WISHLISTED)
+
+
+class ActiveLibraryItemManager(models.Manager.from_queryset(LibraryItemQuerySet)):  # type: ignore[misc]
     """
-    Track the ownership status and house rules of a game for a specific user.
+    Default manager that hides soft-deleted library items so they cannot leak into queries by accident.
+    """
+
+    def get_queryset(self) -> LibraryItemQuerySet:
+        """
+        Return only items that have not been soft-deleted.
+
+        :returns: Active library items.
+        :rtype: tracking.models.LibraryItemQuerySet
+        """
+        return LibraryItemQuerySet(self.model, using=self._db).active()
+
+
+class LibraryItem(models.Model):
+    """A game in a user's library (owned) or wishlist (wanted), and whether they have played it.
+
+    Ownership and play status are independent: a user can own a game they have never played, or wishlist a game they
+    have already played elsewhere. Each user has at most one active entry per game; moving a game from the wishlist to
+    the library updates that entry rather than creating a second one.
+
+    Entries are soft-deleted (deleted_at is set) rather than removed.
+    objects hides soft-deleted entries; all_objects includes them.
     """
 
     OWNED = "OWNED"
     WISHLISTED = "WISHLISTED"
-    UNPLAYED = "UNPLAYED"
-    LIBRARY_ENTRY_STATUSES = (
+    OWNERSHIP_CHOICES = (
         (OWNED, "Owned"),
         (WISHLISTED, "Wishlisted"),
-        (UNPLAYED, "Unplayed"),
     )
 
-    user = models.ForeignKey(to=settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    game = models.ForeignKey(to=BoardGame, on_delete=models.CASCADE)
-    status = models.CharField(max_length=20, choices=LIBRARY_ENTRY_STATUSES, default=UNPLAYED)
+    user = models.ForeignKey(to=settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="library_items")
+    game = models.ForeignKey(to=BoardGame, on_delete=models.CASCADE, related_name="library_items")
+    ownership = models.CharField(max_length=20, choices=OWNERSHIP_CHOICES, default=OWNED, db_default=OWNED)
+    is_played = models.BooleanField(default=False, db_default=False)
     house_rules = models.TextField(blank=True, default="", db_default="")
+    added_at = models.DateTimeField(auto_now_add=True, db_default=Now())
+    updated_at = models.DateTimeField(auto_now=True, db_default=Now())
+    deleted_at = models.DateTimeField(null=True, blank=True, db_index=True)
+
+    objects: ClassVar[ActiveLibraryItemManager] = ActiveLibraryItemManager()
+    all_objects: ClassVar[models.Manager[LibraryItem]] = LibraryItemQuerySet.as_manager()
+
+    class Meta:
+        constraints: ClassVar[list[models.BaseConstraint]] = [
+            models.UniqueConstraint(
+                fields=["user", "game"],
+                condition=Q(deleted_at__isnull=True),
+                name="unique_active_library_item_per_user_game",
+            ),
+            models.CheckConstraint(
+                condition=Q(ownership__in=["OWNED", "WISHLISTED"]),
+                name="library_item_ownership_valid",
+            ),
+        ]
 
     def __str__(self) -> str:
         """
         Return the string representation of the LibraryItem.
 
-        :returns: A string detailing the game and the user who owns it.
+        :returns: A string detailing the game, the user, and whether it is in their library or wishlist.
         """
-        return f"{self.game} in the library of {self.user}"
+        collection = "library" if self.ownership == self.OWNED else "wishlist"
+        return f"{self.game} in the {collection} of {self.user}"
+
+    @classmethod
+    def add_for_user(cls, user: User, game: BoardGame, **fields: Any) -> LibraryItem:
+        """
+        Add a game to a user's library or wishlist.
+
+        If the user previously removed this game, the soft-deleted entry is restored with the new values instead of
+        creating a duplicate row.
+
+        :param user: The user adding the game.
+        :type user: users.models.User
+        :param game: The game being added.
+        :type game: catalog.models.BoardGame
+        :param fields: Values for ownership, is_played and house_rules; omitted fields use model defaults.
+        :returns: The created or restored LibraryItem.
+        :rtype: tracking.models.LibraryItem
+        :raises LibraryItemAlreadyExistsError: If the game is already active in the user's library or wishlist.
+        """
+        try:
+            with transaction.atomic():
+                if cls.objects.filter(user=user, game=game).exists():
+                    raise LibraryItemAlreadyExistsError(game)
+
+                removed_item = (
+                    cls.all_objects.select_for_update()
+                    .filter(user=user, game=game, deleted_at__isnull=False)
+                    .order_by("-deleted_at")
+                    .first()
+                )
+                if removed_item is None:
+                    return cls.objects.create(user=user, game=game, **fields)
+
+                defaults = {"ownership": cls.OWNED, "is_played": False, "house_rules": ""}
+                for name, value in {**defaults, **fields}.items():
+                    setattr(removed_item, name, value)
+                removed_item.deleted_at = None
+                removed_item.added_at = timezone.now()
+                removed_item.save()
+                return removed_item
+        except IntegrityError:
+            raise LibraryItemAlreadyExistsError(game) from None
+
+    def soft_delete(self) -> None:
+        """
+        Remove the game from the user's library or wishlist without destroying the record.
+
+        :returns: None
+        """
+        self.deleted_at = timezone.now()
+        self.save(update_fields=["deleted_at", "updated_at"])
+
+
+class LibraryItemAlreadyExistsError(Exception):
+    """Raised when adding a game that is already active in the user's library or wishlist."""
+
+    def __init__(self, game: BoardGame) -> None:
+        """
+        :param game: The game that is already present.
+        :type game: catalog.models.BoardGame
+        """
+        super().__init__(f"{game} is already in your library or wishlist.")
+        self.game = game
 
 
 class Rating(models.Model):

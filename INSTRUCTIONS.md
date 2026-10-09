@@ -40,29 +40,29 @@
 
 #### Technical & Engineering Requirements:
 1. **Repository, Git Issues & Version Control Hygiene:**
-   - [ ] Initialized repository (GitHub/GitLab) with `main` branch protection rules requiring at least one peer Pull Request (PR) approval before merging.
-   - [ ] **Team Lead Verification:** The Team Lead must verify clean branch management using clearly labeled feature branches (`feature/*`, `chore/*`).
-   - [ ] **Git Issues Integration:** Creation of GitHub/GitLab Issues for all initial implementation tasks.
-   - [ ] Standardized commit messages following Conventional Commits to support automated changelog generation.
+   - [x] Initialized repository (GitHub/GitLab) with `main` branch protection rules requiring at least one peer Pull Request (PR) approval before merging.
+   - [x] **Team Lead Verification:** The Team Lead must verify clean branch management using clearly labeled feature branches (`feature/*`, `chore/*`).
+   - [x] **Git Issues Integration:** Creation of GitHub/GitLab Issues for all initial implementation tasks.
+   - [x] Standardized commit messages following Conventional Commits to support automated changelog generation.
 2. **Environment & Single-Command Local Orchestration:**
-   - [ ] **Single-Command Setup:** Inclusion of a `docker-compose.yml` or containerized orchestration script enabling any developer to launch the complete local development stack (database, backend skeleton, frontend) with a single command (`docker compose up`).
-   - [ ] Environment variable configuration using sanitized `.env.example` templates.
+   - [x] **Single-Command Setup:** Inclusion of a `docker-compose.yml` or containerized orchestration script enabling any developer to launch the complete local development stack (database, backend skeleton, frontend) with a single command (`docker compose up`).
+   - [x] Environment variable configuration using sanitized `.env.example` templates.
 3. **Data Safety & Migration Scripts:**
-   - [ ] Automated, reproducible database migration scripts establishing relational schemas or document structures.
-   - [ ] **Down-Migration & Rollback Testing:** Every schema migration script must include a verified, executable rollback (`down`) migration script.
-   - [ ] Synthetic test data seeders for populating local instances without real or sensitive data.
+   - [x] Automated, reproducible database migration scripts establishing relational schemas or document structures.
+   - [x] **Down-Migration & Rollback Testing:** Every schema migration script must include a verified, executable rollback (`down`) migration script.
+   - [x] Synthetic test data seeders for populating local instances without real or sensitive data.
 4. **Code Quality, Static Analysis & OOP Standards:**
-   - [ ] Automated linter and static code analysis rules integrated into the CI/CD pipeline (e.g., ESLint, SonarQube, Ruff) enforcing type safety and formatting.
-   - [ ] Clean, modular Object-Oriented Programming (OOP) design with proper class encapsulation and docstrings.
+   - [x] Automated linter and static code analysis rules integrated into the CI/CD pipeline (e.g., ESLint, SonarQube, Ruff) enforcing type safety and formatting.
+   - [x] Clean, modular Object-Oriented Programming (OOP) design with proper class encapsulation and docstrings.
 5. **CI/CD Infrastructure & Test Logs:**
-   - [ ] Automated CI pipeline executing linting, security secret scanning (e.g., TruffleHog/GitGuardian), and unit tests on every PR.
-   - [ ] Exported CI build logs and initial test execution results linked to relevant GitHub/GitLab Issues.
+   - [x] Automated CI pipeline executing linting, security secret scanning (e.g., TruffleHog/GitGuardian), and unit tests on every PR.
+   - [x] Exported CI build logs and initial test execution results linked to relevant GitHub/GitLab Issues.
 6. **Documentation & AI Usage Log:**
-   - [ ] Comprehensive `README.md` containing local setup steps, architecture overview, and environment variables.
-   - [ ] Developer onboarding guide detailing system folders and OOP design patterns.
-   - [ ] **AI Usage Log (`AI_USAGE_LOG.md`):** Complete log documenting all generative AI prompts, generated code fragments, manual refactoring, and validation steps.
+   - [x] Comprehensive `README.md` containing local setup steps, architecture overview, and environment variables.
+   - [x] Developer onboarding guide detailing system folders and OOP design patterns.
+   - [x] **AI Usage Log (`AI_USAGE_LOG.md`):** Complete log documenting all generative AI prompts, generated code fragments, manual refactoring, and validation steps.
 7. **In-Class Live Prototype Demonstration:**
-   - [ ] 5–7 minute live team demonstration showcasing local orchestration, passing CI/CD pipelines, database migrations/rollbacks, and working API endpoints.
+   - [x] 5–7 minute live team demonstration showcasing local orchestration, passing CI/CD pipelines, database migrations/rollbacks, and working API endpoints.
 
 ---
 
@@ -76,21 +76,21 @@
 1. **Working Midterm Alpha Build & Core MVP Integration:**
    - [ ] Implementation and merge of core MVP user stories into `main` via peer-reviewed PRs.
    - [ ] Functional integration connecting frontend UI components to backend business logic and database models.
-   - [ ] **Git Issues Communication:** All test results, identified API bugs, and refactoring needs must be logged as Git Issues and linked directly to fixing PRs.
+   - [x] **Git Issues Communication:** All test results, identified API bugs, and refactoring needs must be logged as Git Issues and linked directly to fixing PRs.
 2. **Code Quality Metrics & Supply Chain Security:**
-   - [ ] **Static Code Analysis Caps:** Enforcement of cognitive and cyclomatic complexity limits via static analysis tools (e.g., SonarQube/CodeClimate).
-   - [ ] **Supply Chain Auditing:** Integration of automated dependency scanning (e.g., Dependabot, Snyk, `npm audit`) in CI/CD to block pull requests containing known CVEs.
+   - [x] **Static Code Analysis Caps:** Enforcement of cognitive and cyclomatic complexity limits via static analysis tools (e.g., SonarQube/CodeClimate).
+   - [x] **Supply Chain Auditing:** Integration of automated dependency scanning (e.g., Dependabot, Snyk, `npm audit`) in CI/CD to block pull requests containing known CVEs.
 3. **Authentication, OWASP Audit & Data Privacy:**
-   - [ ] Secure user authentication workflows (JWT, OAuth2, session handling) with secret key encryption.
-   - [ ] OWASP Top 10 security audit and vulnerability mitigations.
-   - [ ] **Data Privacy Controls:** Implementation of basic PII protection, secure password hashing (Bcrypt/Argon2), and soft-delete mechanics (`deleted_at` timestamps) instead of destructive hard deletes.
+   - [x] Secure user authentication workflows (JWT, OAuth2, session handling) with secret key encryption.
+   - [x] OWASP Top 10 security audit and vulnerability mitigations.
+   - [x] **Data Privacy Controls:** Implementation of basic PII protection, secure password hashing (Bcrypt/Argon2), and soft-delete mechanics (`deleted_at` timestamps) instead of destructive hard deletes.
 4. **Automated Integration Testing & Validation Logs:**
-   - [ ] Comprehensive integration test suite verifying end-to-end API response contracts and database transactions.
+   - [x] Comprehensive integration test suite verifying end-to-end API response contracts and database transactions.
    - [ ] Detailed test execution logs attached to GitHub/GitLab Issues documenting pass/fail metrics (minimum 60% coverage target).
 5. **Environment Toggles & Documentation Package:**
-   - [ ] Implementation of environment feature flags/toggles to safely enable or disable incomplete features in staging/production.
+   - [x] Implementation of environment feature flags/toggles to safely enable or disable incomplete features in staging/production.
    - [ ] Updated `README.md`, visual architecture/UML diagrams, and step-by-step developer setup guides.
-   - [ ] **Team Lead Verification & AI Log:** The Team Lead must review and verify that the cumulative `AI_USAGE_LOG.md` includes all Sprint 2–3 prompts and code verification records.
+   - [x] **Team Lead Verification & AI Log:** The Team Lead must review and verify that the cumulative `AI_USAGE_LOG.md` includes all Sprint 2–3 prompts and code verification records.
 6. **In-Class Live Prototype Demonstration:**
    - [ ] 8–10 minute in-person demonstration showcasing authenticated user workflows, live CRUD functionality, and active database operations.
 

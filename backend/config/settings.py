@@ -54,6 +54,12 @@ ADMIN_ENABLED = env.bool("ADMIN_ENABLED", default=DEBUG)
 
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS")
 
+FEATURE_FLAGS: dict[str, bool] = {
+    "ANALYTICS": env.bool("FEATURE_ANALYTICS", default=False),
+    "BGG_SYNC": env.bool("FEATURE_BGG_SYNC", default=False),
+    "RECOMMENDATIONS": env.bool("FEATURE_RECOMMENDATIONS", default=False),
+}
+
 
 # Application definition
 
@@ -79,6 +85,7 @@ INSTALLED_APPS = [
     "core",
     "tracking",
     "users",
+    "recommendations",
 ]
 
 SITE_ID = 1
@@ -256,7 +263,7 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 # (Django, allauth) are outside our control. Migrations listed in "ignore_name" were flagged but reviewed.
 # Every entry must say why it is safe.
 MIGRATION_LINTER_OPTIONS = {
-    "include_apps": ["catalog", "core", "profiles", "tracking", "users"],
+    "include_apps": ["catalog", "core", "profiles", "recommendations", "tracking", "users"],
     "ignore_name": [
         # tracking: drops and recreates the play session tables to replace the BGG-based primary key. The tables held
         # no data in any environment, and rolling back recreates them.
@@ -264,6 +271,10 @@ MIGRATION_LINTER_OPTIONS = {
         # profiles: adds a partial unique index on bgg_username. Every existing value is blank (excluded from the
         # index), so it cannot fail.
         "0002_add_profile_bgg_username",
+        # tracking: drops the legacy library item status column, which 0005 has already copied into ownership and
+        # is_played, and adds a unique constraint that 0005 guarantees existing rows satisfy. Rolling back re-adds and
+        # repopulates status.
+        "0006_library_item_remove_status",
     ],
 }
 
@@ -279,6 +290,7 @@ REST_FRAMEWORK = {
         "anon": "60/min",
         "user": "300/min",
         "bgg-sync": "3/min",
+        "recommendations": "60/min",
     },
 }
 

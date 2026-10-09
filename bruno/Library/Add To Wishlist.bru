@@ -1,0 +1,33 @@
+meta {
+  name: Add To Wishlist
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/v1/library/
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "game_id": {{bggGameId}},
+    "ownership": "WISHLISTED",
+    "is_played": false
+  }
+}
+
+docs {
+  Adds a game to the wishlist. Omit `ownership` (defaults to `OWNED`) to add it to the library instead.
+  Returns 409 if the game is already in the library or wishlist, and 400 if it is not in the local catalog.
+}
+
+tests {
+  test("adds the game to the wishlist", function () {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().game.bgg_id).to.equal(Number(bru.getEnvVar("bggGameId")));
+    expect(res.getBody().ownership).to.equal("WISHLISTED");
+    expect(res.getBody().is_played).to.equal(false);
+  });
+}
