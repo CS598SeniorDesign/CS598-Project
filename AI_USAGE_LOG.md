@@ -170,3 +170,183 @@ AI generated `DEVELOPER_ONBOARDING.md`, a full onboarding guide covering: prereq
 
 ### Verification & Testing Method:
 * Cross-referenced generated folder structure and env var names against actual `docker-compose.yml` and project conventions on file.
+
+---
+
+## Entry 5: Prototype 2 — Catalog API Serializer Split
+
+* **Date:** September 24, 2026
+* **Team Member:** Brandon Nguyen (`@Meynok`)
+* **Tool Used:** Gemini 1.5 Pro
+* **Associated Git Issue:** Closes `#67`
+* **Associated Feature Branch:** `feat/catalog-get-endpoints`
+
+### Exact Prompt Submitted:
+
+> "i need to show my `BoardGame` model via api endpoints. how would you recommend configuring django REST Framework to include all the nested metadata when querying a single game by id"
+
+### AI Output Summary & Code Generated:
+
+AI recommended creating two separate serializers and overriding `get_serializer_class` in a `ModelViewSet` or `GenericViewSet`. It generated boilerplate for a list serializer and a detail serializer, mapping the HTTP actions (`list` vs `retrieve`) to the appropriate class.
+
+### Human Review, Refactoring & Modifications Made:
+
+* Created `BoardGameListSerializer` mapping only core fields like `bgg_id` and `average_rating`.
+* Created `BoardGameDetailSerializer` mapping full arrays for categories, mechanics, and other attributes using a nested `BGGAttributeSerializer`.
+* Implemented `BoardGameViewSet` in `views.py` routing to the list serializer on `self.action == "list"`.
+
+### Verification & Testing Method:
+
+* Requested `/api/v1/games/` and confirmed nested M2M arrays were omitted.
+* Requested `/api/v1/games/13/` and confirmed full payload returned.
+
+---
+
+## Entry 6: Prototype 2 — Recommendation Engine (Phase I)
+
+* **Date:** October 3, 2026
+* **Team Member:** Jennifer Isobe (`@Jisobe`)
+* **Tool Used:** Claude Code (Claude Opus 5.5)
+* **Associated Git Issue:** Closes `#76`
+* **Associated Feature Branch:** `feature/KAN-251-Add-basic-recommendations-based-on-overall-rating-from-BGG`
+
+### Exact Prompt Submitted:
+
+> "I am working on implementing a basic recommender system. I am planning to use context filtering with cosine similarity, what would be the best tools to use for this implementation? Should another app be created should additional models be created"
+
+### AI Output Summary & Code Generated:
+
+Suggesting adding a `recommendations` Django app. Phase I (content-based filtering) recommended tools include pandas and scikit-learn: TF-IDF weighted category, mechanic, and designer vectors and scaled player count, play time, and complexity, ranked by cosine similarity. Provided example code for TF-IDF vector weights and basic content filtering setup using pandas and scikit.
+
+### Human Review, Refactoring & Modifications Made:
+
+* Review suggestions to determine if they fit the project architecture and needs
+* Review provided code to understand how implementation should work for QuestLog
+
+### Verification & Testing Method:
+
+* Researched cosine similarity and TF-IDF weighted vectors to better understand thier implementation
+* Created a recommendations app and updated models with basic views and serializers
+
+## Entry 7: Prototype 2 — Recommendation Engine (Phase I)
+
+* **Date:** October 3, 2026
+* **Team Member:** Jennifer Isobe (`@Jisobe`)
+* **Tool Used:** Claude Code (Claude Opus 5.5)
+* **Associated Git Issue:** Closes `#76`
+* **Associated Feature Branch:** `feature/KAN-251-Add-basic-recommendations-based-on-overall-rating-from-BGG`
+
+### Exact Prompt Submitted:
+
+> "I am also working on implementing filters for the recommendations. I think it would be easiest to work on implemeting this early rather than waitng unti later, does this make sense? How can the phase I recommendations be incorporated with the filters." **Provided notes from last semester containing ideas and plans for implementation**
+
+### AI Output Summary & Code Generated:
+
+Suggested creating files for filter metrics, updates for opt-in consent with a basic fallback, an optional onboarding profile for new users, recommendation feedback, Redis caching, an `average_weight` (complexity) field on `BoardGame` based on provided notes.
+
+### Human Review, Refactoring & Modifications Made:
+
+* Review suggestions to determine if they fit the project architecture and needs
+* Created new files to add the filtering criteria
+* Updated recommendation models, views, and serializers to use filtering criteria
+
+### Verification & Testing Method:
+
+* Added tests for recommendations and updated filtering and opt-in
+
+## Entry 8: Prototype 2 — Recommendation Engine (Phase I)
+
+* **Date:** October 4, 2026
+* **Team Member:** Jennifer Isobe (`@Jisobe`)
+* **Tool Used:** Claude Code (Claude Opus 5.5)
+* **Associated Git Issue:** Closes `#76`
+* **Associated Feature Branch:** `feature/KAN-251-Add-basic-recommendations-based-on-overall-rating-from-BGG`
+
+### Exact Prompt Submitted:
+
+> "How does getting the boardgame information for the recommendations work? how do I format the data in a way tha tis usable by the context filter and later phases based on previously provided notes"
+
+### AI Output Summary & Code Generated:
+
+Outlined implementation of data retrieval pipeline and implementation of data.py to create pandas dataframes from queried boardgame data.
+
+### Human Review, Refactoring & Modifications Made:
+
+* Walked through data.py line by line to understand the implementation and its use.
+* Updated functions and variable to match existing backend architecture
+
+### Verification & Testing Method:
+
+* Added tests to the test.py file in recommendations.
+
+---
+
+## Entry 9: Prototype 2 — Security audit
+
+* **Date:** October 8, 2026
+* **Team Member:** Jennifer Isobe (`@jisobe`)
+* **Tool Used:** Claude Sonnet 5
+* **Associated Git Issue:** Closes 101
+* **Associated Feature Branch:** feature/prototype-2-security-check
+
+### Exact Prompt Submitted:
+
+> "Perform a complete audit of the repository using the OWASP Top 10 as reference, suggest mitigatino steps"
+
+### AI Output Summary & Code Generated:
+
+Performed a complete security audit for the entire code repository for each of the OWASP Top 10 items. Create docs/SECURITY_AUDIT.md with status, controls, open issues and mitigations for each item.
+
+### Human Review, Refactoring & Modifications Made:
+
+* Review the full security audit document to understand identified issues
+* Confirmed tested OWASP items against the official list
+* Review code that was identified as problematic
+* Added some changes to address some issues
+
+### Verification & Testing Method:
+
+* Reran test locally and through the CI pipeline
+
+---
+
+## Entry 10: Prototype 2 — Architecture & UML Diagrams
+
+* **Date:** October 8, 2026
+* **Team Member:** Jennifer Isobe (`@jisobe`)
+* **Tool Used:** Claude Code (Claude Opus 5.5)
+* **Associated Git Issue:** Closes `#`
+* **Associated Feature Branch:** `feature/prototype-2-security-check`
+
+### Exact Prompt Submitted:
+
+> "Create visualizations for the front and backend architectures, dataflows and pipelines, etc. then add an entry to the AI_USAGE_LOG file"
+
+### AI Output Summary & Code Generated:
+
+AI read the models, migrations, URL routes, views, permissions, mixins, recommendation services, frontend pages, `docker-compose.yml` and `ci.yml`, then created `docs/ARCHITECTURE.md` with 13 Mermaid diagrams that GitHub renders directly from the Markdown:
+
+1. System context (browser → Next.js → Django → PostgreSQL / Redis / BoardGameGeek / SMTP), with a table of Redis database uses
+2. Docker Compose runtime (containers, ports, health-check start order, volumes)
+3. Backend module structure (Django apps and their import dependencies)
+4. UML class diagram of the domain models (fields, methods, inheritance, multiplicities)
+5. UML class diagram of the API layer (viewsets, permission classes, mixins, throttles, recommendation services)
+6. Two entity relationship diagrams (accounts/roles/social; catalog/tracking/recommendations)
+7. Request and authorization pipeline, with the status code returned at each check
+8. Sequence diagrams for sign up → email verification → login → MFA setup, game lookup with BGG fallback, and library add / soft delete
+9. Activity diagram of the recommendation engine (cache, consent check, fallback, invalidation)
+10. CI/CD pipeline jobs and dependencies
+
+AI also added a small overview diagram and links to `docs/ARCHITECTURE.md` in the `README.md` Architecture Overview and Further Documentation sections.
+
+While checking the diagrams against the code, AI corrected its first draft of the login sequence diagram: the frontend sends users to `/login?setup=mfa` after email verification, and the login page does not yet submit MFA codes to `/auth/2fa/authenticate`. The diagram shows this gap instead of an MFA login step that does not exist. AI also flagged that the library page does not call the API yet, a stray `backend/core/tests 2.py` file, and two places where `docs/SECURITY_AUDIT.md` no longer matched the merged code.
+
+### Human Review, Refactoring & Modifications Made:
+
+* Reviewed each diagram against the current code base and project design
+* Removed the stray `backend/core/tests 2.py` duplicate file flagged during the review
+
+### Verification & Testing Method:
+
+* AI rendered every diagram with the Mermaid CLI (`@mermaid-js/mermaid-cli`), the same renderer GitHub uses. The first run failed on a semicolon in the login sequence diagram, which Mermaid treats as a statement separator. After that fix, all 13 diagrams rendered without errors.
+* AI converted the system context, domain class and request pipeline diagrams to images and checked them for readability

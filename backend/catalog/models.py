@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 from django.db import models
 
-from core.utils import get_attribute_value
+from core.utils import get_attribute_value, parse_optional_float
 
 if TYPE_CHECKING:
     from xml.etree.ElementTree import Element
@@ -124,6 +124,7 @@ class BoardGame(models.Model):
     # Stats
     average_rating = models.DecimalField(max_digits=5, decimal_places=3, null=True, blank=True)
     bgg_rank = models.IntegerField(null=True, blank=True)
+    average_weight = models.DecimalField(max_digits=4, decimal_places=3, null=True, blank=True)
 
     def __str__(self) -> str:
         """
@@ -147,6 +148,7 @@ class BoardGame(models.Model):
         :rtype: BoardGame
         """
         detailed_name = get_attribute_value(xml_item, 'name[@type="primary"]')
+        average_weight = parse_optional_float(get_attribute_value(xml_item, "statistics/ratings/averageweight"))
 
         data = {
             "bgg_id": xml_item.attrib.get("id"),
@@ -156,10 +158,14 @@ class BoardGame(models.Model):
             "minimum_players": get_attribute_value(xml_item, "minplayers"),
             "maximum_players": get_attribute_value(xml_item, "maxplayers"),
             "playing_time": get_attribute_value(xml_item, "playingtime"),
+            "minimum_playtime": get_attribute_value(xml_item, "minplaytime"),
+            "maximum_playtime": get_attribute_value(xml_item, "maxplaytime"),
+            "minimum_age": get_attribute_value(xml_item, "minage"),
             "thumbnail_url": xml_item.findtext("thumbnail"),
             "image_url": xml_item.findtext("image"),
             "average_rating": get_attribute_value(xml_item, "statistics/ratings/average"),
             "bgg_rank": get_attribute_value(xml_item, "statistics/ratings/ranks/rank[@name='boardgame']"),
+            "average_weight": round(average_weight, 3) if average_weight else None,
         }
 
         instance: BoardGame
@@ -206,8 +212,8 @@ class BoardGame(models.Model):
                 if bgg_id is None or name is None:
                     continue
 
-                object: tuple[models.Model, bool] | Any = model_class.objects.get_or_create(
-                    bgg_id=bgg_id, defaults={"name": name}
-                )
+                # get_or_create returns an (instance, created) tuple; only the instance can be added to the M2M.
+                linked_attribute: Any
+                linked_attribute, _ = model_class.objects.get_or_create(bgg_id=bgg_id, defaults={"name": name})
 
-                getattr(instance, field_name).add(object)
+                getattr(instance, field_name).add(linked_attribute)

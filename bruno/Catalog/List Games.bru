@@ -1,0 +1,41 @@
+meta {
+  name: List Games
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/games/?search={{searchTerm}}
+  body: none
+  auth: none
+}
+
+params:query {
+  search: {{searchTerm}}
+}
+
+tests {
+  test("returns the local catalog", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.be.an("array");
+  });
+  
+  test("every result matches the search term when search is enabled", function () {
+    const searchMatch = req.getUrl().match(/[?&]search=([^&]*)/);
+    if (!searchMatch) {
+      return;
+    }
+  
+    const searchTerm = decodeURIComponent(searchMatch[1]).toLowerCase();
+    res.getBody().forEach((game) => {
+      expect(game.primary_name.toLowerCase()).to.include(searchTerm);
+    });
+  });
+}
+
+docs {
+  Lists board games stored locally.
+  
+  Enable the optional `search` query param to filter by name (case-insensitive, local records only;
+  this does not query BGG's search API yet).
+}

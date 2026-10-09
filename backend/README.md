@@ -22,9 +22,9 @@ This document provides guidance on running the backend through Docker and locall
     - [Updating the `uv.lock` File](#updating-the-uvlock-file)
   - [Environment Variables](#environment-variables)
   - [Running the Backend](#running-the-backend)
-    - [Database Migrations & Rollbacks](#database-migrations--rollbacks)
+    - [Database Migrations \& Rollbacks](#database-migrations--rollbacks)
     - [Populating Synthetic Test Data](#populating-synthetic-test-data)
-    - [Admin Access & Superuser Creation](#admin-access--superuser-creation)
+    - [Admin Access \& Superuser Creation](#admin-access--superuser-creation)
   - [Creating a new app](#creating-a-new-app)
   - [Running tests](#running-tests)
   - [Health Endpoints](#health-endpoints)
@@ -40,6 +40,8 @@ This document provides guidance on running the backend through Docker and locall
 |- 'Shared app: health/readiness check views and other cross-app utilities'
 /profiles
 |- 'Django app for user/player profiles, player and group statistics, derived social tags, and account-level data'
+/recommendations
+|- 'Django app for the recommendation engine: content-based filtering, opt-in settings, and feedback'
 /tracking
 |- 'Django app for session/play tracking and multi-metric ratings.'
 .dockerignore
@@ -107,6 +109,15 @@ See: [Running the Backend](#running-the-backend)
 ```bash
 pip install uv # Run if uv is not already installed. Swap pip install for your systems package management install command
 uv sync
+```
+
+When the repository is opened in VS Code, select the interpreter at `backend/.venv/bin/python` if it is not selected automatically. The repository workspace settings point Pylance at this interpreter and add `backend/` to its import search path. This must match the environment where `uv sync` installs dependencies.
+
+To verify the environment and imports:
+
+```bash
+uv run python -c "import django; print(django.get_version())"
+uv run python manage.py check
 ```
 
 Establish the [database connection](#environment-variables) and continue:
@@ -256,6 +267,24 @@ uv run python manage.py runserver 8001 # This will run the django server on loca
 
 ### Database Migrations & Rollbacks
 
+Treat committed migration files as the source-controlled schema history. Before opening a pull request, run the following checks from `backend/`:
+
+```bash
+# Fails if model changes would generate an uncommitted migration.
+uv run python manage.py makemigrations --check --dry-run
+
+# Fails for unsafe or non-reversible migration operations.
+uv run python manage.py lintmigrations --include-apps catalog profiles tracking users
+
+# Fails if the configured database has unapplied migrations.
+uv run python manage.py migrate --check
+```
+
+```bash
+uv run python manage.py makemigrations
+uv run python manage.py showmigrations --plan
+```
+
 To test down-migrations (rollbacks) for a specific app, target the `zero` migration state to clear it.
 
 **Local (uv):**
@@ -279,7 +308,7 @@ docker compose exec backend uv run python manage.py migrate catalog zero
 
 ### Populating Synthetic Test Data
 
-To populate your local database with mock users, board games, library items, and ratings for development testing, run our custom seeder command. The mock data can be seen with the backend API running at `http://localhost:8000/admin/`.
+To populate your local database with mock users, board games, library items, ratings, play sessions, and recommendation settings for development testing, run our custom seeder command. The mock data can be seen with the backend API running at `http://localhost:8000/admin/`.
 
 **Local (uv):**
 ```bash
@@ -325,10 +354,21 @@ The following commands can be run to lint, format, and run tests in the backend
 ```bash
 uv run ruff check          # Linting
 uv run ruff format --check # Formatting
+uv run complexipy . --max-complexity-allowed 10 --exclude migrations --exclude tests
+uv run ruff check . --select C901 --exclude migrations
+uv audit         # Known Python dependency vulnerabilities
 uv run mypy                # Type checking
 uv run pytest              # Unit testing
 ```
+The backend enforces a maximum cyclomatic complexity of 10 with Ruff and a maximum cognitive complexity of 10 with Complexipy. These same caps run in the `backend-lint` CI job.
+
+Pull requests run `uv audit` against the locked backend environment and fail when known dependency vulnerabilities are found.
 Minimum coverage threshold is enforced at 60% (`--cov-fail-under=60` via `[tool.coverage.report]` in `pyproject.toml`).
+
+CI publishes complete backend and frontend test logs plus their coverage reports as workflow artifacts. The
+workflow finds issues referenced by the associated pull request's closing keywords (`Closes`, `Fixes`, or
+`Resolves`) and posts a combined CI validation report covering tests, coverage, linting, the Docker smoke test,
+secret scanning, and artifact links to each linked issue after every run.
 
 The same commands can be run inside the Docker `dev` container via `docker compose exec backend uv run <command>` — see the [root README](../README.md#running-tests--linting).
 
@@ -340,3 +380,19 @@ Two operational endpoints are wired via `config/urls.py` and implemented in `cor
 - `GET /ready/` — readiness probe (confirms PostgreSQL and Redis are reachable)
 
 Both use trailing slashes intentionally, to avoid Django's `APPEND_SLASH` redirect behavior causing flaky results when polled by Docker healthchecks or uptime monitors.
+
+## Recommendation Engine
+
+The `recommendations` app serves game recommendations at `GET /api/v1/recommendations/?strategy=<strategy>`. `GET /api/v1/recommendations/options/` lists every strategy with its parameters, plus the choices for the decision chart and onboarding form.
+
+**Phase I: content-based filtering** (`recommendations/content.py`, pandas + scikit-learn). Each game becomes a TF-IDF weighted vector of its categories, mechanics, and designers, plus scaled player counts, play time, and complexity (BGG `averageweight`). A user's taste is built in the same space from games they rated, played, own, or reacted to, and from their optional onboarding answers. Games are ranked by cosine similarity to that taste.
+
+**Privacy.** Users start opted out (`PATCH /api/v1/recommendations/profile/` with `use_personal_data`). Strategies that read a user's own data fall back to basic strategies (`popular`, then `top_rated`) until they opt in, and the response explains why in `fallback_reason`.
+
+**Feedback.** `POST /api/v1/recommendations/feedback/` with `game_id` and `sentiment` (`LIKE`/`DISLIKE`). Disliked games are never recommended again, and both reactions feed the user's taste.
+
+**Caching.** Results are cached in Redis per user for 10 minutes. Saving a library item, rating, play, feedback, or setting clears that user's cache. The content model is cached for an hour, or until the catalog grows. It is built on demand, and this command rebuilds it ahead of time (for example, on a schedule):
+
+```bash
+uv run python manage.py train_recommender
+```
