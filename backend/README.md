@@ -365,6 +365,11 @@ The backend enforces a maximum cyclomatic complexity of 10 with Ruff and a maxim
 Pull requests run `uv audit` against the locked backend environment and fail when known dependency vulnerabilities are found.
 Minimum coverage threshold is enforced at 60% (`--cov-fail-under=60` via `[tool.coverage.report]` in `pyproject.toml`).
 
+CI publishes complete backend and frontend test logs plus their coverage reports as workflow artifacts. The
+workflow finds issues referenced by the associated pull request's closing keywords (`Closes`, `Fixes`, or
+`Resolves`) and posts a combined CI validation report covering tests, coverage, linting, the Docker smoke test,
+secret scanning, and artifact links to each linked issue after every run.
+
 The same commands can be run inside the Docker `dev` container via `docker compose exec backend uv run <command>` — see the [root README](../README.md#running-tests--linting).
 
 ## Health Endpoints
