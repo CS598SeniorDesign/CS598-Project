@@ -31,16 +31,16 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "autoprefixer": "^10.6.1",
-    "eslint": "^10",
+    "eslint": "^9",
     "eslint-config-next": "16.3.8",
     "eslint-plugin-sonarjs": "^4.2.2",
     "jest": "^30.5.1",
     "jest-environment-jsdom": "^30.5.2",
     "postcss": "^8.5.29",
     "prettier": "^3.9.9",
-    "tailwindcss": "^4.3.3",
+    "tailwindcss": "^3.4.19",
     "ts-node": "^10.9.2",
-    "typescript": "^7"
+    "typescript": "^5"
   },
   "overrides": {}
 }
