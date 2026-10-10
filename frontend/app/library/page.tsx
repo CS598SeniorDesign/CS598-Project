@@ -1,107 +1,297 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 
-const libraryGames = [
-  { name: "Root", image: "/images/root.webp", rating: 4 },
-  { name: "Munchkin", image: "/images/munchkin.webp", rating: 5 },
-  { name: "Pandemic", image: "/images/pandemic.webp", rating: 4 },
-  { name: "Catan", image: "/images/catan.webp", rating: 5 },
-  { name: "The Hunger Games", image: "/images/hungergames.webp", rating: 5 },
-  { name: "Wingspan", image: "/images/wingspan.webp", rating: 5 },
-  { name: "Clue", image: "/images/clue.webp", rating: 3 },
-  { name: "Sorry", image: "/images/sorry.webp", rating: 4 },
-  { name: "Uno", image: "/images/uno.webp", rating: 4 },
-  { name: "Monopoly", image: "/images/monopoly.webp", rating: 4 },
-  { name: "Azul", image: "/images/azul.webp", rating: 5 },
-  { name: "Terraforming Mars", image: "/images/terraforming.webp", rating: 5 },
-  {
-    name: "Betrayal at House on the Hill",
-    image: "/images/betrayal.webp",
-    rating: 4,
-  },
-  { name: "Botany", image: "/images/botany.webp", rating: 4 },
-  { name: "Stardew Valley", image: "/images/stardew.webp", rating: 3 },
-  { name: "Life in Reterra", image: "/images/lifeinreterra.webp", rating: 5 },
-  { name: "Everdell", image: "/images/everdell.webp", rating: 3 },
-  { name: "Spirit Island", image: "/images/spiritIsland.webp", rating: 5 },
-  { name: "The Sims", image: "/images/sims.webp", rating: 4 },
-  { name: "Fallout", image: "/images/fallout.webp", rating: 4 },
-  { name: "Command of Nature", image: "/images/command.webp", rating: 4 },
-  { name: "Lairs", image: "/images/lairs.webp", rating: 3 },
-  { name: "Excursions", image: "/images/excursions.webp", rating: 2 },
-  {
-    name: "The Lord of the Rings",
-    image: "/images/lordofrings.webp",
-    rating: 4,
-  },
-];
+type BoardGame = {
+  bgg_id: number;
+  primary_name: string;
+  year_published: number | null;
+  thumbnail_url: string | null;
+  average_rating: number | string | null;
+  bgg_rank: number | null;
+};
+
+type LibraryItem = {
+  game: BoardGame;
+  ownership: "OWNED" | "WISHLISTED";
+  is_played: boolean;
+  house_rules: string;
+  added_at: string;
+  updated_at: string;
+};
+
+type LibraryTab = "OWNED" | "WISHLISTED";
+
+type LibraryResponse =
+  | LibraryItem[]
+  | {
+      results: LibraryItem[];
+    };
+
+function getLibraryItems(data: LibraryResponse): LibraryItem[] {
+  return Array.isArray(data) ? data : data.results;
+}
+
+function getLibraryError(status: number): string {
+  if (status === 401 || status === 403) {
+    return "Please log in to view your library.";
+  }
+
+  return "Unable to load your library. Please try again.";
+}
+
+function useLibraryGames() {
+  const [games, setGames] = useState<LibraryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function fetchLibrary() {
+      try {
+        const response = await fetch("/api/v1/library/", {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            Accept: "application/json",
+          },
+          cache: "no-store",
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error(getLibraryError(response.status));
+        }
+
+        const data: LibraryResponse = await response.json();
+        const items = getLibraryItems(data);
+
+        if (!Array.isArray(items)) {
+          throw new Error("Unexpected response from the library API.");
+        }
+
+        if (!controller.signal.aborted) {
+          setGames(items);
+        }
+      } catch (err) {
+        if (controller.signal.aborted) return;
+
+        setError(err instanceof Error ? err.message : "Something went wrong.");
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void fetchLibrary();
+
+    return () => controller.abort();
+  }, []);
+
+  return { games, loading, error };
+}
+
+function GameRating({ rating }: { rating: number | string | null }) {
+  const numericRating = rating == null ? null : Number(rating);
+
+  const displayRating =
+    numericRating !== null && Number.isFinite(numericRating)
+      ? `★ ${numericRating.toFixed(1)} / 10`
+      : "Not rated";
+
+  return <div className="mt-2 text-center text-[#FACC15]">{displayRating}</div>;
+}
+
+function GameCard({ item }: { item: LibraryItem }) {
+  const { game } = item;
+
+  return (
+    <Link
+      href={`/games/${game.bgg_id}`}
+      className="block rounded-2xl bg-[#1E293B]/70 p-3 transition hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-500/20"
+    >
+      {game.thumbnail_url ? (
+        <Image
+          src={game.thumbnail_url}
+          alt={game.primary_name}
+          width={220}
+          height={280}
+          unoptimized
+          className="h-64 w-full rounded-xl object-cover"
+        />
+      ) : (
+        <div className="flex h-64 w-full items-center justify-center rounded-xl bg-[#334155] px-3 text-center text-sm text-gray-400">
+          No image available
+        </div>
+      )}
+
+      <h2 className="mt-3 text-center text-sm font-bold">
+        {game.primary_name}
+      </h2>
+
+      <GameRating rating={game.average_rating} />
+
+      <p className="mt-2 text-center text-xs text-gray-400">
+        {item.is_played ? "Played" : "Not played yet"}
+      </p>
+    </Link>
+  );
+}
+
+function LibraryContent({
+  games,
+  loading,
+  error,
+  query,
+  activeTab,
+}: {
+  games: LibraryItem[];
+  loading: boolean;
+  error: string;
+  query: string;
+  activeTab: LibraryTab;
+}) {
+  const filteredGames = useMemo(() => {
+    const search = query.trim().toLowerCase();
+
+    return games.filter(
+      (item) =>
+        item.ownership === activeTab &&
+        item.game.primary_name.toLowerCase().includes(search),
+    );
+  }, [games, query, activeTab]);
+
+  if (loading) {
+    return (
+      <p className="mt-12 text-center text-gray-400">Loading your games...</p>
+    );
+  }
+
+  if (error) {
+    return (
+      <div
+        role="alert"
+        className="mx-auto mt-12 max-w-lg rounded-xl border border-red-500/30 bg-red-500/10 p-6 text-center text-red-300"
+      >
+        {error}
+      </div>
+    );
+  }
+
+  if (filteredGames.length === 0) {
+    return <EmptyLibrary query={query} activeTab={activeTab} />;
+  }
+
+  return (
+    <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+      {filteredGames.map((item) => (
+        <GameCard key={item.game.bgg_id} item={item} />
+      ))}
+    </div>
+  );
+}
+
+function EmptyLibrary({
+  query,
+  activeTab,
+}: {
+  query: string;
+  activeTab: LibraryTab;
+}) {
+  let message = "Your library is empty. Add some games to get started!";
+
+  if (query.trim()) {
+    message = "No games match your search.";
+  } else if (activeTab === "WISHLISTED") {
+    message = "Your wishlist is empty for now.";
+  }
+
+  return (
+    <div className="mt-12 text-center">
+      <p className="text-lg text-gray-400">{message}</p>
+
+      {!query.trim() && (
+        <Link
+          href="/games/search"
+          className="mt-5 inline-block rounded-full bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500"
+        >
+          + Add Your First Game
+        </Link>
+      )}
+    </div>
+  );
+}
 
 export default function LibraryPage() {
+  const { games, loading, error } = useLibraryGames();
   const [query, setQuery] = useState("");
+  const [activeTab, setActiveTab] = useState<LibraryTab>("OWNED");
 
-  const filteredGames = libraryGames.filter((game) =>
-    game.name.toLowerCase().includes(query.trim().toLowerCase()),
-  );
+  const isWishlist = activeTab === "WISHLISTED";
+
+  function toggleTab() {
+    setActiveTab(isWishlist ? "OWNED" : "WISHLISTED");
+    setQuery("");
+  }
+
   return (
     <div className="min-h-screen bg-[#0F172A] px-8 py-10 text-white">
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-5xl font-black tracking-widest">LIBRARY</h1>
+          <h1 className="text-5xl font-black tracking-widest">
+            {isWishlist ? "WISHLIST" : "LIBRARY"}
+          </h1>
+
           <p className="mt-2 text-gray-400">
-            Board games in your QuestLog collection
+            {isWishlist
+              ? "Board games you want to add to your collection"
+              : "Board games in your QuestLog collection"}
           </p>
         </div>
 
-        <button className="rounded-full bg-[#F87171] px-8 py-3 text-sm font-bold uppercase tracking-wider text-black hover:bg-[#FB7185] transition">
-          Wishlist
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <Link
+            href="/games/search"
+            className="rounded-full bg-indigo-600 px-7 py-3 text-sm font-bold uppercase tracking-wider text-white transition hover:bg-indigo-500"
+          >
+            + Add Game
+          </Link>
+
+          <button
+            type="button"
+            onClick={toggleTab}
+            className="rounded-full bg-[#F87171] px-8 py-3 text-sm font-bold uppercase tracking-wider text-black transition hover:bg-[#FB7185]"
+          >
+            {isWishlist ? "Back to Library" : "Wishlist"}
+          </button>
+        </div>
       </div>
 
       {/* SEARCH */}
       <div className="mb-8 flex items-center gap-4">
         <input
-          type="text"
-          placeholder="Search your collection..."
+          type="search"
+          placeholder={
+            isWishlist ? "Search your wishlist..." : "Search your collection..."
+          }
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className="w-full max-w-md rounded-full border border-gray-700 bg-[#1E293B] px-5 py-3 outline-none focus:border-[#4F46E5]"
+          onChange={(event) => setQuery(event.target.value)}
+          className="w-full max-w-md rounded-full border border-gray-700 bg-[#1E293B] px-5 py-3 text-white outline-none focus:border-[#4F46E5]"
         />
       </div>
 
-      {/* GRID */}
-      {filteredGames.length > 0 ? (
-        <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-          {filteredGames.map((game) => (
-            <div
-              key={game.name}
-              className="rounded-2xl bg-[#1E293B]/70 p-3 transition hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-500/20"
-            >
-              <Image
-                src={game.image}
-                alt={game.name}
-                width={220}
-                height={280}
-                className="h-64 w-full rounded-xl object-cover"
-              />
-
-              <h2 className="mt-3 text-center text-sm font-bold">
-                {game.name}
-              </h2>
-
-              <div className="mt-2 text-center text-[#FACC15]">
-                {"★".repeat(game.rating)}
-                <span className="text-gray-600">
-                  {"★".repeat(5 - game.rating)}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="text-center mt-10 text-gray-400">No games found 😢</p>
-      )}
+      {/* LIBRARY CONTENT */}
+      <LibraryContent
+        games={games}
+        loading={loading}
+        error={error}
+        query={query}
+        activeTab={activeTab}
+      />
     </div>
   );
 }
