@@ -140,7 +140,7 @@ test.describe("primary user journeys", () => {
 
     // Prototype 3 keeps this journey deterministic because the frontend-only
     // CI job does not start the Django API service.
-    await page.route(/\/api\/v1\/library\//, async (route) => {
+    await page.route("**/api/v1/library/**", async (route) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
