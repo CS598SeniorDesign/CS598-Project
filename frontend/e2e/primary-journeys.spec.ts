@@ -1,7 +1,9 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("primary user journeys", () => {
-  test("landing page provides signup and login entry points", async ({ page }) => {
+  test("landing page provides signup and login entry points", async ({
+    page,
+  }) => {
     await page.goto("/");
 
     await expect(page.getByRole("link", { name: "QuestLog" })).toBeVisible();
@@ -21,7 +23,10 @@ test.describe("primary user journeys", () => {
     await page.goto("/signup");
     const signupRequest = page.waitForRequest("**/auth/signup");
 
-    await expect(page.getByPlaceholder("Email")).toHaveAttribute("required", "");
+    await expect(page.getByPlaceholder("Email")).toHaveAttribute(
+      "required",
+      "",
+    );
     await expect(page.getByPlaceholder("Password")).toHaveAttribute(
       "required",
       "",
@@ -37,7 +42,11 @@ test.describe("primary user journeys", () => {
       });
     });
     await page.context().addCookies([
-      { name: "csrf_token", value: "e2e-token", url: "http://localhost:3000" },
+      {
+        name: "csrf_token",
+        value: "e2e-token",
+        url: "http://localhost:3000",
+      },
     ]);
     await page.route("**/auth/signup", async (route) => {
       await route.fulfill({
@@ -59,7 +68,11 @@ test.describe("primary user journeys", () => {
   test("login reports invalid credentials", async ({ page }) => {
     await page.goto("/login");
     await page.context().addCookies([
-      { name: "csrf_token", value: "e2e-token", url: "http://localhost:3000" },
+      {
+        name: "csrf_token",
+        value: "e2e-token",
+        url: "http://localhost:3000",
+      },
     ]);
     await page.route("**/auth/session", async (route) => {
       await route.fulfill({ status: 401, body: "{}" });
@@ -70,8 +83,12 @@ test.describe("primary user journeys", () => {
 
     await page.getByPlaceholder("Email").fill("unknown@example.com");
     await page.getByPlaceholder("Password").fill("wrong-password");
-    await expect(page.getByPlaceholder("Email")).toHaveValue("unknown@example.com");
-    await expect(page.getByPlaceholder("Password")).toHaveValue("wrong-password");
+    await expect(page.getByPlaceholder("Email")).toHaveValue(
+      "unknown@example.com",
+    );
+    await expect(page.getByPlaceholder("Password")).toHaveValue(
+      "wrong-password",
+    );
     await page.getByRole("button", { name: "Sign In" }).click();
 
     await expect(page.getByRole("alert").first()).toHaveText(
@@ -79,7 +96,9 @@ test.describe("primary user journeys", () => {
     );
   });
 
-  test("catalog search renders results and supports clearing", async ({ page }) => {
+  test("catalog search renders results and supports clearing", async ({
+    page,
+  }) => {
     await page.route(/\/api\/v1\/games/, async (route) => {
       await route.fulfill({
         status: 200,
@@ -104,12 +123,31 @@ test.describe("primary user journeys", () => {
 
     await expect(page.getByRole("heading", { name: "Catan" })).toBeVisible();
     await page.getByRole("button", { name: "Clear" }).click();
-    await expect(page.getByText("Ready to find your next favorite game?")).toBeVisible();
+    await expect(
+      page.getByText("Ready to find your next favorite game?"),
+    ).toBeVisible();
   });
 
   test("library filtering shows an empty state for unmatched games", async ({
     page,
   }) => {
+    // Prototype 4 full-stack testing frame: remove the mock below and run the test
+    // with the backend/API services available in the CI job.
+    //
+    // await page.goto("/library");
+    // await page.getByPlaceholder("Search your collection...").fill("not a game");
+    // await expect(page.getByText("No games found")).toBeVisible();
+
+    // Prototype 3 keeps this journey deterministic because the frontend-only
+    // CI job does not start the Django API service.
+    await page.route(/\/api\/v1\/library\//, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify([]),
+      });
+    });
+
     await page.goto("/library");
     await page.getByPlaceholder("Search your collection...").fill("not a game");
 
