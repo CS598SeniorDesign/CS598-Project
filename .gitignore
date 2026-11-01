@@ -110,6 +110,7 @@ backend/ruff-output.txt
 backend/backend-test-output.txt
 frontend-lint-output.txt
 trufflehog-output.txt
+performance/k6/results.json
 
 
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
