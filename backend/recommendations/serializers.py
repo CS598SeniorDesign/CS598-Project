@@ -29,10 +29,14 @@ class RecommendationQuerySerializer(serializers.Serializer):
     complexity = serializers.ChoiceField(choices=Complexity.choices, required=False)
     mood = serializers.ChoiceField(choices=Mood.choices, required=False)
     owned_only = serializers.BooleanField(required=False, default=False)
+    # similar_games
+    game_id = serializers.IntegerField(min_value=1, required=False)
 
     def validate(self, attrs):
         if "period" in attrs and "year" in attrs:
             raise serializers.ValidationError("Use either period or year, not both.")
+        if attrs["strategy"] == Strategy.SIMILAR_GAMES and "game_id" not in attrs:
+            raise serializers.ValidationError({"game_id": "This strategy needs the BGG ID of a game to compare with."})
         return attrs
 
     def create(self, validated_data):
