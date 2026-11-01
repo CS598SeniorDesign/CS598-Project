@@ -1,8 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import React, { useSyncExternalStore } from "react";
-// import React, { useState, useSyncExternalStore } from "react";
+import React, { useState, useSyncExternalStore } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 // import WinRateChart from "@/components/stats/WinRateChart";
 
@@ -60,6 +60,10 @@ const getUserAvatarServerSnapshot = () => {
 export default function Page() {
   // const [openChart, setOpenChart] = useState<null | "winrate" | "donut">(null);
 
+  const router = useRouter();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [logoutError, setLogoutError] = useState("");
+
   // Read avatar from localStorage while keeping server rendering hydration-safe
   const userAvatar = useSyncExternalStore(
     subscribeToUserAvatar,
@@ -73,6 +77,53 @@ export default function Page() {
   //     block: "start",
   //   });
   // };
+
+  async function handleLogout() {
+    if (isLoggingOut) return;
+
+    setIsLoggingOut(true);
+    setLogoutError("");
+
+    try {
+      const cookie = document.cookie
+        .split("; ")
+        .find((item) => item.startsWith("csrf_token="));
+
+      const csrfToken = cookie
+        ? decodeURIComponent(cookie.substring("csrf_token=".length))
+        : null;
+
+      if (!csrfToken) {
+        throw new Error(
+          "Missing security token. Please refresh and try again.",
+        );
+      }
+
+      const response = await fetch("/_allauth/browser/v1/auth/session", {
+        method: "DELETE",
+        credentials: "same-origin",
+        headers: {
+          "X-CSRFToken": csrfToken,
+        },
+      });
+
+      if (!response.ok && response.status !== 401) {
+        throw new Error("Unable to log out. Please try again.");
+      }
+
+      router.replace("/login");
+      router.refresh();
+    } catch (error) {
+      setLogoutError(
+        error instanceof Error
+          ? error.message
+          : "Something went wrong while logging out.",
+      );
+    } finally {
+      setIsLoggingOut(false);
+    }
+  }
+
   const games: Game[] = [
     { gameName: "Botany", gameImg: "/images/botany.webp" },
     { gameName: "Stardew Valley", gameImg: "/images/stardew.webp" },
@@ -179,8 +230,23 @@ export default function Page() {
             <div className="w-8 h-8 bg-gray-500 rounded-full" />
           )}
           <p>MeepleTeam</p>
+
+          <button
+            type="button"
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+            className="ml-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm font-medium text-white transition disabled:opacity-50"
+          >
+            {isLoggingOut ? "Logging Out..." : "Log Out"}
+          </button>
         </div>
       </div>
+
+      {logoutError && (
+        <p role="alert" className="text-red-400 text-sm px-8 pt-3">
+          {logoutError}
+        </p>
+      )}
 
       <div className="p-8">
         {/* TITLE */}

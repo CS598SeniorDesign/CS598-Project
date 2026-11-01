@@ -188,6 +188,7 @@ export default function MFASetup() {
 
   const [passwordConfirmed, setPasswordConfirmed] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showMFASetup, setShowMFASetup] = useState(false);
 
   useEffect(() => {
     const loadTOTPSetup = async () => {
@@ -355,6 +356,56 @@ export default function MFASetup() {
 
   if (isLoading) {
     return <MFALoadingScreen />;
+  }
+
+  if (!showMFASetup) {
+    return (
+      <main className="min-h-screen bg-gray-900 text-white">
+        <div className="flex min-h-[calc(100vh-80px)] items-center justify-center px-6 py-12">
+          <div className="w-full max-w-xl text-center">
+            <h1 className="text-3xl font-bold sm:text-4xl">
+              Keep Your Account Secure
+            </h1>
+
+            <p className="mt-3 text-sm font-medium text-indigo-400">
+              Optional Security Setup
+            </p>
+
+            <p className="mt-6 text-gray-400">
+              Add an extra layer of security to your QuestLog account by
+              enabling multi-factor authentication (MFA).
+            </p>
+
+            <p className="mt-3 text-gray-400">
+              When enabled, you&apos;ll enter a verification code from your
+              authenticator app when signing in.
+            </p>
+
+            <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={() => setShowMFASetup(true)}
+                className="rounded-lg bg-indigo-600 px-7 py-3 font-medium transition hover:bg-indigo-500"
+              >
+                Enable MFA
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSkip}
+                className="rounded-lg border border-gray-600 px-7 py-3 font-medium text-gray-200 transition hover:border-gray-400 hover:bg-gray-800"
+              >
+                Skip for Now
+              </button>
+            </div>
+
+            <p className="mt-6 text-sm text-gray-500">
+              You can enable MFA later from your account settings.
+            </p>
+          </div>
+        </div>
+      </main>
+    );
   }
 
   return (

@@ -144,8 +144,9 @@ export default function VerifyEmailPage() {
           <h1 className="mb-4 text-3xl font-bold">Email Verified!</h1>
 
           <p className="mb-6">
-            Your email has been successfully verified. Next, let&apos;s secure
-            your QuestLog account.
+            Your email has been successfully verified! Log in to your QuestLog
+            account to continue. You&apos;ll have the option to enable extra
+            account security or skip it for now.
           </p>
 
           <button
@@ -153,7 +154,7 @@ export default function VerifyEmailPage() {
             onClick={() => router.push("/login?setup=mfa")}
             className="rounded-lg bg-blue-600 px-6 py-3 text-white"
           >
-            Continue to MFA Setup
+            Continue to Login
           </button>
         </div>
       </main>
