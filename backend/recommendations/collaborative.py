@@ -23,6 +23,7 @@ import pandas as pd
 from django.core.cache import cache
 from surprise import SVD, Dataset, Reader
 
+from core.metrics import RECOMMENDER_MODEL_BUILD_DURATION
 from recommendations.data import MAX_SCORE, MIN_SCORE, NEUTRAL_SCORE, load_interaction_frame, opted_in_user_ids
 
 MIN_USERS = 3
@@ -158,7 +159,8 @@ def build_collaborative_model(user_ids: Iterable[Any] | None = None) -> Collabor
     :returns: A freshly trained model, untrained if there is too little data.
     :rtype: recommendations.collaborative.CollaborativeModel
     """
-    return CollaborativeModel(load_interaction_frame(user_ids))
+    with RECOMMENDER_MODEL_BUILD_DURATION.labels("collaborative").time():
+        return CollaborativeModel(load_interaction_frame(user_ids))
 
 
 def get_collaborative_model(*, refresh: bool = False) -> CollaborativeModel:

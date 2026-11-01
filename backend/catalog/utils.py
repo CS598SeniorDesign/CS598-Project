@@ -8,6 +8,7 @@ from defusedxml import DTDForbidden, ElementTree, EntitiesForbidden
 
 from catalog.models import BoardGame
 from core.constants import REQUEST_HEADERS
+from core.metrics import observe_external_call
 
 if TYPE_CHECKING:
     from xml.etree.ElementTree import Element
@@ -33,9 +34,9 @@ def get_bgg_board_game(bgg_id: int, backup_name: str) -> BoardGame:
     fetch_url: str = f"https://boardgamegeek.com/xmlapi2/thing?id={bgg_id}&stats=1"
 
     try:
-        response: requests.Response = requests.get(url=fetch_url, headers=REQUEST_HEADERS, timeout=10)
-
-        response.raise_for_status()
+        with observe_external_call("bgg", "thing"):
+            response: requests.Response = requests.get(url=fetch_url, headers=REQUEST_HEADERS, timeout=10)
+            response.raise_for_status()
         # XML Root should be 'items'
         response_root: Element = ElementTree.fromstring(response.content)
         game_item: Element[str] | None = response_root.find("item")
