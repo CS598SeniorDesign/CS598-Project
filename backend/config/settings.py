@@ -14,6 +14,7 @@ import os
 from pathlib import Path
 
 import environ
+from celery.schedules import crontab
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -35,7 +36,7 @@ env = environ.Env(
     REDIS_PASSWORD=(str),
     REDIS_CACHE_URL=(str, "redis://redis:6379/0"),
     REDIS_SESSION_URL=(str, "redis://redis:6379/1"),
-    REDIS_CELERY_URL=(list, ["redis://redis:6379/2"]),
+    REDIS_CELERY_URL=(str, "redis://redis:6379/2"),
     SECURE_SSL_REDIRECT=(bool, False),
 )
 
@@ -163,8 +164,52 @@ CACHES["sessions"] = {
     "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
 }
 
+# Celery (config/celery.py): background and scheduled tasks, with Redis database 2 as broker and result store.
 CELERY_BROKER_URL = env("REDIS_CELERY_URL")
 CELERY_RESULT_BACKEND = env("REDIS_CELERY_URL")
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = "UTC"
+# Report STARTED while a task runs, so clients polling a task can tell queued from running.
+CELERY_TASK_TRACK_STARTED = True
+# Re-queue a task if its worker dies mid-run, instead of losing it. Tasks must be safe to run twice.
+CELERY_TASK_ACKS_LATE = True
+CELERY_TASK_REJECT_ON_WORKER_LOST = True
+# Tasks can run for minutes (BGG imports, model training), so each worker process takes one at a time.
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+# Default limits; long tasks set their own.
+CELERY_TASK_SOFT_TIME_LIMIT = 5 * 60
+CELERY_TASK_TIME_LIMIT = 6 * 60
+CELERY_RESULT_EXPIRES = 60 * 60 * 24
+# Keep Django's LOGGING (JSON lines) instead of Celery's own log format.
+CELERY_WORKER_HIJACK_ROOT_LOGGER = False
+CELERY_WORKER_SEND_TASK_EVENTS = True  # lets Flower show task progress
+CELERY_TASK_SEND_SENT_EVENT = True
+# Run tasks inline instead of queueing them, for working without a worker (e.g. running the backend outside Docker).
+CELERY_TASK_ALWAYS_EAGER = env.bool("CELERY_TASK_ALWAYS_EAGER", default=False)
+# In eager mode, still save results so status endpoints (e.g. GET /plays/sync/<task_id>/) work.
+CELERY_TASK_STORE_EAGER_RESULT = CELERY_TASK_ALWAYS_EAGER
+
+# Periodic tasks queued by Celery beat. Times are UTC.
+CELERY_BEAT_SCHEDULE = {
+    # Keeps the cached recommendation models warm (they expire after an hour), so requests rarely have to build them.
+    "refresh-recommender-caches": {
+        "task": "recommendations.tasks.refresh_recommender_caches",
+        "schedule": crontab(minute="*/30"),
+    },
+    # Full rebuild: models, pgvector embeddings (dropping opted-out users' data), and offline evaluation.
+    "train-recommender-nightly": {
+        "task": "recommendations.tasks.train_recommender",
+        "schedule": crontab(hour=3, minute=0),
+    },
+    "recommendation-feedback-report-weekly": {
+        "task": "recommendations.tasks.recommendation_report",
+        "schedule": crontab(day_of_week="mon", hour=4, minute=0),
+        "kwargs": {"days": 7},
+    },
+}
 
 CHANNEL_LAYERS = {
     "default": {"BACKEND": "channels_redis.core.RedisChannelLayer", "CONFIG": {"hosts": env.list("REDIS_CACHE_URL")}}
