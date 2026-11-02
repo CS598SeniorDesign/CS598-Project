@@ -5,6 +5,7 @@ from datetime import date, datetime
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from django.conf import settings
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import IntegrityError, models, transaction
 from django.db.models import Q
 from django.db.models.functions import Now
@@ -23,6 +24,11 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 UNKNOWN_PLAYER_NAME = "Unknown Player"
+
+MINIMUM_RATING_SCORE = 1
+MAXIMUM_RATING_SCORE = 5
+RATING_DIMENSION_NAMES = ("experience", "mechanics", "replayability", "enjoyment")
+RATING_SCORE_VALIDATORS = [MinValueValidator(MINIMUM_RATING_SCORE), MaxValueValidator(MAXIMUM_RATING_SCORE)]
 
 
 class LibraryItemQuerySet(models.QuerySet["LibraryItem"]):
@@ -186,17 +192,29 @@ class LibraryItemAlreadyExistsError(Exception):
 class Rating(models.Model):
     """
     Store a user's metrics and experience ratings for a game.
+
+    Each dimension is scored from ``MINIMUM_RATING_SCORE`` to ``MAXIMUM_RATING_SCORE``. The range is enforced by field
+    validators (for forms and serializers) and by database check constraints (for every other write path). A user can
+    rate each game once; changing their mind means editing the existing rating.
     """
 
     user = models.ForeignKey(to=settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     game = models.ForeignKey(to=BoardGame, on_delete=models.CASCADE)
-    experience = models.FloatField()
-    mechanics = models.FloatField()
-    replayability = models.FloatField()
-    enjoyment = models.FloatField()
+    experience = models.FloatField(validators=RATING_SCORE_VALIDATORS)
+    mechanics = models.FloatField(validators=RATING_SCORE_VALIDATORS)
+    replayability = models.FloatField(validators=RATING_SCORE_VALIDATORS)
+    enjoyment = models.FloatField(validators=RATING_SCORE_VALIDATORS)
 
     class Meta:
         unique_together = ("user", "game")
+        constraints: ClassVar[list[models.BaseConstraint]] = [
+            models.CheckConstraint(
+                condition=Q(**{f"{dimension_name}__gte": MINIMUM_RATING_SCORE})
+                & Q(**{f"{dimension_name}__lte": MAXIMUM_RATING_SCORE}),
+                name=f"rating_{dimension_name}_within_range",
+            )
+            for dimension_name in RATING_DIMENSION_NAMES
+        ]
 
     def __str__(self) -> str:
         """
@@ -205,6 +223,17 @@ class Rating(models.Model):
         :returns: A string combining the user and the game they rated.
         """
         return f"Rating for {self.game} by {self.user}"
+
+    @property
+    def overall_rating(self) -> float:
+        """
+        The user's overall rating for the game: the average of the four categories.
+
+        :returns: The average dimension score, rounded to two decimal places.
+        :rtype: float
+        """
+        dimension_scores = [getattr(self, dimension_name) for dimension_name in RATING_DIMENSION_NAMES]
+        return round(sum(dimension_scores) / len(dimension_scores), 2)
 
 
 class ActivePlaySessionManager(models.Manager["PlaySession"]):
