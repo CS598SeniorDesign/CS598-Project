@@ -131,25 +131,10 @@ test.describe("primary user journeys", () => {
   test("library filtering shows an empty state for unmatched games", async ({
     page,
   }) => {
-    // Prototype 4 full-stack testing frame: remove the mock below and run the test
-    // with the backend/API services available in the CI job.
-    //
-    // await page.goto("/library");
-    // await page.getByPlaceholder("Search your collection...").fill("not a game");
-    // await expect(page.getByText("No games found")).toBeVisible();
-
-    // Prototype 3 keeps this journey deterministic because the frontend-only
-    // CI job does not start the Django API service.
-    await page.route("**/api/v1/library/**", async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify([]),
-      });
-    });
-
     await page.goto("/library");
-    await page.getByPlaceholder("Search your collection...").fill("not a game");
+    const searchInput = page.getByPlaceholder("Search your collection...");
+    await searchInput.fill("not a game");
+    await expect(searchInput).toHaveValue("not a game");
 
     await expect(page.getByText("No games found")).toBeVisible();
   });
