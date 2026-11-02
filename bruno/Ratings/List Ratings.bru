@@ -1,0 +1,23 @@
+meta {
+  name: List Ratings
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/ratings/
+  body: none
+  auth: none
+}
+
+docs {
+  Lists the signed-in user's ratings, alphabetically by game name.
+}
+
+tests {
+  test("includes the rated game", function () {
+    expect(res.getStatus()).to.equal(200);
+    const ratedIds = res.getBody().map((rating) => rating.game.bgg_id);
+    expect(ratedIds).to.include(Number(bru.getEnvVar("bggGameId")));
+  });
+}
