@@ -550,6 +550,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7
 
+      - name: Create frontend E2E environment
+        run: |
+          cp frontend/.env.example frontend/.env
+          {
+            echo "NEXT_PUBLIC_API_URL=http://127.0.0.1:8000"
+            echo "INTERNAL_API_URL=http://127.0.0.1:8000"
+            echo "NEXT_PUBLIC_APP_URL=http://127.0.0.1:3000"
+          } >> frontend/.env
+
       - name: Set up Node
         uses: actions/setup-node@v6
         with:
