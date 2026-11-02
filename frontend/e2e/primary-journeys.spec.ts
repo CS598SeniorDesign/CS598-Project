@@ -131,11 +131,19 @@ test.describe("primary user journeys", () => {
   test("library filtering shows an empty state for unmatched games", async ({
     page,
   }) => {
+    await page.route(/\/api\/v1\/library\/(?:\?.*)?$/, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify([]),
+      });
+    });
+
     await page.goto("/library");
     const searchInput = page.getByPlaceholder("Search your collection...");
     await searchInput.fill("not a game");
     await expect(searchInput).toHaveValue("not a game");
 
-    await expect(page.getByText("No games found")).toBeVisible();
+    await expect(page.getByText("No games match your search.")).toBeVisible();
   });
 });
