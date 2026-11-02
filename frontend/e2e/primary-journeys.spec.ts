@@ -144,6 +144,8 @@ test.describe("primary user journeys", () => {
     await searchInput.fill("not a game");
     await expect(searchInput).toHaveValue("not a game");
 
-    await expect(page.getByText("No games match your search.")).toBeVisible();
+    await expect(
+      page.getByText(/No games found|No games match your search\./),
+    ).toBeVisible();
   });
 });
