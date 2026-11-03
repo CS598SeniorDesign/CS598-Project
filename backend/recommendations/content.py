@@ -24,6 +24,7 @@ from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.preprocessing import MinMaxScaler, MultiLabelBinarizer, normalize
 
 from catalog.models import BoardGame
+from core.metrics import RECOMMENDER_MODEL_BUILD_DURATION
 from recommendations.data import GAME_NUMERIC_COLUMNS, load_game_frame, tag_token
 
 TAG_WEIGHT = 0.8
@@ -270,7 +271,8 @@ def build_content_model() -> ContentModel:
     :returns: A freshly fitted model.
     :rtype: recommendations.content.ContentModel
     """
-    return ContentModel(load_game_frame())
+    with RECOMMENDER_MODEL_BUILD_DURATION.labels("content").time():
+        return ContentModel(load_game_frame())
 
 
 def get_content_model(*, refresh: bool = False) -> ContentModel:

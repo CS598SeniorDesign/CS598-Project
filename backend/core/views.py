@@ -22,6 +22,8 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.metrics import DEPENDENCY_UP
+
 logger = logging.getLogger(__name__)
 
 
@@ -67,6 +69,9 @@ class ReadinessCheckView(APIView):
             logger.exception("Readiness check: Redis unreachable")
             checks["redis"] = "error"
             healthy = False
+
+        for dependency, result in checks.items():
+            DEPENDENCY_UP.labels(dependency).set(1 if result == "ok" else 0)
 
         response_status = status.HTTP_200_OK if healthy else status.HTTP_503_SERVICE_UNAVAILABLE
         return Response(

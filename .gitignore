@@ -39,6 +39,10 @@ htmlcov/
 .dmypy.json
 dmypy.json
 .ruff_cache/
+# Local experiment tracking output (MLflow, Weights & Biases offline runs)
+mlruns/
+mlflow.db
+wandb/
 
 # Celery
 celerybeat-schedule

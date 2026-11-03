@@ -31,6 +31,7 @@ from scipy import sparse
 from sklearn.decomposition import TruncatedSVD
 from sklearn.preprocessing import normalize
 
+from core.metrics import RECOMMENDER_MODEL_BUILD_DURATION
 from recommendations.collaborative import CollaborativeModel
 from recommendations.content import ContentModel
 from recommendations.models import EMBEDDING_DIMENSIONS, GameEmbedding
@@ -134,8 +135,9 @@ def rebuild_game_embeddings(content_model: ContentModel, collaborative_model: Co
     :returns: The number of embeddings stored.
     :rtype: int
     """
-    embeddings = build_game_embeddings(content_model, collaborative_model)
-    store_game_embeddings(embeddings)
+    with RECOMMENDER_MODEL_BUILD_DURATION.labels("embeddings").time():
+        embeddings = build_game_embeddings(content_model, collaborative_model)
+        store_game_embeddings(embeddings)
     return len(embeddings)
 
 

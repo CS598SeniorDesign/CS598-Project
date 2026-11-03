@@ -28,6 +28,8 @@ This document provides guidance on running the backend through Docker and locall
   - [Creating a new app](#creating-a-new-app)
   - [Running tests](#running-tests)
   - [Health Endpoints](#health-endpoints)
+  - [Logging \& Monitoring](#logging--monitoring)
+  - [Recommendation Engine](#recommendation-engine)
 
 ## Backend File Structure
 
@@ -381,6 +383,38 @@ Two operational endpoints are wired via `config/urls.py` and implemented in `cor
 
 Both use trailing slashes intentionally, to avoid Django's `APPEND_SLASH` redirect behavior causing flaky results when polled by Docker healthchecks or uptime monitors.
 
+## Logging & Monitoring
+
+**Structured logs** (`core/structured_logging.py`, `core/middleware.py`). Every log line is one JSON object with `timestamp` (UTC), `level`, `logger`, `message`, `request_id` and `user_id`, plus any fields passed with `extra=`:
+
+```json
+{"timestamp": "2026-11-01T20:24:52.272+00:00", "level": "WARNING", "logger": "questlog.request", "message": "GET /api/v1/recommendations/ 403", "request_id": "974fbe35...", "user_id": null, "method": "GET", "route": "api/v1/recommendations/", "status": 403, "duration_ms": 0.77}
+```
+
+- `RequestContextMiddleware` gives each request an ID, reusing a well-formed incoming `X-Request-ID` header (so the frontend or a proxy can correlate) and returning it in the response's `X-Request-ID` header. The request ID and the signed-in user's ID are attached to every log line written during the request, from any logger. Both are `null` outside requests (management commands).
+- The `questlog.request` logger writes one access line per request (INFO for 2xx/3xx, WARNING for 4xx, ERROR for 5xx). `/health/`, `/ready/` and `/metrics/` are not logged unless they fail.
+- The `questlog.security` logger records sign-ins, failed sign-ins, sign-outs, sign-ups, password changes and resets, and MFA authenticators added, removed or failed (`core/signals.py`). Events identify users by ID only; failed sign-ins never log the email address that was tried.
+- `LOGLEVEL` sets the level (default `info`). `LOG_FORMAT=text` switches to human-readable lines for local debugging.
+- Never log emails, passwords, tokens or other personal data. Use `user_id` to identify users.
+
+**Metrics** (`core/metrics.py`). `GET /metrics/` serves Prometheus metrics to callers sending `Authorization: Bearer <METRICS_TOKEN>`; it returns 404 when `METRICS_TOKEN` is unset.
+
+| Metric | What it measures |
+| :--- | :--- |
+| `questlog_http_requests_total`, `questlog_http_request_duration_seconds` | Requests and latency by method, URL pattern and status |
+| `questlog_dependency_up` | Whether PostgreSQL and Redis passed the last `/ready/` check |
+| `questlog_external_api_requests_total`, `questlog_external_api_request_duration_seconds` | BoardGameGeek API calls by endpoint and outcome |
+| `questlog_security_events_total` | Security events by type (e.g. alert on a spike in `login_failed`) |
+| `questlog_recommendation_requests_total` | Recommendation requests by requested and served strategy, fallback reason, and result cache hit/miss |
+| `questlog_recommendation_compute_seconds` | Time to compute recommendations on a cache miss |
+| `questlog_recommender_model_build_seconds` | Time to build the content model, collaborative model and embeddings |
+
+The production image runs gunicorn with `config/gunicorn.conf.py` and sets `PROMETHEUS_MULTIPROC_DIR`, so `/metrics/` reports totals across all workers. To collect metrics locally, set `METRICS_TOKEN` in `.env` and start the optional Prometheus container (configured in `monitoring/prometheus.yml`), then open `http://localhost:9090`:
+
+```bash
+docker compose --profile monitoring up
+```
+
 ## Recommendation Engine
 
 The `recommendations` app serves game recommendations at `GET /api/v1/recommendations/?strategy=<strategy>`. `GET /api/v1/recommendations/options/` lists every strategy with its parameters, plus the choices for the decision chart and onboarding form.
@@ -402,3 +436,16 @@ The database needs the pgvector extension. `docker-compose.yml` and CI use the `
 ```bash
 uv run python manage.py train_recommender
 ```
+
+**Phase IV: monitoring** (`recommendations/evaluation.py`, `recommendations/experiments.py`, MLflow + Weights & Biases).
+
+- *Offline evaluation.* Each `train_recommender` run holds out 20% of opted-in users' interactions, trains the collaborative model on the rest, and measures RMSE, MAE, precision@10 and recall@10 on the held-out part (a game counts as liked at a score of 4 or more). The split is fixed, so a drop between runs means the model or data got worse, not that the split changed. `--skip-evaluation` skips it.
+- *Online feedback.* `recommendation_report` counts likes and dislikes per strategy (each reaction records the strategy that produced it) and reports the like rate for each:
+
+  ```bash
+  uv run python manage.py recommendation_report --days 30
+  ```
+
+- *Experiment tracking.* Both commands send their run (model parameters, data sizes, build times, evaluation metrics or like rates) to every tracker in `RECOMMENDER_TRACKERS`: `log` (a JSON log line; the default), `mlflow` and `wandb`. MLflow and W&B are optional so the backend image stays small; install them with `uv sync --extra monitoring`. MLflow writes to `MLFLOW_TRACKING_URI` (for example `sqlite:///mlflow.db` locally, or an MLflow server's URL), under the `MLFLOW_EXPERIMENT_NAME` experiment. W&B defaults to `WANDB_MODE=offline`, which saves runs to disk without contacting W&B (upload later with `wandb sync`). Set `online` and `WANDB_API_KEY` to send them straight away. A tracker that is missing or fails is logged and skipped, so tracking problems never stop the models from being rebuilt. Runs contain only configuration and aggregate numbers, never personal data.
+
+Serving health (request volume, fallbacks, cache hit rate, latency, model build times) is in the Prometheus metrics above.
