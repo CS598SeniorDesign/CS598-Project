@@ -577,6 +577,12 @@ jobs:
           set -o pipefail
           npm run e2e --prefix frontend 2>&1 | tee frontend-e2e-output.txt
 
+      - name: Run accessibility audit
+        if: always()
+        run: |
+          set -o pipefail
+          npm run a11y --prefix frontend 2>&1 | tee frontend-a11y-output.txt
+
       - name: Upload E2E report
         if: always()
         uses: actions/upload-artifact@v6
@@ -591,6 +597,14 @@ jobs:
         with:
           name: e2e-test-log
           path: frontend-e2e-output.txt
+          if-no-files-found: warn
+
+      - name: Upload accessibility audit log
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: accessibility-audit-log
+          path: frontend-a11y-output.txt
           if-no-files-found: warn
 
   docker-compose-smoke-test:
