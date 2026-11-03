@@ -1,0 +1,27 @@
+meta {
+  name: Get Sync Status
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/api/v1/plays/sync/{{syncTaskId}}/
+  body: none
+  auth: none
+}
+
+tests {
+  test("reports the import's progress", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(["queued", "running", "retrying", "succeeded", "failed"]).to.include(res.getBody().status);
+    expect(res.getBody()).to.have.property("imported");
+  });
+}
+
+docs {
+  Reports the progress of the import started by **Sync Plays**: `queued`, `running`, `retrying` (BGG was
+  unreachable or rate limiting; the worker retries up to 3 times, 1, 2 and 4 minutes apart), `succeeded`
+  or `failed`, with a `detail` message and the number of plays `imported`. Poll until it succeeds or fails.
+
+  Only the user who started an import can see it; anyone else gets 404. Status is kept for 24 hours.
+}

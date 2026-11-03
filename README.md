@@ -13,7 +13,7 @@ QuestLog uses a monorepo split into two top-level applications orchestrated toge
 
 | Layer | Stack |
 | :--- | :--- |
-| **Backend** | Django / Django REST Framework, Python 3.12, PostgreSQL 17, Redis (cache, sessions, Celery broker), `uv` for dependency management |
+| **Backend** | Django / Django REST Framework, Python 3.12, PostgreSQL 17 (with pgvector), Redis (cache, sessions, Celery broker), `uv` for dependency management |
 | **Frontend** | Next.js (TypeScript), Tailwind CSS, `output: 'standalone'` build target |
 | **Orchestration** | Docker Compose (local dev), multi-stage Dockerfiles per service (`dev` / `production` targets) |
 | **CI/CD** | GitHub Actions — linting, type checking, secret scanning, automated tests on every PR |
@@ -109,11 +109,14 @@ docker compose up --build   # Initial run, or after dependency/Dockerfile change
 docker compose up           # Subsequent runs
 ```
 
-This brings up four services:
+This brings up seven services:
 
-- `db` — PostgreSQL 17
+- `db` — PostgreSQL 17 with the pgvector extension
 - `redis` — Redis (cache, sessions, Celery broker)
 - `backend` — Django, served on `:8000`
+- `celery-worker` — runs background tasks (BGG play imports, recommender training)
+- `celery-beat` — schedules periodic tasks
+- `flower` — Celery monitoring UI, served on `localhost:5555`
 - `frontend` — Next.js, served on `:3000`
 
 Code changes on your host are picked up automatically without rebuilding the image — dependency changes (`pyproject.toml`/`uv.lock` or `package.json`/`package-lock.json`) do require `docker compose up --build` to take effect, since installed packages live in named Docker volumes layered on top of the bind mounts.

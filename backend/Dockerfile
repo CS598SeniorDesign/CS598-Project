@@ -43,6 +43,8 @@ RUN chmod +x entrypoint.sh
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV DJANGO_SETTINGS_MODULE=config.settings
+# Lets gunicorn's workers share Prometheus metrics (see core/metrics.py). entrypoint.sh clears it on startup.
+ENV PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus
 
 ARG DATABASE_PASSWORD=build-placeholder
 ENV DATABASE_PASSWORD=$DATABASE_PASSWORD
@@ -57,4 +59,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/')" || exit 1
 
 ENTRYPOINT ["sh", "entrypoint.sh"]
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "config.wsgi:application"]
+CMD ["gunicorn", "--config", "config/gunicorn.conf.py", "--bind", "0.0.0.0:8000", "--workers", "3", "config.wsgi:application"]

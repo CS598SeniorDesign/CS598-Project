@@ -11,8 +11,16 @@ until out=$(python manage.py check --database default 2>&1); do
   sleep 2
 done
 
-echo "Applying database migrations..."
-python manage.py migrate --noinput
+if [ -n "$PROMETHEUS_MULTIPROC_DIR" ]; then
+  # Metrics files left by a previous run would be counted again.
+  rm -rf "$PROMETHEUS_MULTIPROC_DIR"
+  mkdir -p "$PROMETHEUS_MULTIPROC_DIR"
+fi
+
+if [ "${RUN_MIGRATIONS:-true}" = "true" ]; then
+  echo "Applying database migrations..."
+  python manage.py migrate --noinput
+fi
 
 echo "Starting application..."
 exec "$@"

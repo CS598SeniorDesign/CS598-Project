@@ -14,6 +14,7 @@ import os
 from pathlib import Path
 
 import environ
+from celery.schedules import crontab
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -35,7 +36,7 @@ env = environ.Env(
     REDIS_PASSWORD=(str),
     REDIS_CACHE_URL=(str, "redis://redis:6379/0"),
     REDIS_SESSION_URL=(str, "redis://redis:6379/1"),
-    REDIS_CELERY_URL=(list, ["redis://redis:6379/2"]),
+    REDIS_CELERY_URL=(str, "redis://redis:6379/2"),
     SECURE_SSL_REDIRECT=(bool, False),
 )
 
@@ -70,6 +71,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.postgres",
     "django_migration_linter",
     "django.contrib.sites",
     "rest_framework",
@@ -100,6 +102,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "core.middleware.RequestContextMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "allauth.account.middleware.AccountMiddleware",
@@ -161,8 +164,52 @@ CACHES["sessions"] = {
     "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
 }
 
+# Celery (config/celery.py): background and scheduled tasks, with Redis database 2 as broker and result store.
 CELERY_BROKER_URL = env("REDIS_CELERY_URL")
 CELERY_RESULT_BACKEND = env("REDIS_CELERY_URL")
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = "UTC"
+# Report STARTED while a task runs, so clients polling a task can tell queued from running.
+CELERY_TASK_TRACK_STARTED = True
+# Re-queue a task if its worker dies mid-run, instead of losing it. Tasks must be safe to run twice.
+CELERY_TASK_ACKS_LATE = True
+CELERY_TASK_REJECT_ON_WORKER_LOST = True
+# Tasks can run for minutes (BGG imports, model training), so each worker process takes one at a time.
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+# Default limits; long tasks set their own.
+CELERY_TASK_SOFT_TIME_LIMIT = 5 * 60
+CELERY_TASK_TIME_LIMIT = 6 * 60
+CELERY_RESULT_EXPIRES = 60 * 60 * 24
+# Keep Django's LOGGING (JSON lines) instead of Celery's own log format.
+CELERY_WORKER_HIJACK_ROOT_LOGGER = False
+CELERY_WORKER_SEND_TASK_EVENTS = True  # lets Flower show task progress
+CELERY_TASK_SEND_SENT_EVENT = True
+# Run tasks inline instead of queueing them, for working without a worker (e.g. running the backend outside Docker).
+CELERY_TASK_ALWAYS_EAGER = env.bool("CELERY_TASK_ALWAYS_EAGER", default=False)
+# In eager mode, still save results so status endpoints (e.g. GET /plays/sync/<task_id>/) work.
+CELERY_TASK_STORE_EAGER_RESULT = CELERY_TASK_ALWAYS_EAGER
+
+# Periodic tasks queued by Celery beat. Times are UTC.
+CELERY_BEAT_SCHEDULE = {
+    # Keeps the cached recommendation models warm (they expire after an hour), so requests rarely have to build them.
+    "refresh-recommender-caches": {
+        "task": "recommendations.tasks.refresh_recommender_caches",
+        "schedule": crontab(minute="*/30"),
+    },
+    # Full rebuild: models, pgvector embeddings (dropping opted-out users' data), and offline evaluation.
+    "train-recommender-nightly": {
+        "task": "recommendations.tasks.train_recommender",
+        "schedule": crontab(hour=3, minute=0),
+    },
+    "recommendation-feedback-report-weekly": {
+        "task": "recommendations.tasks.recommendation_report",
+        "schedule": crontab(day_of_week="mon", hour=4, minute=0),
+        "kwargs": {"days": 7},
+    },
+}
 
 CHANNEL_LAYERS = {
     "default": {"BACKEND": "channels_redis.core.RedisChannelLayer", "CONFIG": {"hosts": env.list("REDIS_CACHE_URL")}}
@@ -303,7 +350,7 @@ X_FRAME_OPTIONS = "DENY"
 
 # Forces HTTPS
 SECURE_SSL_REDIRECT = env("SECURE_SSL_REDIRECT", False)
-SECURE_REDIRECT_EXEMPT = [r"^health/$"]
+SECURE_REDIRECT_EXEMPT = [r"^health/$", r"^metrics/$"]
 SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
@@ -322,3 +369,47 @@ CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
 
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# Logging: one JSON object per line, with request_id and user_id on every record (see core/structured_logging.py).
+# LOG_FORMAT=text gives human-readable lines for local debugging.
+LOG_LEVEL = env.str("LOGLEVEL", default="info").upper()
+LOG_FORMAT = env.str("LOG_FORMAT", default="json")
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "filters": {"request_context": {"()": "core.structured_logging.RequestContextFilter"}},
+    "formatters": {
+        "json": {"()": "core.structured_logging.JsonFormatter"},
+        "text": {
+            "format": "%(asctime)s %(levelname)s %(name)s [request_id=%(request_id)s user_id=%(user_id)s] %(message)s"
+        },
+    },
+    "handlers": {
+        "console": {"class": "logging.StreamHandler", "filters": ["request_context"], "formatter": LOG_FORMAT},
+    },
+    "root": {"handlers": ["console"], "level": LOG_LEVEL},
+    "loggers": {
+        "django": {"handlers": ["console"], "level": LOG_LEVEL, "propagate": False},
+        # Django logs 4xx responses here after the request context has been cleared, so those lines would have no
+        # request_id, and core.middleware's access log already records them. Unhandled exceptions (5xx) are logged
+        # while the request is still in progress, so they keep their request_id and stack trace.
+        "django.request": {"handlers": ["console"], "level": "ERROR", "propagate": False},
+        # runserver's own access log duplicates core.middleware's.
+        "django.server": {"handlers": ["console"], "level": "ERROR", "propagate": False},
+    },
+}
+
+# Monitoring: GET /metrics/ serves Prometheus metrics to callers sending "Authorization: Bearer <METRICS_TOKEN>".
+# Leave unset to disable the endpoint.
+METRICS_TOKEN = env.str("METRICS_TOKEN", default="")
+
+# Recommender experiment tracking (Phase IV). Training and evaluation runs are logged to every tracker listed:
+# "log" (structured log line), "mlflow", "wandb". mlflow and wandb need the monitoring extra: uv sync --extra monitoring
+RECOMMENDER_TRACKERS = env.list("RECOMMENDER_TRACKERS", default=["log"])
+MLFLOW_TRACKING_URI = env.str("MLFLOW_TRACKING_URI", default="")
+MLFLOW_EXPERIMENT_NAME = env.str("MLFLOW_EXPERIMENT_NAME", default="questlog-recommender")
+WANDB_PROJECT = env.str("WANDB_PROJECT", default="questlog-recommender")
+WANDB_ENTITY = env.str("WANDB_ENTITY", default="")
+# "offline" keeps runs on disk (sync later with `wandb sync`); "online" uploads them and needs WANDB_API_KEY.
+WANDB_MODE = env.str("WANDB_MODE", default="offline")

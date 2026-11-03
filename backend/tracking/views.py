@@ -11,11 +11,11 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.reverse import reverse
 
 from core.mixins import OwnedQuerysetMixin
 from core.permissions import IsOwnerOrModerator
 from core.throttles import BggSyncRateThrottle
-from profiles.models import Profile
 from tracking.models import LibraryItem, LibraryItemAlreadyExistsError, PlaySession
 from tracking.permissions import IsSessionCreatorOrReadOnly
 from tracking.serializers import (
@@ -25,7 +25,7 @@ from tracking.serializers import (
     PlaySessionSerializer,
 )
 from tracking.services import PlaySessionService
-from tracking.utils import fetch_bgg_plays
+from tracking.tasks import NO_USERNAME_MESSAGE, QUEUED_MESSAGE, get_bgg_sync_status, start_bgg_sync
 
 if TYPE_CHECKING:
     from users.models import User
@@ -208,30 +208,52 @@ class PlaySessionViewSet(
     @action(detail=False, methods=["post"], throttle_classes=[BggSyncRateThrottle])
     def sync(self, request):
         """
-        Imports the requesting user's plays from BoardGameGeek.
+        Start importing the requesting user's plays from BoardGameGeek in the background.
 
         The BGG username always comes from the user's profile, never from the request, so a user cannot import a BGG
-        account that another QuestLog user has linked.
+        account that another QuestLog user has linked. If an import is already queued or running, its task is returned
+        instead of starting another.
 
         :param request: The authenticated request triggering the sync.
         :type request: rest_framework.request.Request
-        :returns: A response whose ``detail`` describes the outcome: 200 on success, 400 when no BGG username is linked,
-            or 502 when the BGG fetch fails.
+        :returns: 202 with the ``task_id`` and the ``status_url`` to poll (see sync_status), or 400 when no BGG
+            username is linked.
         :rtype: rest_framework.response.Response
         """
-        bgg_username = (
-            Profile.objects.filter(user=request.user).values_list("bgg_username", flat=True).first() or ""
-        ).strip()
+        task_id, _ = start_bgg_sync(cast("User", request.user))
+        if task_id is None:
+            return Response({"detail": NO_USERNAME_MESSAGE}, status=status.HTTP_400_BAD_REQUEST)
 
-        if not bgg_username:
-            return Response(
-                {"detail": "Link a BoardGameGeek username to your profile before syncing plays."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        status_url = reverse("play-sync-status", kwargs={"task_id": task_id}, request=request)
+        return Response(
+            {"task_id": task_id, "status": "queued", "detail": QUEUED_MESSAGE, "status_url": status_url},
+            status=status.HTTP_202_ACCEPTED,
+            headers={"Location": status_url},
+        )
 
-        is_successful, message = fetch_bgg_plays(request.user, bgg_username)
-        response_status = status.HTTP_200_OK if is_successful else status.HTTP_502_BAD_GATEWAY
-        return Response({"detail": message}, status=response_status)
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path=r"sync/(?P<task_id>[0-9a-f-]{36})",
+        url_name="sync-status",
+    )
+    def sync_status(self, request, task_id=None):
+        """
+        Report the progress of a BGG import started by the requesting user.
+
+        :param request: The authenticated request.
+        :type request: rest_framework.request.Request
+        :param task_id: The task ID the sync endpoint returned.
+        :type task_id: str
+        :returns: ``task_id``, ``status`` (``queued``, ``running``, ``retrying``, ``succeeded`` or ``failed``),
+            ``detail`` and ``imported``.
+        :rtype: rest_framework.response.Response
+        :raises NotFound: If the task does not exist, has expired, or was started by another user.
+        """
+        sync_status = get_bgg_sync_status(cast("User", request.user), task_id)
+        if sync_status is None:
+            raise NotFound("No BoardGameGeek import with this ID.")
+        return Response(sync_status)
 
     def create(self, request, *args, **kwargs):
         """

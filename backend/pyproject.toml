@@ -16,6 +16,12 @@ dependencies = [
     "fido2>=2.2.1",
     "pandas>=3.1.0",
     "scikit-learn>=1.9.1",
+    "scikit-surprise>=1.1.5",
+    "pgvector>=0.5.1",
+    "certifi>=2026.10.18",
+    "prometheus-client>=0.22",
+    "celery[redis]>=5.5",
+    "flower>=2.0",
 ]
 
 [dependency-groups]
@@ -37,6 +43,10 @@ dev = [
 prod = [
     "psycopg2>=2.9.12",
     "gunicorn>=23.0.0",
+]
+monitoring = [
+    "mlflow>=3.0",
+    "wandb>=0.21",
 ]
 
 [tool.ruff]

@@ -6,18 +6,23 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import uuid
 from dataclasses import dataclass, field
+from time import perf_counter
 from typing import TYPE_CHECKING, Any
 
 from django.core.cache import cache
 
+from core.metrics import RECOMMENDATION_COMPUTE_DURATION, RECOMMENDATION_REQUESTS
 from recommendations.choices import FallbackReason, Strategy
 from recommendations.models import RecommendationProfile
 from recommendations.strategies import BASIC_FALLBACKS, STRATEGIES, Recommendation, RecommendationContext
 
 if TYPE_CHECKING:
     from users.models import User
+
+logger = logging.getLogger(__name__)
 
 RESULT_CACHE_TIMEOUT = 10 * 60
 RESULT_CACHE_KEY = "recommendations:user:{user_id}:{version}:{request}"
@@ -67,9 +72,28 @@ class RecommendationService:
         """
         key = self._cache_key(strategy, limit, params)
         result: RecommendationResult | None = cache.get(key)
+        cache_outcome = "hit"
         if result is None:
+            cache_outcome = "miss"
+            start = perf_counter()
             result = self._compute(strategy, limit, params)
+            duration = perf_counter() - start
+            RECOMMENDATION_COMPUTE_DURATION.labels(strategy).observe(duration)
             cache.set(key, result, RESULT_CACHE_TIMEOUT)
+            logger.info(
+                "Computed %s recommendations",
+                strategy,
+                extra={
+                    "requested_strategy": strategy,
+                    "strategy": result.strategy,
+                    "personalized": result.personalized,
+                    "fallback_reason": result.fallback_reason,
+                    "result_count": len(result.recommendations),
+                    "duration_ms": round(duration * 1000, 2),
+                },
+            )
+
+        RECOMMENDATION_REQUESTS.labels(strategy, result.strategy, result.fallback_reason or "none", cache_outcome).inc()
         return result
 
     def _compute(self, strategy: str, limit: int, params: dict[str, Any]) -> RecommendationResult:

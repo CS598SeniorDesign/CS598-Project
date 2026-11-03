@@ -10,9 +10,11 @@ class Strategy(models.TextChoices):
     POPULAR = "popular", "Most popular"
     TOP_RATED = "top_rated", "Top rated"
     DECISION_CHART = "decision_chart", "Help me pick a game"
+    SIMILAR_GAMES = "similar_games", "Games like this one"
 
     # Personalized strategies require user opting in.
     FOR_YOU = "for_you", "Recommended for you"
+    PLAYERS_LIKE_YOU = "players_like_you", "Players like you enjoy"
     SIMILAR_TO_RECENT = "similar_to_recent", "Based on what you played recently"
     NOT_PLAYED_RECENTLY = "not_played_recently", "You haven't played in a while"
     UNPLAYED_LIBRARY = "unplayed_library", "Unplayed games in your library"
