@@ -1,0 +1,209 @@
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import LogPlayForm from "./LogPlayForm";
+
+const mockFetch = jest.fn();
+
+const defaultProps = {
+  gameId: 13,
+  gameName: "Catan",
+  onClose: jest.fn(),
+};
+
+function renderForm() {
+  return render(<LogPlayForm {...defaultProps} />);
+}
+
+function addSecondPlayer() {
+  fireEvent.click(screen.getByRole("button", { name: /add another player/i }));
+}
+
+function fillPlayerNames(firstName: string, secondName: string) {
+  const nameInputs = screen.getAllByPlaceholderText("Enter player name");
+
+  fireEvent.change(nameInputs[0], {
+    target: { value: firstName },
+  });
+
+  fireEvent.change(nameInputs[1], {
+    target: { value: secondName },
+  });
+}
+
+describe("LogPlayForm", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    Object.defineProperty(globalThis, "fetch", {
+      configurable: true,
+      writable: true,
+      value: mockFetch,
+    });
+
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 201,
+    });
+  });
+
+  it("renders the form with the selected game name", () => {
+    renderForm();
+
+    expect(
+      screen.getByRole("heading", { name: "Log a Play" }),
+    ).toBeInTheDocument();
+
+    expect(screen.getByText("Catan")).toBeInTheDocument();
+
+    expect(
+      screen.getByRole("button", { name: "Save Play" }),
+    ).toBeInTheDocument();
+  });
+
+  it("allows users to add another player", () => {
+    renderForm();
+
+    expect(screen.getAllByPlaceholderText("Enter player name")).toHaveLength(1);
+
+    addSecondPlayer();
+
+    expect(screen.getAllByPlaceholderText("Enter player name")).toHaveLength(2);
+  });
+
+  it("allows users to remove a player", () => {
+    renderForm();
+
+    addSecondPlayer();
+
+    expect(screen.getAllByPlaceholderText("Enter player name")).toHaveLength(2);
+
+    const removeButtons = screen.getAllByRole("button", {
+      name: "Remove",
+    });
+
+    fireEvent.click(removeButtons[1]);
+
+    expect(screen.getAllByPlaceholderText("Enter player name")).toHaveLength(1);
+  });
+
+  it("closes the form when the close button is clicked", () => {
+    renderForm();
+
+    fireEvent.click(screen.getByRole("button", { name: "Close Log Play" }));
+
+    expect(defaultProps.onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects duplicate player names", () => {
+    renderForm();
+
+    addSecondPlayer();
+    fillPlayerNames("Alex", "alex");
+
+    fireEvent.click(screen.getByRole("button", { name: "Save Play" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Each player must have a different name.",
+    );
+
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it("submits a play session with players and scores", async () => {
+    renderForm();
+
+    addSecondPlayer();
+    fillPlayerNames("Alex", "Sam");
+
+    const scoreInputs = screen.getAllByPlaceholderText("Score");
+
+    fireEvent.change(scoreInputs[0], {
+      target: { value: "10" },
+    });
+
+    fireEvent.change(scoreInputs[1], {
+      target: { value: "8" },
+    });
+
+    const winnerCheckboxes = screen.getAllByRole("checkbox");
+
+    fireEvent.click(winnerCheckboxes[0]);
+
+    fireEvent.change(screen.getByPlaceholderText("How was game night?"), {
+      target: { value: "Testing QuestLog" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Save Play" }));
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
+    const [url, options] = mockFetch.mock.calls[0];
+
+    expect(url).toBe("/api/v1/plays/");
+    expect(options.method).toBe("POST");
+    expect(options.credentials).toBe("same-origin");
+
+    const payload = JSON.parse(options.body);
+
+    expect(payload.game).toBe(13);
+    expect(payload.quantity).toBe(1);
+    expect(payload.is_incomplete).toBe(false);
+    expect(payload.notes).toBe("Testing QuestLog");
+
+    expect(payload.players).toEqual([
+      {
+        guest_name: "Alex",
+        score: 10,
+        is_winner: true,
+      },
+      {
+        guest_name: "Sam",
+        score: 8,
+        is_winner: false,
+      },
+    ]);
+
+    expect(
+      await screen.findByText("Your play session was saved successfully!"),
+    ).toBeInTheDocument();
+  });
+
+  it("displays an error when the API rejects the request", async () => {
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 400,
+    });
+
+    renderForm();
+
+    fireEvent.change(screen.getByPlaceholderText("Enter player name"), {
+      target: { value: "Alex" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Save Play" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Unable to save this play.",
+    );
+  });
+
+  it("displays a login error for unauthorized requests", async () => {
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 401,
+    });
+
+    renderForm();
+
+    fireEvent.change(screen.getByPlaceholderText("Enter player name"), {
+      target: { value: "Alex" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Save Play" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Please log in again.",
+    );
+  });
+});
