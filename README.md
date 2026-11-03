@@ -13,7 +13,7 @@ QuestLog uses a monorepo split into two top-level applications orchestrated toge
 
 | Layer | Stack |
 | :--- | :--- |
-| **Backend** | Django / Django REST Framework, Python 3.12, PostgreSQL 17, Redis (cache, sessions, Celery broker), `uv` for dependency management |
+| **Backend** | Django / Django REST Framework, Python 3.12, PostgreSQL 17 (with pgvector), Redis (cache, sessions, Celery broker), `uv` for dependency management |
 | **Frontend** | Next.js (TypeScript), Tailwind CSS, `output: 'standalone'` build target |
 | **Orchestration** | Docker Compose (local dev), multi-stage Dockerfiles per service (`dev` / `production` targets) |
 | **CI/CD** | GitHub Actions — linting, type checking, secret scanning, automated tests on every PR |
@@ -111,7 +111,7 @@ docker compose up           # Subsequent runs
 
 This brings up four services:
 
-- `db` — PostgreSQL 17
+- `db` — PostgreSQL 17 with the pgvector extension
 - `redis` — Redis (cache, sessions, Celery broker)
 - `backend` — Django, served on `:8000`
 - `frontend` — Next.js, served on `:3000`

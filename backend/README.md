@@ -41,7 +41,7 @@ This document provides guidance on running the backend through Docker and locall
 /profiles
 |- 'Django app for user/player profiles, player and group statistics, derived social tags, and account-level data'
 /recommendations
-|- 'Django app for the recommendation engine: content-based filtering, opt-in settings, and feedback'
+|- 'Django app for the recommendation engine: content-based and collaborative filtering, pgvector embeddings, opt-in settings, and feedback'
 /tracking
 |- 'Django app for session/play tracking and multi-metric ratings.'
 .dockerignore
@@ -387,11 +387,17 @@ The `recommendations` app serves game recommendations at `GET /api/v1/recommenda
 
 **Phase I: content-based filtering** (`recommendations/content.py`, pandas + scikit-learn). Each game becomes a TF-IDF weighted vector of its categories, mechanics, and designers, plus scaled player counts, play time, and complexity (BGG `averageweight`). A user's taste is built in the same space from games they rated, played, own, or reacted to, and from their optional onboarding answers. Games are ranked by cosine similarity to that taste.
 
+**Phase II: collaborative filtering** (`recommendations/collaborative.py`, Surprise SVD). A biased matrix factorization learns user and game factors from every opted-in user's interaction scores (ratings, likes/dislikes, plays, ownership), so a game can be recommended because players with similar histories enjoyed it even when it shares no tags with anything the user played. Personalized rankings blend content and collaborative scores, trusting the collaborative model more as it sees more of the user's activity (up to 60%). `players_like_you` uses the collaborative model alone. It trains once there are at least 3 opted-in users and 10 interactions; until then, and for users it has not seen yet, recommendations use Phase I alone.
+
+**Phase III: advanced recommenders** (`recommendations/embeddings.py`, pgvector). Each game gets a 64-dimension hybrid embedding: its content features and collaborative factors, reduced with truncated SVD. Embeddings are stored in the `GameEmbedding` table behind an HNSW cosine index. `for_you` works in two stages: it retrieves the 200 unseen games nearest the user's embedding (the like-weighted average of games they know, computed per request and never stored), then ranks them by hybrid taste score plus embedding similarity. `similar_games?game_id=<bgg id>` returns a game's nearest neighbors and uses no personal data. Embeddings are only built by `train_recommender`; until then both strategies fall back to Phases I and II.
+
+The database needs the pgvector extension. `docker-compose.yml` and CI use the `pgvector/pgvector:pg17` image, and migration `recommendations/0002` runs `CREATE EXTENSION vector`. If your test database predates this change, run pytest once with `--create-db`.
+
 **Privacy.** Users start opted out (`PATCH /api/v1/recommendations/profile/` with `use_personal_data`). Strategies that read a user's own data fall back to basic strategies (`popular`, then `top_rated`) until they opt in, and the response explains why in `fallback_reason`.
 
 **Feedback.** `POST /api/v1/recommendations/feedback/` with `game_id` and `sentiment` (`LIKE`/`DISLIKE`). Disliked games are never recommended again, and both reactions feed the user's taste.
 
-**Caching.** Results are cached in Redis per user for 10 minutes. Saving a library item, rating, play, feedback, or setting clears that user's cache. The content model is cached for an hour, or until the catalog grows. It is built on demand, and this command rebuilds it ahead of time (for example, on a schedule):
+**Caching.** Results are cached in Redis per user for 10 minutes. Saving a library item, rating, play, feedback, or setting clears that user's cache. The content model is cached for an hour, or until the catalog grows. The collaborative model is cached for an hour, or until a user opts in or out, so an opted-out user's data stops shaping other users' recommendations on the next request. Both are built on demand. This command rebuilds them and the stored game embeddings ahead of time, and should run on a schedule (`--skip-embeddings` rebuilds only the cached models). An opted-out user's activity stays in the stored embeddings until the next run:
 
 ```bash
 uv run python manage.py train_recommender

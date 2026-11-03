@@ -7,11 +7,14 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import Q
 from django.db.models.functions import Now
+from pgvector.django import HnswIndex, VectorField
 
 from catalog.models import BoardGame, Category, Mechanic
 
 if TYPE_CHECKING:
     from users.models import User
+
+EMBEDDING_DIMENSIONS = 64
 
 
 class RecommendationProfile(models.Model):
@@ -109,3 +112,36 @@ class RecommendationFeedback(models.Model):
         :returns: A string describing the user's reaction to the game.
         """
         return f"{self.user} {self.get_sentiment_display().lower()}s {self.game}"
+
+
+class GameEmbedding(models.Model):
+    """A game's position in the hybrid embedding space used for nearest-neighbor search.
+
+    Embeddings combine a game's content features with the collaborative factors learned from opted-in users' activity,
+    so nearby games are alike in what they are and in who enjoys them. They are rebuilt in bulk by
+    ``manage.py train_recommender``; every row from one rebuild shares a ``model_version``.
+    """
+
+    game = models.OneToOneField(to=BoardGame, on_delete=models.CASCADE, primary_key=True, related_name="embedding")
+    embedding = VectorField(dimensions=EMBEDDING_DIMENSIONS)
+    model_version = models.CharField(max_length=40)
+    updated_at = models.DateTimeField(auto_now=True, db_default=Now())
+
+    class Meta:
+        indexes: ClassVar[list[models.Index]] = [
+            HnswIndex(
+                name="game_embedding_cosine_hnsw",
+                fields=["embedding"],
+                m=16,
+                ef_construction=64,
+                opclasses=["vector_cosine_ops"],
+            ),
+        ]
+
+    def __str__(self) -> str:
+        """
+        Return the string representation of the GameEmbedding.
+
+        :returns: A string naming the game and the rebuild that produced the embedding.
+        """
+        return f"Embedding for {self.game} ({self.model_version})"

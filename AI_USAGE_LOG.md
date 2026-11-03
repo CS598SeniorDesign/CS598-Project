@@ -390,3 +390,46 @@ AI also found that a local Prettier failure was a false alarm caused by Windows 
 * AI ran each frontend CI step the same way CI runs it: `npm ci`, `npm run lint`, `npm run typecheck`, the Prettier format check (with LF line endings, as CI sees them), `npm run test:coverage` (2 suites, 9 tests) and `npm run build`. All passed, and `npm audit --omit=dev` found 0 vulnerabilities.
 * AI ran the backend CI steps (Ruff lint and format, complexity caps, mypy, migration drift and linting, Django system check, pytest with the 60% coverage gate). All passed: 158 tests, 92.5% coverage.
 * AI parsed the edited `dependabot.yml` to confirm it is valid YAML and that the three ignore rules load correctly.
+
+---
+
+## Entry 12: Prototype 3 — Recommendation Engine (Phases II & III)
+
+* **Date:** November 1, 2026
+* **Team Member:** Jennifer Isobe (`@Jisobe`)
+* **Tool Used:** Claude Code (Claude Opus 5.5)
+* **Associated Git Issue:** Closes `#144`
+* **Associated Feature Branch:** `feature/advanced-recommender`
+
+### Exact Prompt Submitted:
+
+> "Using the following outline, provide an outline for the implementation of phase II and III of the recommendation system. Include reasoning behind choices and alternatives if applicible. provide an AI-USAGE_LOG entry." **Provided the recommendation engine outline: recommendation filters, considerations (data sources, new users, opt-in, basic fallback, caching, feedback), phases I–IV, and the planned tech stack**
+
+### AI Output Summary & Code Generated:
+
+AI proved:
+
+**Phase II: collaborative filtering** (`recommendations/collaborative.py`, Surprise)
+
+* A biased SVD matrix factorization trained on the interaction scores (ratings, likes/dislikes, plays, ownership) of opted-in users only. It trains once there are at least 3 opted-in users and 10 interactions.
+* Personalized rankings now blend content and collaborative scores. The collaborative share grows with the user's activity, up to 60%. New users, and users the model has not seen yet, still get Phase I recommendations.
+* New `players_like_you` strategy (personal data, opt-in required) that uses collaborative filtering alone.
+* The cached model is keyed on the set of opted-in users, so it retrains without a user as soon as they opt out.
+
+**Phase III: advanced recommenders** (`recommendations/embeddings.py`, pgvector)
+
+* New `GameEmbedding` model. Each game gets a 64-dimension hybrid embedding built from its content features and its collaborative factors, reduced with truncated SVD and stored behind an HNSW cosine index.
+* `for_you` now works in two stages: it retrieves the 200 unseen games nearest the user's embedding, then ranks them by hybrid taste score plus embedding similarity. User embeddings are computed per request and never stored.
+* New `similar_games?game_id=` strategy (basic, no personal data) that returns a game's nearest neighbors, falling back to content similarity until embeddings have been built.
+* `manage.py train_recommender` now rebuilds the content model, the collaborative model and the stored embeddings (`--skip-embeddings` rebuilds only the cached models).
+
+### Human Review, Refactoring & Modifications Made:
+
+* Reviewed provided outlines for each outline/plan to check for usability and correctness
+* Made updated to the backend recommendations in accordance with the plan and integrated changes into existing recommendation code
+
+### Verification & Testing Method:
+
+* AI added 15 tests covering collaborative model training, cold-start users and games, opt-out removal from the cached model, embedding size and normalization, embedding rebuilds, nearest-neighbor search, the `similar_games` and `players_like_you` strategies, the content + collaborative blend in `for_you`, `for_you` candidate retrieval from the embedding index, and `game_id` validation.
+* AI ran the full backend suite against temporary `pgvector/pgvector:pg17` and Redis containers: 173 tests passed, with 93% coverage for the recommendations app.
+* AI ran `migrate` on a fresh database, `makemigrations --check` (no drift), `lintmigrations` (one warning: the HNSW index is created inside the migration's transaction, on a new, empty table), `train_recommender`, Ruff lint and format, and mypy. All passed.
