@@ -1,0 +1,29 @@
+meta {
+  name: Update Rating
+  type: http
+  seq: 4
+}
+
+patch {
+  url: {{baseUrl}}/api/v1/ratings/{{bggGameId}}/
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "mechanics": 4.5
+  }
+}
+
+tests {
+  test("updates the score and the overall rating", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().mechanics).to.equal(4.5);
+    expect(res.getBody().overall_rating).to.equal(4.5);
+  });
+}
+
+docs {
+  Changes only the scores sent. Use PUT to replace all four. The game itself cannot be changed.
+}
