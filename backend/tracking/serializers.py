@@ -11,7 +11,7 @@ from rest_framework import serializers
 from catalog.models import BoardGame
 from catalog.serializers import BoardGameListSerializer
 from profiles.models import GameGroup
-from tracking.models import LibraryItem, PlaySession, SessionPlayer
+from tracking.models import RATING_DIMENSION_NAMES, LibraryItem, PlaySession, Rating, SessionPlayer
 from tracking.services import PlaySessionDetails, SessionPlayerDetails
 from users.models import User
 
@@ -77,6 +77,43 @@ class LibraryItemCreateSerializer(LibraryItemSerializer):
         user = validated_data.pop("user")
         game = validated_data.pop("game")
         return LibraryItem.add_for_user(user, game, **validated_data)
+
+
+class RatingSerializer(serializers.ModelSerializer):
+    """A user's rating of a game, with the game summarized inline and the overall rating calculated.
+
+    Used for reads and updates. Each category must be between 1 and 5.
+    """
+
+    game = BoardGameListSerializer(read_only=True)
+    overall_rating = serializers.FloatField(read_only=True)
+
+    class Meta:
+        model = Rating
+        fields: ClassVar[list[str]] = [
+            "game",
+            *RATING_DIMENSION_NAMES,
+            "overall_rating",
+        ]
+
+
+class RatingCreateSerializer(RatingSerializer):
+    """Input for rating a game, identified by its BoardGameGeek ID.
+
+    The game must already be in the local catalog.
+    """
+
+    game_id = serializers.PrimaryKeyRelatedField(
+        queryset=BoardGame.objects.all(),
+        source="game",
+        write_only=True,
+        error_messages={"does_not_exist": "Game with BoardGameGeek ID {pk_value} is not in the catalog."},
+    )
+
+    class Meta(RatingSerializer.Meta):
+        fields: ClassVar[list[str]] = [*RatingSerializer.Meta.fields, "game_id"]
+        # The (user, game) uniqueness is checked by the view, which answers a duplicate with 409 rather than 400.
+        validators: ClassVar[list] = []
 
 
 class SessionPlayerSerializer(serializers.ModelSerializer):

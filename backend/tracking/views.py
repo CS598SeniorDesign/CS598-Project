@@ -5,24 +5,28 @@ from contextlib import contextmanager
 from typing import TYPE_CHECKING, cast
 
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db import IntegrityError, transaction
 from django.db.models import Q, QuerySet
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.reverse import reverse
 
 from core.mixins import OwnedQuerysetMixin
 from core.permissions import IsOwnerOrModerator
 from core.throttles import BggSyncRateThrottle
 from profiles.models import Profile
-from tracking.models import LibraryItem, LibraryItemAlreadyExistsError, PlaySession
+from tracking.models import LibraryItem, LibraryItemAlreadyExistsError, PlaySession, Rating
 from tracking.permissions import IsSessionCreatorOrReadOnly
 from tracking.serializers import (
     LibraryItemCreateSerializer,
     LibraryItemSerializer,
     PlaySessionInputSerializer,
     PlaySessionSerializer,
+    RatingCreateSerializer,
+    RatingSerializer,
 )
 from tracking.services import PlaySessionService
 from tracking.utils import fetch_bgg_plays
@@ -96,6 +100,65 @@ class LibraryItemViewSet(OwnedQuerysetMixin, viewsets.ModelViewSet):
 
     def perform_destroy(self, instance: LibraryItem) -> None:
         instance.soft_delete()
+
+
+class RatingViewSet(OwnedQuerysetMixin, viewsets.ModelViewSet):
+    """Manage the requesting user's ratings of games.
+
+    list:
+        List the user's ratings, alphabetically by game name.
+    create:
+        Rate a game by BoardGameGeek ID (`game_id`) on each of `experience`, `mechanics`, `replayability`, and
+        `enjoyment`, from 1 to 5. Returns 409 if the user has already rated the game; edit that rating instead.
+    retrieve:
+        Return the user's rating for a game.
+    update:
+        Replace all four dimension scores of the user's rating for a game.
+    partial_update:
+        Change only the dimension scores sent.
+    destroy:
+        Delete the user's rating for a game.
+
+    Every response includes `overall_rating`, the average of the four dimensions. Ratings are private: every user
+    (moderators and admins included) only sees their own here. Ratings are looked up by game, so letting moderators
+    see every user's rows would make `/ratings/{bgg_id}/` match one rating per user.
+    """
+
+    queryset = Rating.objects.select_related("game").order_by("game__primary_name", "game__bgg_id")
+    permission_classes = [IsAuthenticated, IsOwnerOrModerator]
+    moderators_see_all = False
+    lookup_field = "game__bgg_id"
+    lookup_url_kwarg = "bgg_id"
+    lookup_value_regex = r"\d+"
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return RatingCreateSerializer
+        return RatingSerializer
+
+    def create(self, request, *args, **kwargs):
+        """Rate a game for the requesting user, responding with the full rating.
+
+        A second rating for the same game is answered with 409 and the address of the existing rating, so the client
+        can switch to editing it.
+        """
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        game = serializer.validated_data["game"]
+
+        try:
+            with transaction.atomic():
+                rating = serializer.save(user=request.user)
+        except IntegrityError:
+            return Response(
+                {
+                    "detail": f"You have already rated {game}. Edit your existing rating instead.",
+                    "rating_url": reverse("rating-detail", kwargs={"bgg_id": game.bgg_id}, request=request),
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        return Response(RatingSerializer(rating, context=self.get_serializer_context()).data, status.HTTP_201_CREATED)
 
 
 def _filter_by_ownership(queryset: QuerySet[LibraryItem], raw_value: str | None) -> QuerySet[LibraryItem]:
