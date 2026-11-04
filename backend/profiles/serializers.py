@@ -133,9 +133,10 @@ class PlayerSearchQuerySerializer(serializers.Serializer):
         raise NotImplementedError("PlayerSearchQuerySerializer only validates input.")
 
 
-class PlayerSearchResultSerializer(serializers.ModelSerializer[Profile]):
+class PlayerSummarySerializer(serializers.ModelSerializer[Profile]):
     """
-    One registered player found by a search: just enough to pick them, never their email or other profile details.
+    One registered player in a player picker (a search result or a friend): just enough to pick them, never their
+    email or other profile details.
 
     ``user_id`` is what a play session's player list takes to add them.
     """

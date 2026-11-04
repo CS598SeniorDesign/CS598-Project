@@ -1,0 +1,26 @@
+meta {
+  name: List Friends
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/friends/
+  body: none
+  auth: none
+}
+
+docs {
+  Lists the signed-in user's friends as `user_id` and `display_name`, alphabetically, for picking players when logging
+  a play. Friends with a Private profile are left out because they cannot be added. The seeded demo login is friends
+  with every seeded user.
+}
+
+tests {
+  test("returns friends as user_id and display_name only", function () {
+    expect(res.getStatus()).to.equal(200);
+    for (const friend of res.getBody()) {
+      expect(friend).to.have.all.keys("user_id", "display_name");
+    }
+  });
+}

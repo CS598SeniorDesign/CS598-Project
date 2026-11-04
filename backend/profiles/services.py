@@ -112,6 +112,26 @@ class PlayerDirectoryService:
         return list(matches[:MAXIMUM_SEARCH_RESULTS])
 
     @classmethod
+    def friends_of(cls, viewer: User) -> list[Profile]:
+        """
+        List the viewer's friends that they may add to a play session, alphabetically by display name.
+
+        Friends whose profile is Private, or whose account is inactive or deleted, are left out, so every friend listed
+        can actually be added.
+
+        :param viewer: The user whose friends are listed.
+        :type viewer: users.models.User
+        :returns: The viewer's addable friends.
+        :rtype: list[profiles.models.Profile]
+        """
+
+        friends_of_viewer = Profile.objects.filter(friends__user=viewer).values("pk")
+
+        return list(
+            cls.visible_profiles(viewer).filter(pk__in=friends_of_viewer).order_by(Lower("display_name"), "user_id")
+        )
+
+    @classmethod
     def addable_user_ids(cls, viewer: User, candidate_user_ids: Iterable[uuid.UUID]) -> set[uuid.UUID]:
         """
         Return which of the candidate users the viewer may add to a play session: themselves, and anyone visible to

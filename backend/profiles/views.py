@@ -1,5 +1,5 @@
 """
-API endpoints for the signed-in user's own profile and for finding other registered players.
+API endpoints for the signed-in user's own profile, their friends, and finding other registered players.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ from rest_framework.views import APIView
 
 from core.throttles import PlayerSearchRateThrottle
 from profiles.models import Profile
-from profiles.serializers import OwnProfileSerializer, PlayerSearchQuerySerializer, PlayerSearchResultSerializer
+from profiles.serializers import OwnProfileSerializer, PlayerSearchQuerySerializer, PlayerSummarySerializer
 from profiles.services import PlayerDirectoryService, ProfileService
 from users.models import User
 
@@ -70,4 +70,28 @@ class PlayerSearchView(APIView):
         query_serializer.is_valid(raise_exception=True)
 
         players = PlayerDirectoryService.search(cast("User", request.user), query_serializer.validated_data["search"])
-        return Response(PlayerSearchResultSerializer(players, many=True).data)
+        return Response(PlayerSummarySerializer(players, many=True).data)
+
+
+class FriendListView(APIView):
+    """
+    List the signed-in user's friends for picking players when logging a play session.
+
+    get:
+        Return the user's friends as ``user_id`` and ``display_name``, alphabetically. Friends with a Private profile
+        are left out, since they cannot be added to a session.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """
+        List the friends the requesting user may add to their play sessions.
+
+        :param request: The authenticated request.
+        :type request: rest_framework.request.Request
+        :returns: 200 with the friends, or an empty list if the user has none.
+        :rtype: rest_framework.response.Response
+        """
+        friends = PlayerDirectoryService.friends_of(cast("User", request.user))
+        return Response(PlayerSummarySerializer(friends, many=True).data)

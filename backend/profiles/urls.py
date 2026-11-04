@@ -6,9 +6,10 @@ from __future__ import annotations
 
 from django.urls import path
 
-from profiles.views import OwnProfileView, PlayerSearchView
+from profiles.views import FriendListView, OwnProfileView, PlayerSearchView
 
 urlpatterns = [
     path("profile/", OwnProfileView.as_view(), name="own-profile"),
     path("players/", PlayerSearchView.as_view(), name="player-search"),
+    path("friends/", FriendListView.as_view(), name="friend-list"),
 ]

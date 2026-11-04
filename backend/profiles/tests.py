@@ -15,6 +15,7 @@ from profiles.services import MAXIMUM_SEARCH_RESULTS, PlayerDirectoryService, Pr
 
 PROFILE_URL = reverse("own-profile")
 PLAYERS_URL = reverse("player-search")
+FRIENDS_URL = reverse("friend-list")
 GENERATED_NAME_PATTERN = re.compile(r"^Player-[0-9a-f]{4}$")
 
 LOCAL_MEMORY_CACHE = {
@@ -234,3 +235,54 @@ class TestPlayerSearchEndpoint:
         response = viewer_client.get(PLAYERS_URL)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+
+@pytest.mark.django_db
+class TestFriendListEndpoint:
+    def test_requires_authentication(self):
+        assert APIClient().get(FRIENDS_URL).status_code == status.HTTP_403_FORBIDDEN
+
+    def test_lists_friends_alphabetically_as_user_id_and_display_name(self, viewer_client, viewer, make_player):
+        zoe = make_player("Zoe")
+        adam = make_player("adam", Profile.FRIENDS)
+        make_player("Not A Friend")
+        viewer.friends.add(zoe, adam)
+
+        response = viewer_client.get(FRIENDS_URL)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data == [
+            {"user_id": str(adam.user.pk), "display_name": "adam"},
+            {"user_id": str(zoe.user.pk), "display_name": "Zoe"},
+        ]
+
+    def test_a_friendship_added_by_either_user_counts_for_both(self, viewer_client, viewer, make_player):
+        friend = make_player("Friend", Profile.FRIENDS)
+        friend.friends.add(viewer)
+
+        response = viewer_client.get(FRIENDS_URL)
+
+        assert found_names(response) == ["Friend"]
+
+    def test_friends_who_cannot_be_added_are_left_out(self, viewer_client, viewer, make_player):
+        private = make_player("Private Friend", Profile.PRIVATE)
+        deactivated = make_player("Deactivated Friend", is_active=False)
+        deleted = make_player("Deleted Friend", deleted_at=timezone.now())
+        viewer.friends.add(private, deactivated, deleted)
+
+        assert viewer_client.get(FRIENDS_URL).data == []
+
+    def test_a_user_without_friends_gets_an_empty_list(self, viewer_client):
+        response = viewer_client.get(FRIENDS_URL)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data == []
+
+    def test_every_listed_friend_can_be_added_to_a_session(self, viewer, make_player):
+        friends = [make_player("Public Friend"), make_player("Friends Only Friend", Profile.FRIENDS)]
+        viewer.friends.add(*friends, make_player("Private Friend", Profile.PRIVATE))
+
+        listed_ids = {profile.user_id for profile in PlayerDirectoryService.friends_of(viewer.user)}
+
+        assert listed_ids == PlayerDirectoryService.addable_user_ids(viewer.user, listed_ids)
+        assert listed_ids == {friend.user_id for friend in friends}
