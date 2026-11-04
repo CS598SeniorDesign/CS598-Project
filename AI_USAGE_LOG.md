@@ -496,7 +496,7 @@ AI proved:
 * **Date:** November 3, 2026
 * **Team Member:** Brandon Nguyen (`@Meynok`)
 * **Tool Used:** Claude Code (Claude Opus 5.5)
-* **Associated Git Issue:** Closes `#`
+* **Associated Git Issue:** Closes `#175`
 * **Associated Feature Branch:** `feat/bgg-refresh` (draft PR #176)
 * **Commits:** `91dce56` (merge of `feature/celery`), `ba19fbf` (`fix: retry background play sync only for retryable bgg errors`)
 
