@@ -1,8 +1,12 @@
 from datetime import date, timedelta
 from decimal import Decimal
+from io import StringIO
+from unittest.mock import patch
 
+import numpy as np
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
+from django.core.management import call_command
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from rest_framework import status
@@ -10,9 +14,16 @@ from rest_framework.test import APITestCase
 
 from catalog.models import BoardGame, Category, Mechanic
 from recommendations.choices import FallbackReason, Strategy
+from recommendations.collaborative import build_collaborative_model, get_collaborative_model
 from recommendations.content import build_content_model
 from recommendations.data import interaction_scores, load_interaction_frame
-from recommendations.models import RecommendationFeedback, RecommendationProfile
+from recommendations.embeddings import (
+    build_game_embeddings,
+    nearest_games,
+    rebuild_game_embeddings,
+    user_embedding,
+)
+from recommendations.models import EMBEDDING_DIMENSIONS, GameEmbedding, RecommendationFeedback, RecommendationProfile
 from recommendations.services import RecommendationService
 from recommendations.strategies import PersonalDataNotAllowedError, RecommendationContext
 from tracking.models import LibraryItem, PlaySession, Rating, SessionPlayer
@@ -88,6 +99,24 @@ class CatalogFixture:
             user=user, defaults={"use_personal_data": True, **preferences}
         )
         return profile
+
+    @staticmethod
+    def rate(user, game, value):
+        return Rating.objects.create(
+            user=user, game=game, experience=value, mechanics=value, replayability=value, enjoyment=value
+        )
+
+    def build_cohort(self, size=4):
+        """Opted-in players who love the heavy games and Pandemic, and dislike Codenames."""
+        cohort = []
+        for number in range(size):
+            player = User.objects.create_user(email=f"cohort{number}@example.com", password="password123")
+            self.opt_in(player)
+            for game in (self.agricola, self.caylus, self.pandemic):
+                self.rate(player, game, 5)
+            self.rate(player, self.codenames, 1)
+            cohort.append(player)
+        return cohort
 
     @staticmethod
     def log_play(user, game, *, played_on=None, won=False, quantity=1):
@@ -444,6 +473,14 @@ class RecommendationAPITest(CatalogFixture, APITestCase):
             response = self.client.get(LIST_URL, {"strategy": "popular", **params})
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, params)
 
+    def test_similar_games_requires_a_game(self):
+        missing = self.client.get(LIST_URL, {"strategy": "similar_games"})
+        given = self.client.get(LIST_URL, {"strategy": "similar_games", "game_id": self.azul.bgg_id})
+
+        self.assertEqual(missing.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(given.status_code, status.HTTP_200_OK)
+        self.assertEqual(given.data["results"][0]["reason"], "Similar to Azul")
+
     def test_profile_starts_opted_out_and_can_opt_in_with_onboarding_answers(self):
         response = self.client.get(PROFILE_URL)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -525,3 +562,172 @@ class RecommendationAPITest(CatalogFixture, APITestCase):
         self.assertTrue(strategies["redemption_arc"]["requires_personal_data"])
         self.assertIn({"bgg_id": self.party_category.bgg_id, "name": "Party Game"}, response.data["categories"])
         self.assertIn({"key": "cooperative", "label": "Work together"}, response.data["moods"])
+
+
+@override_settings(CACHES=LOCAL_CACHE)
+class CollaborativeModelTest(CatalogFixture, TestCase):
+    def setUp(self):
+        cache.clear()
+        self.build_catalog()
+        self.user = User.objects.create_user(email="player@example.com", password="password123")
+        self.opt_in(self.user)
+        self.rate(self.user, self.agricola, 5)
+        self.rate(self.user, self.caylus, 5)
+
+    def test_too_little_data_leaves_the_model_untrained(self):
+        model = build_collaborative_model()
+
+        self.assertFalse(model.is_trained)
+        self.assertTrue(model.scores(self.user.pk).empty)
+
+    def test_predicts_what_similar_players_enjoyed(self):
+        self.build_cohort()
+
+        model = build_collaborative_model()
+        scores = model.scores(self.user.pk)
+
+        self.assertTrue(model.is_trained)
+        self.assertEqual(model.interaction_count(self.user.pk), 2)
+        self.assertGreater(scores[self.pandemic.bgg_id], scores[self.codenames.bgg_id])
+        self.assertTrue(((scores >= 1.0) & (scores <= 5.0)).all())
+
+    def test_unseen_users_and_games(self):
+        self.build_cohort()
+        model = build_collaborative_model()
+        stranger = User.objects.create_user(email="stranger@example.com", password="password123")
+
+        self.assertTrue(model.scores(stranger.pk).empty)
+        self.assertEqual(model.interaction_count(stranger.pk), 0)
+        unseen = model.scores(self.user.pk, [self.azul.bgg_id])
+        self.assertEqual(list(unseen.index), [self.azul.bgg_id])
+        factors, users = model.game_factors([self.azul.bgg_id, self.pandemic.bgg_id])
+        self.assertFalse(factors[0].any())
+        self.assertEqual(list(users), [0, 4])
+
+    def test_opting_out_removes_a_user_from_the_cached_model(self):
+        cohort = self.build_cohort()
+        self.assertTrue(get_collaborative_model().interaction_count(cohort[0].pk))
+
+        RecommendationProfile.objects.filter(user=cohort[0]).update(use_personal_data=False)
+
+        self.assertEqual(get_collaborative_model().interaction_count(cohort[0].pk), 0)
+
+
+@override_settings(CACHES=LOCAL_CACHE)
+class EmbeddingTest(CatalogFixture, TestCase):
+    def setUp(self):
+        cache.clear()
+        self.build_catalog()
+        self.content_model = build_content_model()
+
+    def test_embeddings_are_unit_length_and_fixed_size(self):
+        frame = build_game_embeddings(self.content_model, build_collaborative_model())
+
+        self.assertEqual(len(frame), 7)
+        for vector in frame["embedding"]:
+            self.assertEqual(vector.shape, (EMBEDDING_DIMENSIONS,))
+            self.assertAlmostEqual(float(np.linalg.norm(vector)), 1.0)
+
+    def test_rebuild_replaces_stored_embeddings(self):
+        self.assertEqual(rebuild_game_embeddings(self.content_model, build_collaborative_model()), 7)
+        first_version = GameEmbedding.objects.values_list("model_version", flat=True).first()
+        self.caylus.delete()
+
+        rebuild_game_embeddings(build_content_model(), build_collaborative_model())
+
+        self.assertEqual(GameEmbedding.objects.count(), 6)
+        self.assertNotIn(first_version, GameEmbedding.objects.values_list("model_version", flat=True))
+
+    def test_nearest_games_finds_lookalikes(self):
+        rebuild_game_embeddings(self.content_model, build_collaborative_model())
+        vector = user_embedding({self.agricola.bgg_id: 1.0})
+        assert vector is not None
+
+        nearest = nearest_games(vector, 3, exclude=[self.agricola.bgg_id])
+
+        self.assertEqual(set(nearest.index[:2]), {self.caylus.bgg_id, self.viticulture.bgg_id})
+        self.assertNotIn(self.agricola.bgg_id, nearest.index)
+        self.assertTrue(nearest.is_monotonic_decreasing)
+
+    def test_user_embedding_needs_stored_games(self):
+        self.assertIsNone(user_embedding({self.agricola.bgg_id: 1.0}))
+
+
+@override_settings(CACHES=LOCAL_CACHE)
+class AdvancedStrategyTest(CatalogFixture, TestCase):
+    def setUp(self):
+        cache.clear()
+        self.build_catalog()
+        self.user = User.objects.create_user(email="player@example.com", password="password123")
+
+    def recommend(self, strategy, **params):
+        return RecommendationService(self.user).recommend(strategy, 10, **params)
+
+    def game_ids(self, result):
+        return [item.game_id for item in result.recommendations]
+
+    def test_similar_games_works_before_and_after_embeddings_are_built(self):
+        before = self.recommend(Strategy.SIMILAR_GAMES, game_id=self.agricola.bgg_id)
+        call_command("train_recommender", stdout=StringIO())
+        cache.clear()
+        after = self.recommend(Strategy.SIMILAR_GAMES, game_id=self.agricola.bgg_id)
+
+        for result in (before, after):
+            self.assertFalse(result.personalized)
+            self.assertEqual(set(self.game_ids(result)[:2]), {self.caylus.bgg_id, self.viticulture.bgg_id})
+            self.assertNotIn(self.agricola.bgg_id, self.game_ids(result))
+            self.assertEqual(result.recommendations[0].reason, "Similar to Agricola")
+
+    def test_similar_games_for_unknown_game_is_empty(self):
+        result = self.recommend(Strategy.SIMILAR_GAMES, game_id=999999)
+
+        self.assertEqual(result.recommendations, [])
+        self.assertIsNone(result.fallback_reason)
+
+    def test_players_like_you_needs_opt_in_and_a_trained_model(self):
+        self.assertEqual(self.recommend(Strategy.PLAYERS_LIKE_YOU).fallback_reason, FallbackReason.OPT_IN_REQUIRED)
+
+        self.opt_in(self.user)
+        self.rate(self.user, self.agricola, 5)
+        self.assertEqual(self.recommend(Strategy.PLAYERS_LIKE_YOU).fallback_reason, FallbackReason.NOT_ENOUGH_DATA)
+
+    def test_players_like_you_recommends_what_the_cohort_loves(self):
+        self.build_cohort()
+        self.opt_in(self.user)
+        self.rate(self.user, self.agricola, 5)
+        self.rate(self.user, self.caylus, 5)
+
+        result = self.recommend(Strategy.PLAYERS_LIKE_YOU)
+
+        self.assertTrue(result.personalized)
+        self.assertEqual(self.game_ids(result), [self.pandemic.bgg_id, self.codenames.bgg_id])
+        self.assertEqual(result.recommendations[0].reason, "Enjoyed by players with similar taste")
+
+    def test_for_you_blends_in_players_like_you(self):
+        self.opt_in(self.user)
+        self.rate(self.user, self.werewolf, 5)
+        self.rate(self.user, self.agricola, 5)
+        content_only = self.game_ids(self.recommend(Strategy.FOR_YOU))
+
+        self.build_cohort()
+        cache.clear()
+        # Trust the collaborative model fully, rather than only as much as two ratings justify.
+        with patch("recommendations.strategies.COLLABORATIVE_SHRINKAGE", 0):
+            hybrid = self.game_ids(self.recommend(Strategy.FOR_YOU))
+
+        self.assertLess(content_only.index(self.codenames.bgg_id), content_only.index(self.pandemic.bgg_id))
+        self.assertLess(hybrid.index(self.pandemic.bgg_id), hybrid.index(self.codenames.bgg_id))
+
+    def test_for_you_retrieves_candidates_from_embeddings(self):
+        self.opt_in(self.user)
+        self.rate(self.user, self.codenames, 5)
+        call_command("train_recommender", stdout=StringIO())
+        cache.clear()
+
+        with patch("recommendations.strategies.embeddings.nearest_games", wraps=nearest_games) as search:
+            result = self.recommend(Strategy.FOR_YOU)
+
+        search.assert_called_once()
+        self.assertTrue(result.personalized)
+        self.assertEqual(self.game_ids(result)[0], self.werewolf.bgg_id)
+        self.assertNotIn(self.codenames.bgg_id, self.game_ids(result))

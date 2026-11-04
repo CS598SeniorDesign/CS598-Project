@@ -19,6 +19,7 @@ from django.conf import settings
 from django.contrib import admin
 from django.urls import include, path
 
+from core.metrics import metrics_view
 from core.views import HealthCheckView, ReadinessCheckView
 
 API_PREFIX = "api/v1/"
@@ -28,8 +29,10 @@ urlpatterns = [
     path("_allauth/", include("allauth.headless.urls")),
     path("health/", HealthCheckView.as_view(), name="health-check"),
     path("ready/", ReadinessCheckView.as_view(), name="readiness-check"),
+    path("metrics/", metrics_view, name="metrics"),
     path(API_PREFIX, include("catalog.urls")),
     path(API_PREFIX, include("tracking.urls")),
+    path(API_PREFIX, include("profiles.urls")),
     path(API_PREFIX, include("analytics.urls")),
     path(API_PREFIX, include("recommendations.urls")),
 ]

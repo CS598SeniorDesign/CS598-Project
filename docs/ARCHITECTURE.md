@@ -38,7 +38,7 @@ flowchart LR
         direction LR
         next["<b>Next.js 16 frontend</b><br/>React 19 · TypeScript · Tailwind<br/>:3000"]
         django["<b>Django 6 backend</b><br/>DRF · django-allauth headless<br/>:8000"]
-        pg[("<b>PostgreSQL 17</b><br/>application data")]
+        pg[("<b>PostgreSQL 17 + pgvector</b><br/>application data · game embeddings")]
         redis[("<b>Redis</b><br/>cache · sessions · rate limits")]
     end
 
@@ -74,8 +74,9 @@ flowchart TB
         direction TB
         fe["<b>questlog-nextjs</b><br/>target: dev · next dev<br/>env: ./frontend/.env"]
         be["<b>questlog-django</b><br/>target: dev · runserver<br/>entrypoint: wait for DB → migrate<br/>env: ./.env"]
-        db[("<b>questlog-db</b><br/>postgres:17")]
+        db[("<b>questlog-db</b><br/>pgvector/pgvector:pg17")]
         rd[("<b>questlog-redis</b><br/>redis · requirepass · AOF")]
+        pr["<b>questlog-prometheus</b> (optional)<br/>profile: monitoring<br/>scrapes GET /metrics/"]
     end
 
     vpg[/"volume: postgres_data"/]
@@ -89,6 +90,9 @@ flowchart TB
     fe -- "depends_on: backend healthy<br/>(GET /health/)" --> be
     be -- "depends_on: healthy<br/>(pg_isready)" --> db
     be -- "depends_on: healthy<br/>(redis-cli ping)" --> rd
+
+    dev -. ":9090" .-> pr
+    pr -. "Bearer METRICS_TOKEN" .-> be
 
     db --- vpg
     rd --- vrd
@@ -589,7 +593,7 @@ Every API request passes through the same layers. Each layer can stop the reques
 ```mermaid
 flowchart TD
     req(["Browser request<br/>/api/v1/... or /_allauth/..."]) --> next["Next.js rewrite<br/>adds security headers to pages"]
-    next --> mw["Django middleware<br/>SecurityMiddleware · Session · CSRF ·<br/>Authentication · allauth AccountMiddleware"]
+    next --> mw["Django middleware<br/>SecurityMiddleware · Session · CSRF ·<br/>Authentication · RequestContext (request ID, JSON access log, metrics) ·<br/>allauth AccountMiddleware"]
     mw --> auth["DRF SessionAuthentication<br/>(CSRF enforced on POST/PUT/PATCH/DELETE)"]
     auth --> ff{"FeatureFlagPermission<br/>(when the view sets feature_flag)"}
     ff -- "flag off" --> e404(["404 Not Found"])
@@ -747,7 +751,7 @@ flowchart TD
     cache -- "miss" --> spec["Look up StrategySpec"]
     spec --> consent{"Strategy needs personal data<br/>and user has not opted in?"}
     consent -- "yes" --> fallback["Basic fallback: popular → top rated<br/>reason: opt_in_required"]
-    consent -- "no" --> run["Run strategy handler<br/>(content model · plays · ratings · library)"]
+    consent -- "no" --> run["Run strategy handler<br/>(content model · collaborative model ·<br/>pgvector embeddings · plays · ratings · library)"]
     run --> filter["Drop games the user disliked"]
     filter --> empty{"No results and<br/>fallback_when_empty?"}
     empty -- "yes" --> fallback2["Basic fallback<br/>reason: not_enough_data"]
@@ -762,7 +766,17 @@ flowchart TD
 
 | Basic (no personal data) | Personal (requires `use_personal_data`) |
 | :--- | :--- |
-| `popular`, `top_rated`, `decision_chart` | `for_you`, `similar_to_recent`, `not_played_recently`, `unplayed_library`, `unplayed_wishlist`, `most_wins`, `redemption_arc` |
+| `popular`, `top_rated`, `decision_chart`, `similar_games` | `for_you`, `players_like_you`, `similar_to_recent`, `not_played_recently`, `unplayed_library`, `unplayed_wishlist`, `most_wins`, `redemption_arc` |
+
+| Phase | Module | Technique | Used by |
+| :--- | :--- | :--- | :--- |
+| I | `content.py` | TF-IDF tag vectors + scaled numeric features, cosine similarity (pandas, scikit-learn) | taste scores for every personalized strategy |
+| II | `collaborative.py` | Biased SVD matrix factorization over opted-in users' interactions (Surprise) | blended into taste scores; `players_like_you` |
+| III | `embeddings.py` | Hybrid content + collaborative embeddings in Postgres, HNSW cosine index (pgvector) | `for_you` candidate retrieval; `similar_games` |
+| IV | `evaluation.py`, `experiments.py` | Held-out RMSE/MAE/precision@k/recall@k and per-strategy like rates, reported to MLflow, Weights & Biases and the logs | `train_recommender`, `recommendation_report` |
+
+`manage.py train_recommender` rebuilds all three. The content and collaborative models are cached in Redis and also
+built on demand; game embeddings are stored in the `GameEmbedding` table and only built by the command.
 
 ---
 

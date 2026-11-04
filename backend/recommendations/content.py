@@ -24,6 +24,7 @@ from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.preprocessing import MinMaxScaler, MultiLabelBinarizer, normalize
 
 from catalog.models import BoardGame
+from core.metrics import RECOMMENDER_MODEL_BUILD_DURATION
 from recommendations.data import GAME_NUMERIC_COLUMNS, load_game_frame, tag_token
 
 TAG_WEIGHT = 0.8
@@ -133,6 +134,17 @@ class ContentModel:
 
     def __contains__(self, game_id: object) -> bool:
         return game_id in self._positions
+
+    def feature_matrix(self) -> sparse.csr_matrix:
+        """
+        Every game's content features in one matrix, weighted as scoring weighs them.
+
+        :returns: One row per game in ``game_ids`` order: the tag columns, then the scaled numeric columns.
+        :rtype: scipy.sparse.csr_matrix
+        """
+        return sparse.csr_matrix(
+            sparse.hstack([self._tags * TAG_WEIGHT, sparse.csr_matrix(self._numeric) * NUMERIC_WEIGHT])
+        )
 
     def taste_from_games(self, weights: Mapping[int, float]) -> Taste:
         """
@@ -259,7 +271,8 @@ def build_content_model() -> ContentModel:
     :returns: A freshly fitted model.
     :rtype: recommendations.content.ContentModel
     """
-    return ContentModel(load_game_frame())
+    with RECOMMENDER_MODEL_BUILD_DURATION.labels("content").time():
+        return ContentModel(load_game_frame())
 
 
 def get_content_model(*, refresh: bool = False) -> ContentModel:

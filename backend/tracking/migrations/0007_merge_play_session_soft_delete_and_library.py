@@ -4,11 +4,9 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('tracking', '0004_play_session_soft_delete'),
-        ('tracking', '0006_library_item_remove_status'),
+        ("tracking", "0004_play_session_soft_delete"),
+        ("tracking", "0006_library_item_remove_status"),
     ]
 
-    operations = [
-    ]
+    operations = []

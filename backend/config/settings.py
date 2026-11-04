@@ -70,6 +70,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.postgres",
     "django_migration_linter",
     "django.contrib.sites",
     "rest_framework",
@@ -100,6 +101,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "core.middleware.RequestContextMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "allauth.account.middleware.AccountMiddleware",
@@ -291,6 +293,7 @@ REST_FRAMEWORK = {
         "anon": "60/min",
         "user": "300/min",
         "bgg-sync": "3/min",
+        "player-search": "60/min",
         "recommendations": "60/min",
     },
 }
@@ -303,7 +306,7 @@ X_FRAME_OPTIONS = "DENY"
 
 # Forces HTTPS
 SECURE_SSL_REDIRECT = env("SECURE_SSL_REDIRECT", False)
-SECURE_REDIRECT_EXEMPT = [r"^health/$"]
+SECURE_REDIRECT_EXEMPT = [r"^health/$", r"^metrics/$"]
 SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
@@ -322,3 +325,47 @@ CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
 
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# Logging: one JSON object per line, with request_id and user_id on every record (see core/structured_logging.py).
+# LOG_FORMAT=text gives human-readable lines for local debugging.
+LOG_LEVEL = env.str("LOGLEVEL", default="info").upper()
+LOG_FORMAT = env.str("LOG_FORMAT", default="json")
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "filters": {"request_context": {"()": "core.structured_logging.RequestContextFilter"}},
+    "formatters": {
+        "json": {"()": "core.structured_logging.JsonFormatter"},
+        "text": {
+            "format": "%(asctime)s %(levelname)s %(name)s [request_id=%(request_id)s user_id=%(user_id)s] %(message)s"
+        },
+    },
+    "handlers": {
+        "console": {"class": "logging.StreamHandler", "filters": ["request_context"], "formatter": LOG_FORMAT},
+    },
+    "root": {"handlers": ["console"], "level": LOG_LEVEL},
+    "loggers": {
+        "django": {"handlers": ["console"], "level": LOG_LEVEL, "propagate": False},
+        # Django logs 4xx responses here after the request context has been cleared, so those lines would have no
+        # request_id, and core.middleware's access log already records them. Unhandled exceptions (5xx) are logged
+        # while the request is still in progress, so they keep their request_id and stack trace.
+        "django.request": {"handlers": ["console"], "level": "ERROR", "propagate": False},
+        # runserver's own access log duplicates core.middleware's.
+        "django.server": {"handlers": ["console"], "level": "ERROR", "propagate": False},
+    },
+}
+
+# Monitoring: GET /metrics/ serves Prometheus metrics to callers sending "Authorization: Bearer <METRICS_TOKEN>".
+# Leave unset to disable the endpoint.
+METRICS_TOKEN = env.str("METRICS_TOKEN", default="")
+
+# Recommender experiment tracking (Phase IV). Training and evaluation runs are logged to every tracker listed:
+# "log" (structured log line), "mlflow", "wandb". mlflow and wandb need the monitoring extra: uv sync --extra monitoring
+RECOMMENDER_TRACKERS = env.list("RECOMMENDER_TRACKERS", default=["log"])
+MLFLOW_TRACKING_URI = env.str("MLFLOW_TRACKING_URI", default="")
+MLFLOW_EXPERIMENT_NAME = env.str("MLFLOW_EXPERIMENT_NAME", default="questlog-recommender")
+WANDB_PROJECT = env.str("WANDB_PROJECT", default="questlog-recommender")
+WANDB_ENTITY = env.str("WANDB_ENTITY", default="")
+# "offline" keeps runs on disk (sync later with `wandb sync`); "online" uploads them and needs WANDB_API_KEY.
+WANDB_MODE = env.str("WANDB_MODE", default="offline")

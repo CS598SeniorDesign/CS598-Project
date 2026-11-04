@@ -1,0 +1,21 @@
+meta {
+  name: Delete Rating
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/ratings/{{bggGameId}}/
+  body: none
+  auth: none
+}
+
+docs {
+  Deletes the rating.
+}
+
+tests {
+  test("deletes the rating", function () {
+    expect(res.getStatus()).to.equal(204);
+  });
+}

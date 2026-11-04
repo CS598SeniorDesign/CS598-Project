@@ -28,6 +28,8 @@ This document provides guidance on running the backend through Docker and locall
   - [Creating a new app](#creating-a-new-app)
   - [Running tests](#running-tests)
   - [Health Endpoints](#health-endpoints)
+  - [Logging \& Monitoring](#logging--monitoring)
+  - [Recommendation Engine](#recommendation-engine)
 
 ## Backend File Structure
 
@@ -41,7 +43,7 @@ This document provides guidance on running the backend through Docker and locall
 /profiles
 |- 'Django app for user/player profiles, player and group statistics, derived social tags, and account-level data'
 /recommendations
-|- 'Django app for the recommendation engine: content-based filtering, opt-in settings, and feedback'
+|- 'Django app for the recommendation engine: content-based and collaborative filtering, pgvector embeddings, opt-in settings, and feedback'
 /tracking
 |- 'Django app for session/play tracking and multi-metric ratings.'
 .dockerignore
@@ -381,18 +383,69 @@ Two operational endpoints are wired via `config/urls.py` and implemented in `cor
 
 Both use trailing slashes intentionally, to avoid Django's `APPEND_SLASH` redirect behavior causing flaky results when polled by Docker healthchecks or uptime monitors.
 
+## Logging & Monitoring
+
+**Structured logs** (`core/structured_logging.py`, `core/middleware.py`). Every log line is one JSON object with `timestamp` (UTC), `level`, `logger`, `message`, `request_id` and `user_id`, plus any fields passed with `extra=`:
+
+```json
+{"timestamp": "2026-11-01T20:24:52.272+00:00", "level": "WARNING", "logger": "questlog.request", "message": "GET /api/v1/recommendations/ 403", "request_id": "974fbe35...", "user_id": null, "method": "GET", "route": "api/v1/recommendations/", "status": 403, "duration_ms": 0.77}
+```
+
+- `RequestContextMiddleware` gives each request an ID, reusing a well-formed incoming `X-Request-ID` header (so the frontend or a proxy can correlate) and returning it in the response's `X-Request-ID` header. The request ID and the signed-in user's ID are attached to every log line written during the request, from any logger. Both are `null` outside requests (management commands).
+- The `questlog.request` logger writes one access line per request (INFO for 2xx/3xx, WARNING for 4xx, ERROR for 5xx). `/health/`, `/ready/` and `/metrics/` are not logged unless they fail.
+- The `questlog.security` logger records sign-ins, failed sign-ins, sign-outs, sign-ups, password changes and resets, and MFA authenticators added, removed or failed (`core/signals.py`). Events identify users by ID only; failed sign-ins never log the email address that was tried.
+- `LOGLEVEL` sets the level (default `info`). `LOG_FORMAT=text` switches to human-readable lines for local debugging.
+- Never log emails, passwords, tokens or other personal data. Use `user_id` to identify users.
+
+**Metrics** (`core/metrics.py`). `GET /metrics/` serves Prometheus metrics to callers sending `Authorization: Bearer <METRICS_TOKEN>`; it returns 404 when `METRICS_TOKEN` is unset.
+
+| Metric | What it measures |
+| :--- | :--- |
+| `questlog_http_requests_total`, `questlog_http_request_duration_seconds` | Requests and latency by method, URL pattern and status |
+| `questlog_dependency_up` | Whether PostgreSQL and Redis passed the last `/ready/` check |
+| `questlog_external_api_requests_total`, `questlog_external_api_request_duration_seconds` | BoardGameGeek API calls by endpoint and outcome |
+| `questlog_security_events_total` | Security events by type (e.g. alert on a spike in `login_failed`) |
+| `questlog_recommendation_requests_total` | Recommendation requests by requested and served strategy, fallback reason, and result cache hit/miss |
+| `questlog_recommendation_compute_seconds` | Time to compute recommendations on a cache miss |
+| `questlog_recommender_model_build_seconds` | Time to build the content model, collaborative model and embeddings |
+
+The production image runs gunicorn with `config/gunicorn.conf.py` and sets `PROMETHEUS_MULTIPROC_DIR`, so `/metrics/` reports totals across all workers. To collect metrics locally, set `METRICS_TOKEN` in `.env` and start the optional Prometheus container (configured in `monitoring/prometheus.yml`), then open `http://localhost:9090`:
+
+```bash
+docker compose --profile monitoring up
+```
+
 ## Recommendation Engine
 
 The `recommendations` app serves game recommendations at `GET /api/v1/recommendations/?strategy=<strategy>`. `GET /api/v1/recommendations/options/` lists every strategy with its parameters, plus the choices for the decision chart and onboarding form.
 
 **Phase I: content-based filtering** (`recommendations/content.py`, pandas + scikit-learn). Each game becomes a TF-IDF weighted vector of its categories, mechanics, and designers, plus scaled player counts, play time, and complexity (BGG `averageweight`). A user's taste is built in the same space from games they rated, played, own, or reacted to, and from their optional onboarding answers. Games are ranked by cosine similarity to that taste.
 
+**Phase II: collaborative filtering** (`recommendations/collaborative.py`, Surprise SVD). A biased matrix factorization learns user and game factors from every opted-in user's interaction scores (ratings, likes/dislikes, plays, ownership), so a game can be recommended because players with similar histories enjoyed it even when it shares no tags with anything the user played. Personalized rankings blend content and collaborative scores, trusting the collaborative model more as it sees more of the user's activity (up to 60%). `players_like_you` uses the collaborative model alone. It trains once there are at least 3 opted-in users and 10 interactions; until then, and for users it has not seen yet, recommendations use Phase I alone.
+
+**Phase III: advanced recommenders** (`recommendations/embeddings.py`, pgvector). Each game gets a 64-dimension hybrid embedding: its content features and collaborative factors, reduced with truncated SVD. Embeddings are stored in the `GameEmbedding` table behind an HNSW cosine index. `for_you` works in two stages: it retrieves the 200 unseen games nearest the user's embedding (the like-weighted average of games they know, computed per request and never stored), then ranks them by hybrid taste score plus embedding similarity. `similar_games?game_id=<bgg id>` returns a game's nearest neighbors and uses no personal data. Embeddings are only built by `train_recommender`; until then both strategies fall back to Phases I and II.
+
+The database needs the pgvector extension. `docker-compose.yml` and CI use the `pgvector/pgvector:pg17` image, and migration `recommendations/0002` runs `CREATE EXTENSION vector`. If your test database predates this change, run pytest once with `--create-db`.
+
 **Privacy.** Users start opted out (`PATCH /api/v1/recommendations/profile/` with `use_personal_data`). Strategies that read a user's own data fall back to basic strategies (`popular`, then `top_rated`) until they opt in, and the response explains why in `fallback_reason`.
 
 **Feedback.** `POST /api/v1/recommendations/feedback/` with `game_id` and `sentiment` (`LIKE`/`DISLIKE`). Disliked games are never recommended again, and both reactions feed the user's taste.
 
-**Caching.** Results are cached in Redis per user for 10 minutes. Saving a library item, rating, play, feedback, or setting clears that user's cache. The content model is cached for an hour, or until the catalog grows. It is built on demand, and this command rebuilds it ahead of time (for example, on a schedule):
+**Caching.** Results are cached in Redis per user for 10 minutes. Saving a library item, rating, play, feedback, or setting clears that user's cache. The content model is cached for an hour, or until the catalog grows. The collaborative model is cached for an hour, or until a user opts in or out, so an opted-out user's data stops shaping other users' recommendations on the next request. Both are built on demand. This command rebuilds them and the stored game embeddings ahead of time, and should run on a schedule (`--skip-embeddings` rebuilds only the cached models). An opted-out user's activity stays in the stored embeddings until the next run:
 
 ```bash
 uv run python manage.py train_recommender
 ```
+
+**Phase IV: monitoring** (`recommendations/evaluation.py`, `recommendations/experiments.py`, MLflow + Weights & Biases).
+
+- *Offline evaluation.* Each `train_recommender` run holds out 20% of opted-in users' interactions, trains the collaborative model on the rest, and measures RMSE, MAE, precision@10 and recall@10 on the held-out part (a game counts as liked at a score of 4 or more). The split is fixed, so a drop between runs means the model or data got worse, not that the split changed. `--skip-evaluation` skips it.
+- *Online feedback.* `recommendation_report` counts likes and dislikes per strategy (each reaction records the strategy that produced it) and reports the like rate for each:
+
+  ```bash
+  uv run python manage.py recommendation_report --days 30
+  ```
+
+- *Experiment tracking.* Both commands send their run (model parameters, data sizes, build times, evaluation metrics or like rates) to every tracker in `RECOMMENDER_TRACKERS`: `log` (a JSON log line; the default), `mlflow` and `wandb`. MLflow and W&B are optional so the backend image stays small; install them with `uv sync --extra monitoring`. MLflow writes to `MLFLOW_TRACKING_URI` (for example `sqlite:///mlflow.db` locally, or an MLflow server's URL), under the `MLFLOW_EXPERIMENT_NAME` experiment. W&B defaults to `WANDB_MODE=offline`, which saves runs to disk without contacting W&B (upload later with `wandb sync`). Set `online` and `WANDB_API_KEY` to send them straight away. A tracker that is missing or fails is logged and skipped, so tracking problems never stop the models from being rebuilt. Runs contain only configuration and aggregate numbers, never personal data.
+
+Serving health (request volume, fallbacks, cache hit rate, latency, model build times) is in the Prometheus metrics above.

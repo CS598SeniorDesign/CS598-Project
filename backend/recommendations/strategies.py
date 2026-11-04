@@ -1,5 +1,9 @@
 """
-The recommendation strategies, and the content-based taste scoring that personalized strategies rank by.
+The recommendation strategies, and the hybrid taste scoring that personalized strategies rank by.
+
+Taste scores blend content-based similarity with collaborative filtering, trusting the collaborative model more as
+it sees more of the user's activity. ``for_you`` adds embeddings on top, retrieving candidates from the pgvector
+embedding index and ranks them by taste score plus embedding similarity.
 
 Each strategy takes a RecommendationContext and returns an ordered list of Recommendations. Strategies may return
 more than ``context.limit`` results (up to ``context.fetch_size``); the service removes games the user disliked and
@@ -24,6 +28,7 @@ from django.db.models import F, Q, QuerySet, Sum
 from django.utils import timezone
 
 from catalog.models import BoardGame
+from recommendations import embeddings
 from recommendations.choices import (
     COMPLEXITY_RANGES,
     MOOD_TAGS,
@@ -31,6 +36,7 @@ from recommendations.choices import (
     PopularityPeriod,
     Strategy,
 )
+from recommendations.collaborative import CollaborativeModel, get_collaborative_model
 from recommendations.content import ContentModel, Taste, get_content_model
 from recommendations.data import NEUTRAL_SCORE, load_interaction_frame
 from recommendations.models import RecommendationFeedback, RecommendationProfile
@@ -41,6 +47,14 @@ if TYPE_CHECKING:
 
 # How much onboarding answers count relative to play history when both exist.
 ONBOARDING_WEIGHT = 0.5
+# The collaborative share of a taste score approaches MAX_COLLABORATIVE_WEIGHT as the user's activity grows; with
+# COLLABORATIVE_SHRINKAGE interactions it is half that.
+MAX_COLLABORATIVE_WEIGHT = 0.6
+COLLABORATIVE_SHRINKAGE = 10
+# How much embedding similarity counts relative to the taste score when ranking for_you candidates.
+VECTOR_WEIGHT = 0.5
+# How many nearest neighbors for_you retrieves from the embedding index before ranking.
+CANDIDATE_POOL_SIZE = 200
 # Minimum tag similarity for "Because you liked X" to be a believable explanation.
 EXPLANATION_SIMILARITY_THRESHOLD = 0.2
 
@@ -123,12 +137,28 @@ class RecommendationContext:
         return get_content_model()
 
     @cached_property
+    def collaborative_model(self) -> CollaborativeModel:
+        """The shared, cached collaborative filtering model."""
+        return get_collaborative_model()
+
+    @cached_property
     def personal_scores(self) -> pd.Series:
         """
-        Content-based taste scores for every game, indexed by BGG ID. Empty when the user has no history
-        and no onboarding answers.
+        Hybrid taste scores for every game, indexed by BGG ID. Empty when the user has no history and no onboarding
+        answers.
         """
         return personal_scores(self)
+
+    @cached_property
+    def taste_weights(self) -> pd.Series:
+        """
+        How much the user likes (positive) or dislikes (negative) each game they have interacted with, indexed by BGG
+        ID. Neutral games are left out.
+
+        :raises PersonalDataNotAllowedError: If the user has not opted in.
+        """
+        weights = self.interactions.set_index("game_id")["score"] - NEUTRAL_SCORE
+        return weights[weights != 0]
 
     @property
     def seen_game_ids(self) -> set[int]:
@@ -160,7 +190,8 @@ class StrategySpec:
 
 def personal_scores(context: RecommendationContext) -> pd.Series:
     """
-    Score every game by content-based similarity to the user's taste.
+    Score every game by how well it fits the user: content-based similarity to their taste, blended with the
+    collaborative model's predicted score once it knows the user.
 
     :param context: The request context.
     :type context: recommendations.strategies.RecommendationContext
@@ -168,7 +199,31 @@ def personal_scores(context: RecommendationContext) -> pd.Series:
     :rtype: pandas.Series
     """
     model = context.content_model
-    return model.scores(build_taste(context, model))
+    content = model.scores(build_taste(context, model))
+
+    weight = collaborative_weight(context)
+    if not weight:
+        return content
+    collaborative = context.collaborative_model.scores(
+        context.user.pk, content.index if not content.empty else model.game_ids
+    )
+    if content.empty:
+        return collaborative
+    return _blend([(1.0 - weight, content), (weight, collaborative)])
+
+
+def collaborative_weight(context: RecommendationContext) -> float:
+    """
+    How much the collaborative model should count in the user's taste scores.
+
+    :param context: The request context.
+    :type context: recommendations.strategies.RecommendationContext
+    :returns: 0 when the model has not seen the user, rising toward MAX_COLLABORATIVE_WEIGHT with their activity.
+    :rtype: float
+    """
+    context.ensure_consent()
+    count = context.collaborative_model.interaction_count(context.user.pk)
+    return MAX_COLLABORATIVE_WEIGHT * count / (count + COLLABORATIVE_SHRINKAGE)
 
 
 def build_taste(context: RecommendationContext, model: ContentModel) -> Taste:
@@ -182,8 +237,7 @@ def build_taste(context: RecommendationContext, model: ContentModel) -> Taste:
     :returns: The user's taste; empty if they have neither history nor onboarding answers.
     :rtype: recommendations.content.Taste
     """
-    weights = context.interactions.set_index("game_id")["score"] - NEUTRAL_SCORE
-    history = model.taste_from_games(weights[weights != 0].to_dict())
+    history = model.taste_from_games(context.taste_weights.to_dict())
     onboarding = _onboarding_taste(context.profile, model)
 
     if onboarding is None or onboarding.is_empty:
@@ -214,6 +268,37 @@ def _onboarding_taste(profile: RecommendationProfile, model: ContentModel) -> Ta
         max_play_time=profile.preferred_max_play_time,
         complexity=float(complexity) if complexity is not None else None,
     )
+
+
+def _blend(components: list[tuple[float, pd.Series]]) -> pd.Series:
+    """
+    Combine scores from different sources, each min-max scaled to 0-1 first so no source dominates by its scale.
+
+    :param components: (weight, scores) pairs. The first component's index is the result's; games missing from a later
+        component score 0 for it.
+    :type components: list[tuple[float, pandas.Series]]
+    :returns: The weighted average of the scaled scores.
+    :rtype: pandas.Series
+    """
+    index = components[0][1].index
+    total_weight = sum(weight for weight, _ in components)
+    combined = sum(weight * _scaled(scores).reindex(index).fillna(0.0) for weight, scores in components)
+    return combined / total_weight
+
+
+def _scaled(scores: pd.Series) -> pd.Series:
+    """
+    Min-max scale scores to 0-1; constant scores become 0.5.
+
+    :param scores: The scores to scale.
+    :type scores: pandas.Series
+    :returns: The scaled scores.
+    :rtype: pandas.Series
+    """
+    low, high = scores.min(), scores.max()
+    if high == low:
+        return pd.Series(0.5, index=scores.index)
+    return (scores - low) / (high - low)
 
 
 def _ranked(scores: pd.Series, *, exclude: Iterable[int] = (), include: Iterable[int] | None = None) -> pd.Series:
@@ -430,21 +515,104 @@ def _decision_chart_reason(params: dict[str, Any]) -> str:
     return " · ".join(parts) if parts else "A good pick for tonight"
 
 
+def recommend_similar_games(context: RecommendationContext) -> list[Recommendation]:
+    """
+    Games most like ``?game_id=``: its nearest neighbors in the embedding index, which reflects both what the games are
+    and who enjoys them. Until embeddings have been built, games are matched on content features alone.
+
+    Embeddings are shared across users and built only from opted-in users' aggregate activity, so this reads nothing
+    about the requesting user.
+    """
+    game_id = context.params["game_id"]
+    name = BoardGame.objects.filter(bgg_id=game_id).values_list("primary_name", flat=True).first()
+    if name is None:
+        return []
+
+    vector = embeddings.game_embedding(game_id)
+    if vector is not None:
+        similar = embeddings.nearest_games(vector, context.fetch_size, exclude=[game_id])
+    else:
+        similar = _content_neighbors(context.content_model, game_id).head(context.fetch_size)
+    return [Recommendation(int(other), float(score), f"Similar to {name}") for other, score in similar.items()]
+
+
+def _content_neighbors(model: ContentModel, game_id: int) -> pd.Series:
+    """
+    Rank games by content similarity to one game.
+
+    :param model: The content model.
+    :type model: recommendations.content.ContentModel
+    :param game_id: The game to compare with.
+    :type game_id: int
+    :returns: The other games' scores, best first; empty if the game is not in the model.
+    :rtype: pandas.Series
+    """
+    if game_id not in model:
+        return pd.Series(dtype=float)
+    return _ranked(model.scores(model.taste_from_games({game_id: 1.0})), exclude=[game_id])
+
+
 # --- Personalized strategies (opt-in required) ----------------------------------------------------------------------
 
 
 def recommend_for_you(context: RecommendationContext) -> list[Recommendation]:
     """
-    New-to-you games, scored by content-based similarity to the user's taste.
+    New-to-you games, picked in two stages:
+
+    1. Retrieval: the CANDIDATE_POOL_SIZE unseen games nearest the user in the embedding index. Without stored
+       embeddings, or when the index returns too few neighbors to fill the list, every unseen game stays a candidate.
+    2. Ranking: the hybrid taste score, plus embedding similarity for retrieved candidates.
     """
     scores = context.personal_scores
     if scores.empty:
         return []
 
-    ranked = _ranked(scores, exclude=context.seen_game_ids).head(context.fetch_size)
+    seen = context.seen_game_ids
+    candidates = _embedding_candidates(context, exclude=seen)
+    if candidates is not None and not candidates.empty:
+        if len(candidates) >= context.fetch_size:
+            scores = scores.reindex(candidates.index).fillna(scores.min())
+        scores = _blend([(1.0, scores), (VECTOR_WEIGHT, candidates)])
+
+    ranked = _ranked(scores, exclude=seen).head(context.fetch_size)
     interactions = context.interactions
     liked = interactions.loc[interactions["score"] > NEUTRAL_SCORE, "game_id"]
     return _explain(context, ranked, liked, "Matches your taste")
+
+
+def _embedding_candidates(context: RecommendationContext, *, exclude: Iterable[int]) -> pd.Series | None:
+    """
+    Retrieve the unseen games nearest the user in the embedding index.
+
+    :param context: The request context.
+    :type context: recommendations.strategies.RecommendationContext
+    :param exclude: Games the user already knows.
+    :type exclude: Iterable[int]
+    :returns: Candidates' embedding similarity indexed by BGG ID, most similar first, or None when the user has no
+        place in the index (no embeddings built yet, or none for the games they know).
+    :rtype: pandas.Series | None
+    """
+    vector = embeddings.user_embedding(context.taste_weights.to_dict())
+    if vector is None:
+        return None
+    return embeddings.nearest_games(vector, max(CANDIDATE_POOL_SIZE, context.fetch_size), exclude=exclude)
+
+
+def recommend_players_like_you(context: RecommendationContext) -> list[Recommendation]:
+    """
+    New-to-you games that players with similar histories enjoyed, by collaborative filtering alone. Empty until the
+    collaborative model has been trained with the user's activity.
+    """
+    context.ensure_consent()
+    scores = context.collaborative_model.scores(context.user.pk)
+    if scores.empty:
+        return []
+
+    ranked = _ranked(scores, exclude=context.seen_game_ids).head(context.fetch_size)
+    return [
+        Recommendation(int(game_id), float(score), "Enjoyed by players with similar taste")
+        for game_id, score in ranked.items()
+    ]
 
 
 def recommend_similar_to_recent(context: RecommendationContext) -> list[Recommendation]:
@@ -610,9 +778,21 @@ STRATEGIES: dict[str, StrategySpec] = {
         requires_personal_data=False,
         parameters=("players", "max_play_time", "complexity", "mood", "owned_only"),
     ),
+    Strategy.SIMILAR_GAMES: StrategySpec(
+        recommend_similar_games,
+        "Games most like a game you pick.",
+        requires_personal_data=False,
+        parameters=("game_id",),
+    ),
     Strategy.FOR_YOU: StrategySpec(
         recommend_for_you,
         "New games picked for your taste and for what players like you enjoy.",
+        requires_personal_data=True,
+        fallback_when_empty=True,
+    ),
+    Strategy.PLAYERS_LIKE_YOU: StrategySpec(
+        recommend_players_like_you,
+        "New games enjoyed by players whose history looks like yours.",
         requires_personal_data=True,
         fallback_when_empty=True,
     ),
