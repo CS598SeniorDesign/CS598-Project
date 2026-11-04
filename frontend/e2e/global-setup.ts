@@ -20,7 +20,9 @@ async function waitForBackend(): Promise<void> {
     await context.dispose();
   }
 
-  throw new Error("Docker-backed backend did not become ready within 120 seconds.");
+  throw new Error(
+    "Docker-backed backend did not become ready within 120 seconds.",
+  );
 }
 
 export default async function globalSetup(): Promise<void> {

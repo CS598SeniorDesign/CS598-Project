@@ -4,7 +4,10 @@ import os from "node:os";
 import path from "node:path";
 
 export const repositoryRoot = path.resolve(__dirname, "../..");
-export const setupMarker = path.join(os.tmpdir(), "questlog-e2e-docker-started");
+export const setupMarker = path.join(
+  os.tmpdir(),
+  "questlog-e2e-docker-started",
+);
 export const composeArguments = [
   "compose",
   "--env-file",

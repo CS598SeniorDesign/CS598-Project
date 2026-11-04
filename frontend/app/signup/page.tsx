@@ -66,12 +66,12 @@ export default function SignupPage() {
     setIsLoading(true);
 
     try {
-        await fetch("/csrf/", {
-          credentials: "same-origin",
-          cache: "no-store",
-        });
+      await fetch("/csrf/", {
+        credentials: "same-origin",
+        cache: "no-store",
+      });
 
-        const sessionResponse = await fetch("/_allauth/browser/v1/auth/session", {
+      const sessionResponse = await fetch("/_allauth/browser/v1/auth/session", {
         credentials: "same-origin",
         cache: "no-store",
         headers: {
