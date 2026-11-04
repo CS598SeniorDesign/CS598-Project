@@ -117,7 +117,10 @@ class Command(BaseCommand):
         EmailAddress.objects.create(
             user=demonstration_user, email=DEMONSTRATION_USER_EMAIL, verified=True, primary=True
         )
-        Profile.objects.create(user=demonstration_user, display_name="Demo Player", privacy_level=Profile.PUBLIC)
+        demonstration_profile = Profile.objects.create(
+            user=demonstration_user, display_name="Demo Player", privacy_level=Profile.PUBLIC
+        )
+        demonstration_profile.friends.set(Profile.objects.exclude(user=demonstration_user))
         RecommendationProfile.objects.create(user=demonstration_user, use_personal_data=True)
 
         self.stdout.write("Seeding play sessions for the demonstration login...")
