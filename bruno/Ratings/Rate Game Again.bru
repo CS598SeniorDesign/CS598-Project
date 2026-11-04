@@ -1,0 +1,33 @@
+meta {
+  name: Rate Game Again
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/ratings/
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "game_id": {{bggGameId}},
+    "experience": 1,
+    "mechanics": 1,
+    "replayability": 1,
+    "enjoyment": 1
+  }
+}
+
+docs {
+  A second rating for the same game is rejected with 409. `rating_url` points at the existing rating, which can be
+  edited instead.
+}
+
+tests {
+  test("rejects the duplicate and points to the existing rating", function () {
+    expect(res.getStatus()).to.equal(409);
+    expect(res.getBody().rating_url).to.contain(`/api/v1/ratings/${bru.getEnvVar("bggGameId")}/`);
+  });
+}

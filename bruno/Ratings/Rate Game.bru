@@ -1,0 +1,35 @@
+meta {
+  name: Rate Game
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/v1/ratings/
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "game_id": {{bggGameId}},
+    "experience": 4,
+    "mechanics": 3.5,
+    "replayability": 5,
+    "enjoyment": 4.5
+  }
+}
+
+docs {
+  Rates a game. Every dimension is required and must be between 1 and 5.
+  Returns 400 for a missing or out-of-range score, or a game that is not in the local catalog, and 409 if the game is
+  already rated.
+}
+
+tests {
+  test("rates the game", function () {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().game.bgg_id).to.equal(Number(bru.getEnvVar("bggGameId")));
+    expect(res.getBody().overall_rating).to.equal(4.25);
+  });
+}
