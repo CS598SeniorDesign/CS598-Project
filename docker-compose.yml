@@ -55,6 +55,7 @@ services:
     env_file:
       - ${DOCKER_ENV_FILE:-.env}
     environment:
+      DEBUG: ${DOCKER_DEBUG:-False}
       CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/')"]

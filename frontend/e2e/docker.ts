@@ -21,7 +21,9 @@ export function runCompose(args: string[]): void {
     cwd: repositoryRoot,
     env: {
       ...process.env,
+      DOCKER_DEBUG: "True",
       DOCKER_ENV_FILE: ".env.example",
+      CSRF_TRUSTED_ORIGINS: "http://localhost:3000,http://localhost:3100",
     },
     stdio: "inherit",
   });
