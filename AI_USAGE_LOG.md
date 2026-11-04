@@ -488,3 +488,44 @@ AI proved:
 * AI started the development server and confirmed the JSON access log lines, the `X-Request-ID` response header, and the `/metrics/` token check. This found Django's duplicate 4xx log lines without a request ID, which AI then turned off.
 * AI validated `docker-compose.yml` with the monitoring profile using `docker compose config`.
 * No external APIs (BoardGameGeek, MLflow servers, Weights & Biases) were called.
+
+---
+
+## Entry 15: Prototype 3 — Merge Celery Background Tasks into the BGG Refresh Branch
+
+* **Date:** November 3, 2026
+* **Team Member:** Brandon Nguyen (`@Meynok`)
+* **Tool Used:** Claude Code (Claude Opus 5.5)
+* **Associated Git Issue:** Closes `#`
+* **Associated Feature Branch:** `feat/bgg-refresh` (draft PR #176)
+* **Commits:** `91dce56` (merge of `feature/celery`), `ba19fbf` (`fix: retry background play sync only for retryable bgg errors`)
+
+### Exact Prompt Submitted:
+
+> "we have conflicts in PR #163 and #169. please resolve these conflicts into this branch"
+
+### AI Output Summary & Code Generated:
+
+**`91dce56` — Merge `feature/celery` (#163) into `feat/bgg-refresh`**
+
+* Merged Jennifer's Celery branch (worker, beat, Flower, background BGG play import) into the branch that already contained the BGG client from `feat/bgg-catalog` (#169), so the catalog refresh work could build on both before either PR is merged.
+* Resolved the one conflict, in `tracking/utils.py`: kept the `import_bgg_plays` / `fetch_bgg_plays` split and message constants from `feature/celery`, and used the BGG client's `BoardGameGeekUnavailableError` and `BoardGameGeekMalformedResponseError` in place of the `requests` and `ElementTree` errors the BGG client replaced.
+* Updated the `import_bgg_plays` docstring to list the client errors it now raises.
+* Removed an unused `Profile` import left in `tracking/views.py` (also present on `feature/celery`, where it fails the backend lint).
+
+**`ba19fbf` — Retry background play sync only for retryable BGG errors**
+
+* Found a problem the merge did not show as a conflict: `sync_bgg_plays` in `tracking/tasks.py` caught `requests.RequestException` and read `exception.response.status_code` to decide whether to retry. After the merge the play import raises the BGG client's errors instead, so every BGG failure skipped those `except` blocks and the task was marked FAILED without retrying. The task tests did not catch this because they mock `import_bgg_plays` and raise `requests` errors themselves.
+* Added `is_retryable` and `status_code` to `BoardGameGeekUnavailableError` in `catalog/bgg_client.py`. Timeouts, connection failures, rate limiting (429) and server errors (5xx) are retryable; a request BGG rejects itself (for example, a 404 for an unknown username) is not.
+* Changed `sync_bgg_plays` to catch the two client errors and retry only when `is_retryable` is True, and removed `_is_retryable` and `RETRYABLE_HTTP_STATUSES`.
+* Updated the task tests in `tracking/test_tasks.py` to raise the client's errors, and added a test that unreadable BGG XML fails the sync without retrying.
+
+### Human Review, Refactoring & Modifications Made:
+
+* Reviewed the merge and changes made. Determined that they were the right direction to go in
+
+### Verification & Testing Method:
+
+* AI ran the full backend suite against a temporary `pgvector/pgvector:pg17` container: 299 tests passed, including Jennifer's Celery task tests and the new unreadable-XML test.
+* AI ran Ruff lint and format, mypy, `uv lock --check` (the merged lockfile resolves), `makemigrations --check` (no drift) and `lintmigrations` (no erroneous migrations). All passed.
+* No external APIs (BoardGameGeek) were called; the tests mock the BGG client.
