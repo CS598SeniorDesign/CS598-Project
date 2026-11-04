@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date
@@ -10,6 +11,7 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 
+from profiles.services import PlayerDirectoryService
 from tracking.models import PlaySession, SessionPlayer
 
 if TYPE_CHECKING:
@@ -19,6 +21,7 @@ if TYPE_CHECKING:
 
 MAXIMUM_GUEST_NAME_LENGTH = 100
 MAXIMUM_LOCATION_LENGTH = 255
+UNADDABLE_PLAYER_MESSAGE = "you cannot add this player. Find registered players with the player search, or add a guest."
 
 
 @dataclass(frozen=True)
@@ -91,10 +94,11 @@ class PlaySessionService:
         :type players: collections.abc.Sequence[tracking.services.SessionPlayerDetails]
         :returns: The saved play session.
         :rtype: tracking.models.PlaySession
-        :raises django.core.exceptions.ValidationError: If the session details or participants are invalid.
+        :raises django.core.exceptions.ValidationError: If the session details or participants are invalid, including a
+            registered player the logging user is not allowed to add.
         """
 
-        cls._validate(session_details, players)
+        cls._validate(session_details, players, added_by=created_by)
 
         with transaction.atomic():
             session = PlaySession(created_by=created_by)
@@ -115,7 +119,9 @@ class PlaySessionService:
         Replace a play session's details and, optionally, its participants.
 
         When ``players`` is given, it becomes the complete participant list: participants not included are removed.
-        When it is ``None``, the existing participants are left unchanged.
+        When it is ``None``, the existing participants are left unchanged. Registered players already in the session
+        may stay even if the session's creator could no longer add them (for example, after they made their profile
+        private); newly added registered players must be addable by the creator.
 
         The session row is locked for the duration of the update, so two simultaneous edits cannot interleave their
         participant changes and leave duplicate or missing participants behind.
@@ -132,7 +138,12 @@ class PlaySessionService:
         :raises tracking.models.PlaySession.DoesNotExist: If the session has been deleted.
         """
 
-        cls._validate(session_details, players)
+        current_player_user_ids = frozenset(
+            session.players.filter(user__isnull=False).values_list("user_id", flat=True)
+        )
+        cls._validate(
+            session_details, players, added_by=session.created_by, current_player_user_ids=current_player_user_ids
+        )
 
         with transaction.atomic():
             locked_session = PlaySession.objects.select_for_update().get(pk=session.pk)
@@ -173,6 +184,9 @@ class PlaySessionService:
         cls,
         session_details: PlaySessionDetails,
         players: Sequence[SessionPlayerDetails] | None,
+        *,
+        added_by: User | None,
+        current_player_user_ids: frozenset[uuid.UUID] = frozenset(),
     ) -> None:
         """
         Check the session details and participants, reporting every problem at once.
@@ -181,6 +195,10 @@ class PlaySessionService:
         :type session_details: tracking.services.PlaySessionDetails
         :param players: The participants to check, or ``None`` when participants are not being changed.
         :type players: collections.abc.Sequence[tracking.services.SessionPlayerDetails] | None
+        :param added_by: The user responsible for the participant list: the session's creator.
+        :type added_by: users.models.User | None
+        :param current_player_user_ids: Registered players already in the session, who may stay.
+        :type current_player_user_ids: frozenset[uuid.UUID]
         :returns: None
         :raises django.core.exceptions.ValidationError: With messages keyed by field name, if anything is invalid.
         """
@@ -188,7 +206,9 @@ class PlaySessionService:
         errors: dict[str, list[str]] = cls._session_details_errors(session_details)
 
         if players is not None:
-            player_errors = cls._players_errors(players)
+            player_errors = cls._players_errors(players) + cls._unaddable_player_errors(
+                players, added_by, current_player_user_ids
+            )
             if player_errors:
                 errors["players"] = player_errors
 
@@ -240,6 +260,42 @@ class PlaySessionService:
 
         errors.extend(cls._duplicate_player_errors(players))
         return errors
+
+    @staticmethod
+    def _unaddable_player_errors(
+        players: Sequence[SessionPlayerDetails],
+        added_by: User | None,
+        current_player_user_ids: frozenset[uuid.UUID],
+    ) -> list[str]:
+        """
+        Collect an error for every registered player the session's creator is not allowed to add.
+
+        Adding someone to a session puts it in their play history and statistics, so registered players must be the
+        creator, someone the creator may find in the player search, or already in the session.
+
+        :param players: The participants to check.
+        :type players: collections.abc.Sequence[tracking.services.SessionPlayerDetails]
+        :param added_by: The session's creator, or None if their account was deleted (then only current players may
+            stay).
+        :type added_by: users.models.User | None
+        :param current_player_user_ids: Registered players already in the session.
+        :type current_player_user_ids: frozenset[uuid.UUID]
+        :returns: Error messages, each prefixed with the participant's position in the list; empty when valid.
+        :rtype: list[str]
+        """
+
+        registered_user_ids = {player.user.pk for player in players if player.user is not None}
+        newly_added_user_ids = registered_user_ids - current_player_user_ids
+        addable_user_ids = set(current_player_user_ids)
+
+        if added_by is not None and newly_added_user_ids:
+            addable_user_ids |= PlayerDirectoryService.addable_user_ids(added_by, newly_added_user_ids)
+
+        return [
+            f"Player {position}: {UNADDABLE_PLAYER_MESSAGE}"
+            for position, player in enumerate(players, start=1)
+            if player.user is not None and player.user.pk not in addable_user_ids
+        ]
 
     @classmethod
     def _duplicate_player_errors(cls, players: Sequence[SessionPlayerDetails]) -> list[str]:

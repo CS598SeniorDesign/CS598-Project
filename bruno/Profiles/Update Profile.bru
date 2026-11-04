@@ -1,0 +1,31 @@
+meta {
+  name: Update Profile
+  type: http
+  seq: 2
+}
+
+patch {
+  url: {{baseUrl}}/api/v1/profile/
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "display_name": "Demo Player",
+    "privacy_level": "PUBLIC"
+  }
+}
+
+docs {
+  Changes only the fields sent. `privacy_level` is `PUBLIC`, `FRIENDS` or `PRIVATE`. Returns 400 for a blank display
+  name, an unknown privacy level, or a `bgg_username` another account has already linked.
+}
+
+tests {
+  test("updates the profile", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().display_name).to.equal("Demo Player");
+    expect(res.getBody().privacy_level).to.equal("PUBLIC");
+  });
+}
