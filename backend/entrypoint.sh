@@ -17,8 +17,10 @@ if [ -n "$PROMETHEUS_MULTIPROC_DIR" ]; then
   mkdir -p "$PROMETHEUS_MULTIPROC_DIR"
 fi
 
-echo "Applying database migrations..."
-python manage.py migrate --noinput
+if [ "${RUN_MIGRATIONS:-true}" = "true" ]; then
+  echo "Applying database migrations..."
+  python manage.py migrate --noinput
+fi
 
 echo "Starting application..."
 exec "$@"

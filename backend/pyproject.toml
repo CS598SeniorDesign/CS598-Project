@@ -20,6 +20,8 @@ dependencies = [
     "pgvector>=0.5.1",
     "certifi>=2026.10.18",
     "prometheus-client>=0.22",
+    "celery[redis]>=5.5",
+    "flower>=2.0",
 ]
 
 [dependency-groups]
