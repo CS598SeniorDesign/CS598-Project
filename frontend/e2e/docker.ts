@@ -16,6 +16,10 @@ export const composeArguments = [
 export function runCompose(args: string[]): void {
   execFileSync("docker", [...composeArguments, ...args], {
     cwd: repositoryRoot,
+    env: {
+      ...process.env,
+      DOCKER_ENV_FILE: ".env.example",
+    },
     stdio: "inherit",
   });
 }
