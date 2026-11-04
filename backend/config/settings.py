@@ -192,6 +192,10 @@ CELERY_TASK_ALWAYS_EAGER = env.bool("CELERY_TASK_ALWAYS_EAGER", default=False)
 # In eager mode, still save results so status endpoints (e.g. GET /plays/sync/<task_id>/) work.
 CELERY_TASK_STORE_EAGER_RESULT = CELERY_TASK_ALWAYS_EAGER
 
+# Removed library and wishlist entries are kept this long (so re-adding a game restores its house rules, and BGG
+# collection imports do not re-add games the user removed), then deleted for good.
+LIBRARY_ITEM_RETENTION_DAYS = env.int("LIBRARY_ITEM_RETENTION_DAYS", default=90)
+
 # Periodic tasks queued by Celery beat. Times are UTC.
 CELERY_BEAT_SCHEDULE = {
     # Keeps the cached recommendation models warm (they expire after an hour), so requests rarely have to build them.
@@ -203,6 +207,11 @@ CELERY_BEAT_SCHEDULE = {
     "train-recommender-nightly": {
         "task": "recommendations.tasks.train_recommender",
         "schedule": crontab(hour=3, minute=0),
+    },
+    # Permanently deletes library/wishlist entries users removed more than LIBRARY_ITEM_RETENTION_DAYS ago.
+    "purge-removed-library-items-daily": {
+        "task": "tracking.tasks.purge_removed_library_items",
+        "schedule": crontab(hour=2, minute=30),
     },
     "recommendation-feedback-report-weekly": {
         "task": "recommendations.tasks.recommendation_report",

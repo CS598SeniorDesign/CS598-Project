@@ -240,6 +240,7 @@ classDiagram
         +str ownership
         +bool is_played
         +str house_rules
+        +int wishlist_priority
         +datetime added_at
         +datetime deleted_at
         +add_for_user(user, game)$ LibraryItem
@@ -249,6 +250,7 @@ classDiagram
         +active() LibraryItemQuerySet
         +owned() LibraryItemQuerySet
         +wishlisted() LibraryItemQuerySet
+        +with_play_stats() LibraryItemQuerySet
     }
     class ActiveLibraryItemManager {
         +get_queryset() LibraryItemQuerySet

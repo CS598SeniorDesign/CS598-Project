@@ -5,7 +5,7 @@ from contextlib import contextmanager
 from typing import TYPE_CHECKING, cast
 
 from django.core.exceptions import ValidationError as DjangoValidationError
-from django.db.models import Q, QuerySet
+from django.db.models import Count, F, Q, QuerySet
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound, ValidationError
@@ -14,9 +14,10 @@ from rest_framework.response import Response
 from rest_framework.reverse import reverse
 
 from core.mixins import OwnedQuerysetMixin
+from core.pagination import OptionalPageNumberPagination
 from core.permissions import IsOwnerOrModerator
 from core.throttles import BggSyncRateThrottle
-from tracking.models import LibraryItem, LibraryItemAlreadyExistsError, PlaySession
+from tracking.models import LibraryItem, LibraryItemAlreadyExistsError, LibraryItemQuerySet, PlaySession
 from tracking.permissions import IsSessionCreatorOrReadOnly
 from tracking.serializers import (
     LibraryItemCreateSerializer,
@@ -25,36 +26,70 @@ from tracking.serializers import (
     PlaySessionSerializer,
 )
 from tracking.services import PlaySessionService
-from tracking.tasks import NO_USERNAME_MESSAGE, QUEUED_MESSAGE, get_bgg_sync_status, start_bgg_sync
+from tracking.tasks import (
+    COLLECTION,
+    NO_USERNAME_MESSAGE,
+    QUEUED_MESSAGE,
+    get_bgg_sync_status,
+    get_import_status,
+    start_bgg_sync,
+    start_import,
+    sync_bgg_collection,
+)
 
 if TYPE_CHECKING:
     from users.models import User
 
 BOOLEAN_QUERY_VALUES = {"true": True, "1": True, "false": False, "0": False}
 
+# ?ordering= values for the library list, and the fields they sort by. Prefix a value with "-" for descending.
+LIBRARY_ORDERING_FIELDS = {
+    "added_at": "added_at",
+    "name": "game__primary_name",
+    "rating": "game__average_rating",
+    "rank": "game__bgg_rank",
+    "play_count": "play_count",
+    "last_played": "last_played",
+    "priority": "wishlist_priority",
+}
+DEFAULT_LIBRARY_ORDERING = "-added_at"
+
+# A UUID, as returned for a queued import.
+TASK_ID_PATTERN = r"[0-9a-f-]{36}"
+
 
 class LibraryItemViewSet(OwnedQuerysetMixin, viewsets.ModelViewSet):
     """Manage the games in the requesting user's library and wishlist.
 
     list:
-        List the user's entries, newest first. Filter with `?ownership=OWNED|WISHLISTED`, `?is_played=true|false`,
-        and `?search=` (game name).
+        List the user's entries. Filter with `?ownership=OWNED|WISHLISTED`, `?is_played=true|false` (the user's own
+        flag), `?has_played=true|false` (the flag or any logged play), and `?search=` (game name). Sort with
+        `?ordering=` (one of added_at, name, rating, rank, play_count, last_played, priority; prefix with `-` for
+        descending; default `-added_at`). Pass `?page=` and/or `?page_size=` (max 200) for a paginated response;
+        without them the whole list is returned.
     create:
         Add a game by BoardGameGeek ID (`game_id`). Returns 409 if the game is already in the library or wishlist.
     retrieve:
         Return the user's entry for a game.
     partial_update:
-        Change `ownership` (e.g. move from wishlist to library), `is_played`, or `house_rules`.
+        Change `ownership` (e.g. move from wishlist to library), `is_played`, `wishlist_priority` (wishlisted games
+        only, 1-5), or `house_rules`.
     destroy:
-        Remove the game from the library or wishlist. The entry is soft-deleted.
+        Remove the game from the library or wishlist. The entry is soft-deleted, then purged after
+        `LIBRARY_ITEM_RETENTION_DAYS`.
+    summary:
+        Counts of owned and wishlisted games, and how many of each the user has not played.
+    sync:
+        Import the games the user owns or wishlists on BoardGameGeek, in the background. Poll `sync_status`.
 
     Libraries are private: anonymous requests are rejected, and every user (moderators and admins included) only sees
     their own entries here. Entries are looked up by game, so letting moderators see every user's rows would make
     `/library/{bgg_id}/` match one entry per user.
     """
 
-    queryset = LibraryItem.objects.select_related("game").order_by("-added_at")
+    queryset = LibraryItem.objects.select_related("game")
     permission_classes = [IsAuthenticated, IsOwnerOrModerator]
+    pagination_class = OptionalPageNumberPagination
     moderators_see_all = False
     lookup_field = "game__bgg_id"
     lookup_url_kwarg = "bgg_id"
@@ -66,19 +101,20 @@ class LibraryItemViewSet(OwnedQuerysetMixin, viewsets.ModelViewSet):
         return LibraryItemSerializer
 
     def get_queryset(self):
-        queryset = super().get_queryset()
+        queryset: QuerySet[LibraryItem] = cast(LibraryItemQuerySet, super().get_queryset()).with_play_stats()
         if self.action != "list":
             return queryset
 
         params = self.request.query_params
         queryset = _filter_by_ownership(queryset, params.get("ownership"))
-        queryset = _filter_by_is_played(queryset, params.get("is_played"))
+        queryset = _filter_by_boolean(queryset, "is_played", params.get("is_played"))
+        queryset = _filter_by_has_played(queryset, params.get("has_played"))
 
         search_term = params.get("search")
         if search_term:
             queryset = queryset.filter(game__primary_name__icontains=search_term)
 
-        return queryset
+        return _order_library(queryset, params.get("ordering"))
 
     def create(self, request, *args, **kwargs):
         """Add a game to the user's library or wishlist, responding with the full entry."""
@@ -90,12 +126,107 @@ class LibraryItemViewSet(OwnedQuerysetMixin, viewsets.ModelViewSet):
         except LibraryItemAlreadyExistsError as error:
             return Response({"detail": str(error)}, status=status.HTTP_409_CONFLICT)
 
+        # Reload with play statistics, since the user may have logged plays of the game before adding it.
+        item = self.get_queryset().get(pk=item.pk)
         return Response(
             LibraryItemSerializer(item, context=self.get_serializer_context()).data, status.HTTP_201_CREATED
         )
 
     def perform_destroy(self, instance: LibraryItem) -> None:
         instance.soft_delete()
+
+    @action(detail=False, methods=["get"])
+    def summary(self, request):
+        """
+        Count the user's library and wishlist entries.
+
+        :param request: The authenticated request.
+        :type request: rest_framework.request.Request
+        :returns: ``owned``, ``wishlisted``, ``owned_unplayed``, ``wishlisted_unplayed`` and ``total``. A game counts as
+            played if the user marked it played or has logged a play of it.
+        :rtype: rest_framework.response.Response
+        """
+        unplayed = Q(is_played=False, play_count=0)
+        counts = self.get_queryset().aggregate(
+            owned=Count("pk", filter=Q(ownership=LibraryItem.OWNED)),
+            wishlisted=Count("pk", filter=Q(ownership=LibraryItem.WISHLISTED)),
+            owned_unplayed=Count("pk", filter=Q(ownership=LibraryItem.OWNED) & unplayed),
+            wishlisted_unplayed=Count("pk", filter=Q(ownership=LibraryItem.WISHLISTED) & unplayed),
+        )
+        return Response({**counts, "total": counts["owned"] + counts["wishlisted"]})
+
+    @action(detail=False, methods=["post"], throttle_classes=[BggSyncRateThrottle])
+    def sync(self, request):
+        """
+        Start importing the games the user owns or wishlists on BoardGameGeek, in the background.
+
+        Uses the BGG username on the user's profile. Games are added, or existing entries updated, but nothing the user
+        changed or removed in QuestLog is undone (see tracking.utils.import_bgg_collection). If an import is already
+        queued or running, its task is returned instead of starting another.
+
+        :param request: The authenticated request.
+        :type request: rest_framework.request.Request
+        :returns: 202 with the ``task_id`` and the ``status_url`` to poll, or 400 when no BGG username is linked.
+        :rtype: rest_framework.response.Response
+        """
+        task_id, _ = start_import(COLLECTION, sync_bgg_collection, cast("User", request.user))
+        if task_id is None:
+            return Response({"detail": COLLECTION.no_username_message}, status=status.HTTP_400_BAD_REQUEST)
+
+        status_url = reverse("library-item-sync-status", kwargs={"task_id": task_id}, request=request)
+        return Response(
+            {"task_id": task_id, "status": "queued", "detail": COLLECTION.queued_message, "status_url": status_url},
+            status=status.HTTP_202_ACCEPTED,
+            headers={"Location": status_url},
+        )
+
+    @action(detail=False, methods=["get"], url_path=rf"sync/(?P<task_id>{TASK_ID_PATTERN})", url_name="sync-status")
+    def sync_status(self, request, task_id=None):
+        """
+        Report the progress of a collection import started by the requesting user.
+
+        :param request: The authenticated request.
+        :type request: rest_framework.request.Request
+        :param task_id: The task ID the sync endpoint returned.
+        :type task_id: str
+        :returns: ``task_id``, ``status`` (``queued``, ``running``, ``retrying``, ``succeeded`` or ``failed``),
+            ``detail``, and the counts ``added``, ``updated``, ``skipped`` and ``imported``.
+        :rtype: rest_framework.response.Response
+        :raises NotFound: If the task does not exist, has expired, or was started by another user.
+        """
+        import_status = get_import_status(COLLECTION, cast("User", request.user), task_id)
+        if import_status is None:
+            raise NotFound("No BoardGameGeek collection import with this ID.")
+        return Response(import_status)
+
+
+def _order_library(queryset: QuerySet[LibraryItem], raw_value: str | None) -> QuerySet[LibraryItem]:
+    """Apply `?ordering=`, putting entries without a value (e.g. unrated games) last in either direction.
+
+    :raises rest_framework.exceptions.ValidationError: If the value is not one of LIBRARY_ORDERING_FIELDS.
+    """
+    value = (raw_value or DEFAULT_LIBRARY_ORDERING).strip()
+    descending = value.startswith("-")
+    field_name = LIBRARY_ORDERING_FIELDS.get(value.removeprefix("-"))
+    if field_name is None:
+        options = ", ".join(LIBRARY_ORDERING_FIELDS)
+        raise ValidationError({"ordering": f"Must be one of: {options} (prefix with - for descending)."})
+
+    expression = F(field_name).desc(nulls_last=True) if descending else F(field_name).asc(nulls_last=True)
+    return queryset.order_by(expression, "game__bgg_id")
+
+
+def _filter_by_has_played(queryset: QuerySet[LibraryItem], raw_value: str | None) -> QuerySet[LibraryItem]:
+    """Apply `?has_played=`: played means the user marked it played or has logged a play.
+
+    :raises rest_framework.exceptions.ValidationError: If the value is not a recognized boolean.
+    """
+    if raw_value is None:
+        return queryset
+
+    has_played = _parse_boolean("has_played", raw_value)
+    played = Q(is_played=True) | Q(play_count__gt=0)
+    return queryset.filter(played) if has_played else queryset.exclude(played)
 
 
 def _filter_by_ownership(queryset: QuerySet[LibraryItem], raw_value: str | None) -> QuerySet[LibraryItem]:
@@ -113,18 +244,27 @@ def _filter_by_ownership(queryset: QuerySet[LibraryItem], raw_value: str | None)
     return queryset.filter(ownership=ownership)
 
 
-def _filter_by_is_played(queryset: QuerySet[LibraryItem], raw_value: str | None) -> QuerySet[LibraryItem]:
-    """Apply the `?is_played=` filter, accepting true/false or 1/0.
+def _filter_by_boolean(
+    queryset: QuerySet[LibraryItem], field_name: str, raw_value: str | None
+) -> QuerySet[LibraryItem]:
+    """Apply a true/false query filter on a boolean field, accepting true/false or 1/0.
 
     :raises rest_framework.exceptions.ValidationError: If the value is not a recognized boolean.
     """
     if raw_value is None:
         return queryset
+    return queryset.filter(**{field_name: _parse_boolean(field_name, raw_value)})
 
-    is_played = BOOLEAN_QUERY_VALUES.get(raw_value.lower())
-    if is_played is None:
-        raise ValidationError({"is_played": "Must be true or false."})
-    return queryset.filter(is_played=is_played)
+
+def _parse_boolean(field_name: str, raw_value: str) -> bool:
+    """Read a true/false or 1/0 query parameter.
+
+    :raises rest_framework.exceptions.ValidationError: If the value is not a recognized boolean.
+    """
+    value = BOOLEAN_QUERY_VALUES.get(raw_value.lower())
+    if value is None:
+        raise ValidationError({field_name: "Must be true or false."})
+    return value
 
 
 @contextmanager

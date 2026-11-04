@@ -5,9 +5,10 @@ from datetime import date, datetime
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from django.conf import settings
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import IntegrityError, models, transaction
-from django.db.models import Q
-from django.db.models.functions import Now
+from django.db.models import Max, OuterRef, Q, Subquery, Sum
+from django.db.models.functions import Coalesce, Now
 from django.utils import timezone
 
 from catalog.models import BoardGame
@@ -52,6 +53,26 @@ class LibraryItemQuerySet(models.QuerySet["LibraryItem"]):
         """
         return self.filter(ownership=LibraryItem.WISHLISTED)
 
+    def with_play_stats(self) -> LibraryItemQuerySet:
+        """Annotate each item with how often and how recently its user has played the game.
+
+        Plays are the user's logged or BGG-imported sessions of the game (where they are one of the players),
+        respecting each session's quantity. Deleted sessions are not counted. These are separate from ``is_played``,
+        which the user sets themselves (e.g. for a game played before they used QuestLog).
+
+        :returns: Items with ``play_count`` (0 when never played) and ``last_played`` (None when never played).
+        :rtype: tracking.models.LibraryItemQuerySet
+        """
+        plays = (
+            SessionPlayer.objects.filter(user=OuterRef("user"), session__game=OuterRef("game"))
+            .order_by()
+            .values("user")
+        )
+        return self.annotate(
+            play_count=Coalesce(Subquery(plays.annotate(total=Sum("session__quantity")).values("total")[:1]), 0),
+            last_played=Subquery(plays.annotate(latest=Max("session__play_date")).values("latest")[:1]),
+        )
+
 
 class ActiveLibraryItemManager(models.Manager.from_queryset(LibraryItemQuerySet)):  # type: ignore[misc]
     """
@@ -86,11 +107,27 @@ class LibraryItem(models.Model):
         (WISHLISTED, "Wishlisted"),
     )
 
+    # The same 1-5 scale BoardGameGeek uses for wishlists, so imported priorities keep their meaning.
+    WISHLIST_PRIORITY_CHOICES = (
+        (1, "Must have"),
+        (2, "Love to have"),
+        (3, "Like to have"),
+        (4, "Thinking about it"),
+        (5, "Don't buy this"),
+    )
+
     user = models.ForeignKey(to=settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="library_items")
     game = models.ForeignKey(to=BoardGame, on_delete=models.CASCADE, related_name="library_items")
     ownership = models.CharField(max_length=20, choices=OWNERSHIP_CHOICES, default=OWNED, db_default=OWNED)
     is_played = models.BooleanField(default=False, db_default=False)
     house_rules = models.TextField(blank=True, default="", db_default="")
+    # Only set on wishlisted entries; cleared when a game moves to the library.
+    wishlist_priority = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        choices=WISHLIST_PRIORITY_CHOICES,
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+    )
     added_at = models.DateTimeField(auto_now_add=True, db_default=Now())
     updated_at = models.DateTimeField(auto_now=True, db_default=Now())
     deleted_at = models.DateTimeField(null=True, blank=True, db_index=True)
@@ -108,6 +145,11 @@ class LibraryItem(models.Model):
             models.CheckConstraint(
                 condition=Q(ownership__in=["OWNED", "WISHLISTED"]),
                 name="library_item_ownership_valid",
+            ),
+            models.CheckConstraint(
+                condition=Q(wishlist_priority__isnull=True)
+                | Q(ownership="WISHLISTED", wishlist_priority__gte=1, wishlist_priority__lte=5),
+                name="library_item_wishlist_priority_valid",
             ),
         ]
 
@@ -132,7 +174,8 @@ class LibraryItem(models.Model):
         :type user: users.models.User
         :param game: The game being added.
         :type game: catalog.models.BoardGame
-        :param fields: Values for ownership, is_played and house_rules; omitted fields use model defaults.
+        :param fields: Values for ownership, is_played, house_rules and wishlist_priority; omitted fields use model
+            defaults.
         :returns: The created or restored LibraryItem.
         :rtype: tracking.models.LibraryItem
         :raises LibraryItemAlreadyExistsError: If the game is already active in the user's library or wishlist.
@@ -151,7 +194,7 @@ class LibraryItem(models.Model):
                 if removed_item is None:
                     return cls.objects.create(user=user, game=game, **fields)
 
-                defaults = {"ownership": cls.OWNED, "is_played": False, "house_rules": ""}
+                defaults = {"ownership": cls.OWNED, "is_played": False, "house_rules": "", "wishlist_priority": None}
                 for name, value in {**defaults, **fields}.items():
                     setattr(removed_item, name, value)
                 removed_item.deleted_at = None
