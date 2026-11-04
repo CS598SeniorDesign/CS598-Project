@@ -72,6 +72,83 @@ services:
       - ./backend:/app
       - backend_venv:/app/.venv
 
+  # Celery services share the backend image and code. They start once the backend is healthy, so migrations have run.
+  # Celery does not reload on code changes: `docker compose restart celery-worker celery-beat` after editing tasks.
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: dev
+    container_name: questlog-celery-worker
+    command: ["celery", "-A", "config", "worker", "--loglevel=INFO", "--concurrency=2"]
+    env_file:
+      - .env
+    environment:
+      RUN_MIGRATIONS: "false"
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A config inspect ping --destination celery@$$HOSTNAME --timeout 10"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 20s
+    depends_on:
+      backend:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - questlog-net
+    volumes:
+      - ./backend:/app
+      - backend_venv:/app/.venv
+
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: dev
+    container_name: questlog-celery-beat
+    # The schedule state file lives outside the bind-mounted source tree. Run exactly one beat, or tasks are queued twice.
+    command: ["celery", "-A", "config", "beat", "--loglevel=INFO", "--schedule=/tmp/celerybeat-schedule"]
+    env_file:
+      - .env
+    environment:
+      RUN_MIGRATIONS: "false"
+    depends_on:
+      celery-worker:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - questlog-net
+    volumes:
+      - ./backend:/app
+      - backend_venv:/app/.venv
+
+  # Task monitoring UI at http://localhost:5555. Set FLOWER_BASIC_AUTH=user:password in .env to require a login.
+  flower:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: dev
+    container_name: questlog-flower
+    command: ["celery", "-A", "config", "flower", "--port=5555"]
+    env_file:
+      - .env
+    environment:
+      RUN_MIGRATIONS: "false"
+    ports:
+      - "127.0.0.1:5555:5555"
+    depends_on:
+      celery-worker:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - questlog-net
+    volumes:
+      - ./backend:/app
+      - backend_venv:/app/.venv
+
   frontend:
     build:
       context: ./frontend
