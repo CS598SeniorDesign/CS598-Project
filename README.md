@@ -151,6 +151,16 @@ redis-cli -h localhost -p 6379 -a "$REDIS_PASSWORD"
 
 **Frontend app:** `http://localhost:3000`
 
+### Running real frontend E2E tests
+
+Playwright starts the Django, PostgreSQL, and Redis services with Docker Compose, applies migrations, and loads deterministic E2E data before running the browser tests. Start Docker Desktop first, then run:
+
+```bash
+npm run e2e --prefix frontend
+```
+
+The E2E tests use real HTTP calls; they do not stub frontend API requests. The Docker-backed setup uses an isolated seed command and stops the backend services when the run finishes.
+
 **Django management commands:**
 
 ```bash
