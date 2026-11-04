@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<items termsofuse="https://boardgamegeek.com/xmlapi/termsofuse">
+  <item type="boardgameexpansion" id="325">
+    <thumbnail>https://cf.geekdo-images.com/v8ll_1CxVGP-KN-NqkoQsg__small/img/1Kuh2BgF2fqDNHijFUZHBqjKwOA=/fit-in/200x150/filters:strip_icc()/pic8828019.jpg</thumbnail>
+    <image>https://cf.geekdo-images.com/v8ll_1CxVGP-KN-NqkoQsg__original/img/HQqjNMRHo7Nxuoa72J5yyIq-NCY=/0x0/filters:format(jpeg)/pic8828019.jpg</image>
+    <name type="primary" sortindex="1" value="Catan: Seafarers" />
+    <name type="alternate" sortindex="1" value="Catan: Denizciler" />
+    <name type="alternate" sortindex="1" value="Catan: Jūrų keliautojai" />
+    <description>This is an expansion for CATAN.</description>
+    <yearpublished value="1997" />
+    <minplayers value="3" />
+    <maxplayers value="4" />
+    <playingtime value="90" />
+    <minplaytime value="90" />
+    <maxplaytime value="90" />
+    <minage value="10" />
+    <link type="boardgamecategory" id="1042" value="Expansion for Base-game" />
+    <link type="boardgamecategory" id="1020" value="Exploration" />
+    <link type="boardgamemechanic" id="2072" value="Dice Rolling" />
+    <link type="boardgamemechanic" id="2040" value="Hand Management" />
+    <link type="boardgamefamily" id="67874" value="Components: Hexagonal Tiles" />
+    <link type="boardgamefamily" id="104952" value="Digital Implementations: Apple App Store" />
+    <link type="boardgameexpansion" id="374983" value="Catan Scenario: Malta" />
+    <link type="boardgameexpansion" id="307518" value="Catan Scenarios: #WeStayHome" />
+    <link type="boardgameaccessory" id="145942" value="Catan: Boards" />
+    <link type="boardgameaccessory" id="346990" value="Catan: Laserox Organizer" />
+    <link type="boardgamecompilation" id="298278" value="Catan: 25 Jahre Jubiläums-Edition" />
+    <link type="boardgamecompilation" id="358860" value="Catan: 3D Expansions – Seafarers + Cities &amp; Knights" />
+    <link type="boardgamedesigner" id="11" value="Klaus Teuber" />
+    <link type="boardgameartist" id="12036" value="Volkan Baga" />
+    <link type="boardgameartist" id="12382" value="Tanja Donner" />
+    <link type="boardgamepublisher" id="37" value="KOSMOS" />
+    <link type="boardgamepublisher" id="267" value="999 Games" />
+    <statistics page="1">
+      <ratings>
+        <usersrated value="21613" />
+        <average value="7.16473" />
+        <bayesaverage value="6.90891" />
+        <ranks>
+          <rank type="subtype" id="1" name="boardgame" friendlyname="Board Game Rank" value="Not Ranked" bayesaverage="6.90891" />
+          <rank type="family" id="5497" name="strategygames" friendlyname="Strategy Game Rank" value="Not Ranked" bayesaverage="6.88294" />
+          <rank type="family" id="5499" name="familygames" friendlyname="Family Game Rank" value="Not Ranked" bayesaverage="6.9308" />
+        </ranks>
+        <stddev value="1.34194" />
+        <median value="0" />
+        <owned value="53485" />
+        <trading value="508" />
+        <wanting value="206" />
+        <wishing value="1567" />
+        <numcomments value="4271" />
+        <numweights value="1217" />
+        <averageweight value="2.3739" />
+      </ratings>
+    </statistics>
+  </item>
+</items>

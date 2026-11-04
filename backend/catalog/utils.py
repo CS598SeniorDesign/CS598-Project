@@ -1,17 +1,9 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
 
-import requests
-from defusedxml import DTDForbidden, ElementTree, EntitiesForbidden
-
+from catalog import bgg_client
 from catalog.models import BoardGame
-from core.constants import REQUEST_HEADERS
-from core.metrics import observe_external_call
-
-if TYPE_CHECKING:
-    from xml.etree.ElementTree import Element
 
 logger = logging.getLogger(__name__)
 
@@ -20,8 +12,8 @@ def get_bgg_board_game(bgg_id: int, backup_name: str) -> BoardGame:
     """
     Fetches board game data from the BoardGameGeek /thing API and creates a local record.
 
-    Retrieves information such as ratings, rank, and descriptions using the provided BGG ID. If the API fetch fails,
-    falls back to creating a skeleton record using the backup name.
+    Retrieves information such as ratings, rank, and descriptions using the provided BGG ID. If BGG cannot be reached,
+    returns an unreadable response, or does not know the ID, falls back to a skeleton record using the backup name.
 
     :param bgg_id: The unique BoardGameGeek identifier for the game.
     :type bgg_id: int
@@ -31,25 +23,17 @@ def get_bgg_board_game(bgg_id: int, backup_name: str) -> BoardGame:
     :rtype: catalog.models.BoardGame
     """
 
-    fetch_url: str = f"https://boardgamegeek.com/xmlapi2/thing?id={bgg_id}&stats=1"
-
     try:
-        with observe_external_call("bgg", "thing"):
-            response: requests.Response = requests.get(url=fetch_url, headers=REQUEST_HEADERS, timeout=10)
-            response.raise_for_status()
-        # XML Root should be 'items'
-        response_root: Element = ElementTree.fromstring(response.content)
-        game_item: Element[str] | None = response_root.find("item")
-
-        if game_item is not None:
-            return BoardGame.create_from_xml(game_item, backup_name)
-
-    except requests.RequestException as exception:
+        game_item = bgg_client.fetch_things([bgg_id]).get(bgg_id)
+    except (bgg_client.BoardGameGeekUnavailableError, bgg_client.BoardGameGeekMalformedResponseError) as exception:
         logger.warning("BGG API fetch failed for bgg_id=%s: %s", bgg_id, exception)
-    except (ElementTree.ParseError, EntitiesForbidden, DTDForbidden) as exception:
-        logger.warning("BGG API fetch failed for bgg_id=%s: %s", bgg_id, exception)
+        game_item = None
 
-    return BoardGame.objects.create(bgg_id=bgg_id, primary_name=backup_name)
+    if game_item is not None:
+        return BoardGame.create_from_xml(game_item, backup_name)
+
+    game, _ = BoardGame.objects.get_or_create(bgg_id=bgg_id, defaults={"primary_name": backup_name})
+    return game
 
 
 def get_existing_board_game(bgg_id: int, backup_name: str) -> BoardGame:

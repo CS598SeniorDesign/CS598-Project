@@ -4,13 +4,10 @@ import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-import requests
-from defusedxml import ElementTree
 from django.db import transaction
 
 from catalog.utils import get_existing_board_game
-from core.constants import REQUEST_HEADERS, VALID_STATUS_CODES
-from core.metrics import observe_external_call
+from catalog import bgg_client
 from core.utils import parse_optional_integer
 from tracking.models import LibraryItem, LibraryItemAlreadyExistsError, PlaySession
 
@@ -75,12 +72,27 @@ def fetch_bgg_plays(user: User, bgg_username: str) -> tuple[bool, str]:
     :rtype: tuple[bool, str]
     """
 
+    current_page: int = 1
+    total_processed_plays: int = 0
+    total_plays_to_fetch: int = 1
+
     try:
-        imported = import_bgg_plays(user, bgg_username)
-    except requests.RequestException as exception:
+        while total_processed_plays < total_plays_to_fetch:
+            page_total, processed_count = _sync_plays_page(user, bgg_username, current_page)
+
+            if processed_count == 0 and total_processed_plays == 0:
+                return True, "No plays found for this user."
+
+            total_plays_to_fetch = page_total
+            total_processed_plays += processed_count
+            current_page += 1
+
+        return True, f"Successfully imported {total_processed_plays} plays."
+
+    except bgg_client.BoardGameGeekUnavailableError as exception:
         logger.warning("BGG API fetch failed during play sync: %s", exception)
-        return False, CONNECTION_FAILED_MESSAGE
-    except ElementTree.ParseError as exception:
+        return False, "Connection to BGG failed. Please try again later."
+    except bgg_client.BoardGameGeekMalformedResponseError as exception:
         logger.error("Malformed BGG XML during play sync: %s", exception)
         return False, INTERNAL_ERROR_MESSAGE
     except (AttributeError, OSError, TypeError, ValueError) as exception:
@@ -117,24 +129,11 @@ def _sync_plays_page(user: User, bgg_username: str, page: int) -> tuple[int, int
     :type page: int
     :returns: A tuple of (total_records_available_on_bgg, records_processed_this_page).
     :rtype: tuple[int, int]
-    :raises requests.HTTPError: If the API returns an error status code.
+    :raises catalog.bgg_client.BoardGameGeekUnavailableError: If BGG cannot be reached or refuses the request.
+    :raises catalog.bgg_client.BoardGameGeekMalformedResponseError: If BGG's response cannot be parsed.
     """
 
-    # Pass  username through params to encode it in URL
-    url = "https://boardgamegeek.com/xmlapi2/plays"
-    params: dict[str, str | int] = {"username": bgg_username, "page": page}
-    with observe_external_call("bgg", "plays"):
-        response = requests.get(url=url, params=params, headers=REQUEST_HEADERS, timeout=15)
-        response.raise_for_status()
-
-    if response.status_code not in VALID_STATUS_CODES:
-        logger.warning(
-            "BGG returned success code %s, but we expected 200/202.",
-            response.status_code,
-        )
-        return 0, 0
-
-    response_root: Element = ElementTree.fromstring(response.content)
+    response_root: Element = bgg_client.fetch_plays_page(bgg_username, page)
     total_on_bgg = int(response_root.get("total", 0))
     plays: list[Element[str]] = response_root.findall("play")
 
