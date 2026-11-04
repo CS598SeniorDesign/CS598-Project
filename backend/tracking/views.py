@@ -17,7 +17,6 @@ from rest_framework.reverse import reverse
 from core.mixins import OwnedQuerysetMixin
 from core.permissions import IsOwnerOrModerator
 from core.throttles import BggSyncRateThrottle
-from profiles.models import Profile
 from tracking.models import LibraryItem, LibraryItemAlreadyExistsError, PlaySession, Rating
 from tracking.permissions import IsSessionCreatorOrReadOnly
 from tracking.serializers import (
