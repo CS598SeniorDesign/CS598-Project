@@ -32,6 +32,7 @@ urlpatterns = [
     path("metrics/", metrics_view, name="metrics"),
     path(API_PREFIX, include("catalog.urls")),
     path(API_PREFIX, include("tracking.urls")),
+    path(API_PREFIX, include("profiles.urls")),
     path(API_PREFIX, include("analytics.urls")),
     path(API_PREFIX, include("recommendations.urls")),
 ]
