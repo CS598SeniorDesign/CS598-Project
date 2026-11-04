@@ -8,7 +8,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
     dependencies = [
         ("catalog", "0002_boardgame_average_weight"),
-        ("tracking", "0007_merge_play_session_soft_delete_and_library"),
+        ("tracking", "0008_rating_score_range"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 

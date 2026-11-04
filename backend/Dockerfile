@@ -1,4 +1,4 @@
-FROM python:3.15-slim AS base
+FROM python:3.12-slim AS base
 
 RUN mkdir /app
 WORKDIR /app
@@ -28,7 +28,7 @@ CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
 
 FROM base AS builder
 RUN uv sync --locked --no-install-project --no-default-groups --extra prod
-FROM python:3.15-slim AS production
+FROM python:3.12-slim AS production
 RUN useradd -m -r appuser && \
     mkdir /app && \
     chown -R appuser /app

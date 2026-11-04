@@ -54,6 +54,9 @@ services:
       - "8000:8000"
     env_file:
       - .env
+    environment:
+      # Install dependencies added since the backend_venv volume was created (see entrypoint.sh).
+      SYNC_DEPENDENCIES: "true"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/')"]
       interval: 10s
