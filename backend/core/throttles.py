@@ -13,6 +13,17 @@ class BggSyncRateThrottle(UserRateThrottle):
     scope = "bgg-sync"
 
 
+class PlayerSearchRateThrottle(UserRateThrottle):
+    """
+    Throttle for the player search endpoint, keyed per user.
+
+    Uses the "player-search" rate from ``REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]``, set high enough for searching as
+    the user types but low enough that the directory cannot be scraped quickly.
+    """
+
+    scope = "player-search"
+
+
 class RecommendationRateThrottle(ScopedRateThrottle):
     """Throttle for the recommendation endpoint, which can train models on a cache miss.
     Uses the "recommendations" rate from REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"].
