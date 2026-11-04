@@ -217,6 +217,12 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(day_of_week="mon", hour=4, minute=0),
         "kwargs": {"days": 7},
     },
+    # Fetches placeholder games (BGG was unreachable when they were stored) and games not refreshed in
+    # BGG_CATALOG_REFRESH_DAYS, up to BGG_CATALOG_REFRESH_BATCH_SIZE per night.
+    "refresh-stale-board-games-nightly": {
+        "task": "catalog.tasks.refresh_stale_board_games",
+        "schedule": crontab(hour=5, minute=0),
+    },
 }
 
 CHANNEL_LAYERS = {

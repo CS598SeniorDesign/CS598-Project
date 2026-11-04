@@ -27,7 +27,7 @@ from catalog.serializers import (
     CatalogSearchResponseSerializer,
 )
 from catalog.services import CatalogSearchService
-from catalog.utils import get_existing_board_game
+from catalog.utils import get_board_game_for_viewing
 from core.throttles import BggSearchRateThrottle
 
 logger = logging.getLogger(__name__)
@@ -104,7 +104,9 @@ class BoardGameViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewset
         """
         Return a board game by its BGG ID, fetching and caching it from BGG when not stored locally.
 
-        Anonymous users can only read games that are already cached, so they can never create records.
+        For authenticated users, placeholders are fetched again and stale games queue a background refresh (see
+        ``catalog.utils.get_board_game_for_viewing``). Anonymous users can only read games that are already cached, and
+        never cause a BGG request.
         """
         try:
             bgg_id = int(kwargs[self.lookup_field])
@@ -112,7 +114,7 @@ class BoardGameViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewset
             raise NotFound("Invalid BoardGameGeek ID.") from None
 
         if request.user.is_authenticated:
-            instance = get_existing_board_game(bgg_id, backup_name="Unknown")
+            instance = get_board_game_for_viewing(bgg_id)
         else:
             instance = self.get_object()
         serializer = self.get_serializer(instance)
