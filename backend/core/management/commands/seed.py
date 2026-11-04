@@ -19,6 +19,9 @@ env = environ.Env()
 
 DEMONSTRATION_USER_EMAIL = "demo@questlog.local"
 DEMONSTRATION_USER_PASSWORD = "password123"
+DEMONSTRATION_FRIEND_COUNT = 6
+MINIMUM_SEEDED_FRIENDS = 2
+MAXIMUM_SEEDED_FRIENDS = 3
 
 # A handful of real BGG categories and mechanics (ID, name), so recommendations have tags to compare games by.
 SEED_CATEGORIES = [(1021, "Economic"), (1030, "Party Game"), (1028, "Puzzle"), (1019, "Wargame"), (1089, "Animals")]
@@ -78,16 +81,19 @@ class Command(BaseCommand):
             games.append(game)
 
         self.stdout.write("Seeding Users, Profiles, and Library Items...")
+        seeded_profiles: list[Profile] = []
         for _ in range(10):
             seed_email = fake.unique.email()
             user = User.objects.create_user(email=seed_email, password="password123")
             EmailAddress.objects.create(user=user, email=seed_email, verified=True, primary=True)
 
-            Profile.objects.create(
-                user=user,
-                display_name=fake.first_name(),
-                bio=fake.text(max_nb_chars=100),
-                privacy_level=random.choice([Profile.PUBLIC, Profile.FRIENDS]),
+            seeded_profiles.append(
+                Profile.objects.create(
+                    user=user,
+                    display_name=fake.first_name(),
+                    bio=fake.text(max_nb_chars=100),
+                    privacy_level=random.choice([Profile.PUBLIC, Profile.FRIENDS]),
+                )
             )
             RecommendationProfile.objects.create(user=user, use_personal_data=random.random() < 0.8)
 
@@ -110,6 +116,9 @@ class Command(BaseCommand):
                 )
                 self._seed_plays(user, game)
 
+        self.stdout.write("Seeding friendships...")
+        self._seed_friendships(seeded_profiles)
+
         self.stdout.write(f"Seeding demonstration login ({DEMONSTRATION_USER_EMAIL})...")
         demonstration_user = User.objects.create_user(
             email=DEMONSTRATION_USER_EMAIL, password=DEMONSTRATION_USER_PASSWORD
@@ -120,7 +129,9 @@ class Command(BaseCommand):
         demonstration_profile = Profile.objects.create(
             user=demonstration_user, display_name="Demo Player", privacy_level=Profile.PUBLIC
         )
-        demonstration_profile.friends.set(Profile.objects.exclude(user=demonstration_user))
+        demonstration_profile.friends.add(
+            *random.sample(seeded_profiles, DEMONSTRATION_FRIEND_COUNT)  # NOSONAR (S2245)
+        )
         RecommendationProfile.objects.create(user=demonstration_user, use_personal_data=True)
 
         self.stdout.write("Seeding play sessions for the demonstration login...")
@@ -130,11 +141,28 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS("Successfully seeded database with synthetic data!"))
 
+    @staticmethod
+    def _seed_friendships(profiles: list[Profile]) -> None:
+        """
+        Give every seeded user a few friends among the other seeded users.
+
+        Friendships are mutual, so most users end up with more friends than they were given here.
+
+        :param profiles: The seeded users' profiles.
+        :type profiles: list[profiles.models.Profile]
+        :returns: None
+        """
+        for profile in profiles:
+            others = [other for other in profiles if other != profile]
+            friend_count = random.randint(MINIMUM_SEEDED_FRIENDS, MAXIMUM_SEEDED_FRIENDS)  # NOSONAR (S2245)
+            profile.friends.add(*random.sample(others, friend_count))  # NOSONAR (S2245)
+
     def _seed_demonstration_play_sessions(self, fake: Faker, demonstration_user, games: list[BoardGame]) -> None:
         """
         Create fake play sessions.
 
-        Each session includes the demonstration user, two seeded users, and one guest; the highest score wins.
+        Each session includes the demonstration user, two of their friends, and one guest; the highest score wins.
+        The companions are friends so they can be added whatever their privacy setting.
 
         :param fake: The Faker instance used for guest names.
         :type fake: faker.Faker
@@ -144,7 +172,7 @@ class Command(BaseCommand):
         :type games: list[catalog.models.BoardGame]
         :returns: None
         """
-        companions = list(User.objects.exclude(pk=demonstration_user.pk)[:2])
+        companions = list(User.objects.filter(profile__friends__user=demonstration_user)[:2])
         registered_players = [demonstration_user, *companions]
 
         for session_number in range(1, 6):
