@@ -240,6 +240,12 @@ function usePlayerDirectory(source: PlayerSource, query: string) {
         try {
           const data = await fetchRegisteredPlayers(url, controller.signal);
 
+          console.log("QuestLog player search:", {
+            url,
+            data,
+            active,
+          });
+
           if (active) setPlayers(data);
         } catch (caughtError) {
           if (active) {
