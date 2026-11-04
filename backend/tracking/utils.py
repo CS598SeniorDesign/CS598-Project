@@ -6,6 +6,9 @@ from typing import TYPE_CHECKING
 from django.db import transaction
 
 from catalog import bgg_client
+from catalog.models import UNKNOWN_GAME_NAME
+from catalog.services import CatalogSyncService
+from core.utils import get_attribute, parse_optional_integer
 from tracking.models import PlaySession
 
 if TYPE_CHECKING:
@@ -101,8 +104,9 @@ def _sync_plays_page(user: User, bgg_username: str, page: int) -> tuple[int, int
     """
     Fetches a single page of plays from the BGG API and persists them to the database.
 
-    Uses a database transaction to ensure all records on a single page are saved atomically.
-    The page size is determined by the BGG API (defaulting to 100 records).
+    Games on the page that are not stored yet are fetched from BGG first, 20 per request, before the page's database
+    transaction opens, so no BGG request ever runs while the transaction holds its locks. The page is then saved
+    atomically. The page size is determined by the BGG API (defaulting to 100 records).
 
     :param user: The authenticated Django user requesting the sync.
     :type user: users.models.User
@@ -120,8 +124,31 @@ def _sync_plays_page(user: User, bgg_username: str, page: int) -> tuple[int, int
     total_on_bgg = int(response_root.get("total", 0))
     plays: list[Element[str]] = response_root.findall("play")
 
+    CatalogSyncService.ensure_games(_game_names_by_id(plays))
+
     with transaction.atomic():
         for play in plays:
             PlaySession.create_from_xml(play, user, bgg_username)
 
     return total_on_bgg, len(plays)
+
+
+def _game_names_by_id(plays: list[Element[str]]) -> dict[int, str]:
+    """
+    Collect the games a page of plays refers to, with the name each play gives for its game.
+
+    :param plays: The page's ``<play>`` elements.
+    :type plays: list[xml.etree.ElementTree.Element]
+    :returns: Each game's BGG ID with its name, for storing a placeholder if BGG cannot provide the game. Plays without
+        a valid game ID are left out; ``PlaySession.create_from_xml`` skips them.
+    :rtype: dict[int, str]
+    """
+
+    names_by_id: dict[int, str] = {}
+
+    for play in plays:
+        bgg_id = parse_optional_integer(get_attribute(play, "item", "objectid"))
+        if bgg_id is not None:
+            names_by_id.setdefault(bgg_id, get_attribute(play, "item", "name") or UNKNOWN_GAME_NAME)
+
+    return names_by_id
