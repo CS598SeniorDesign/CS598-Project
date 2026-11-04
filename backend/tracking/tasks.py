@@ -259,36 +259,6 @@ def start_import(kind: ImportKind, task: Any, user: User) -> tuple[str | None, b
     :param kind: Which import to start.
     :param task: The Celery task that runs it.
     :param user: The user to import for.
-    """
-    task_id = self.request.id
-    user = get_user_model().objects.filter(pk=user_id, is_active=True).first()
-    bgg_username = _linked_bgg_username(user) if user is not None else ""
-    if user is None or not bgg_username:
-        return _finish(user_id, task_id, success=False, detail=NO_USERNAME_MESSAGE)
-
-    try:
-        imported = import_bgg_plays(user, bgg_username)
-    except requests.RequestException as exception:
-        if _is_retryable(exception) and self.request.retries < MAX_RETRIES:
-            logger.warning("BGG play sync failed; retrying: %s", exception, extra={"retry": self.request.retries + 1})
-            raise self.retry(exc=exception, countdown=_retry_delay(self.request.retries)) from exception
-        logger.warning("BGG play sync failed: %s", exception)
-        return _finish(user_id, task_id, success=False, detail=CONNECTION_FAILED_MESSAGE)
-    except ElementTree.ParseError as exception:
-        logger.error("Malformed BGG XML during play sync: %s", exception)
-        return _finish(user_id, task_id, success=False, detail=INTERNAL_ERROR_MESSAGE)
-    except Exception:
-        _release_lock(user_id, task_id)
-        raise
-
-    return _finish(user_id, task_id, success=True, detail=imported_plays_message(imported), imported=imported)
-
-
-def start_bgg_sync(user: User) -> tuple[str | None, bool]:
-    """
-    Queue an import of the user's BGG plays, unless one is already queued or running.
-
-    :param user: The user to import plays for.
     :type user: users.models.User
     :returns: The task ID (None if the user has no linked BGG username), and whether a new task was queued (False when
         an existing one was returned).
@@ -298,7 +268,7 @@ def start_bgg_sync(user: User) -> tuple[str | None, bool]:
         return None, False
 
     task_id = str(uuid.uuid4())
-    lock_key = USER_LOCK_KEY.format(user_id=user.pk)
+    lock_key = kind.lock_key.format(user_id=user.pk)
     if not cache.add(lock_key, task_id, SYNC_LOCK_TIMEOUT):
         existing = cache.get(lock_key)
         if existing:
@@ -324,24 +294,6 @@ def get_import_status(kind: ImportKind, user: User, task_id: str) -> dict[str, A
     :rtype: dict | None
     """
     if cache.get(kind.owner_key.format(task_id=task_id)) != str(user.pk):
-    cache.set(TASK_OWNER_KEY.format(task_id=task_id), str(user.pk), TASK_OWNER_TIMEOUT)
-    sync_bgg_plays.apply_async(args=[str(user.pk)], task_id=task_id)
-    return task_id, True
-
-
-def get_bgg_sync_status(user: User, task_id: str) -> dict[str, Any] | None:
-    """
-    Describe an import task's progress to the user who started it.
-
-    :param user: The requesting user.
-    :type user: users.models.User
-    :param task_id: The task ID start_bgg_sync returned.
-    :type task_id: str
-    :returns: ``task_id``, ``status`` (``queued``, ``running``, ``retrying``, ``succeeded`` or ``failed``), ``detail``
-        and ``imported``; or None if the task does not exist, has expired, or belongs to someone else.
-    :rtype: dict | None
-    """
-    if cache.get(TASK_OWNER_KEY.format(task_id=task_id)) != str(user.pk):
         return None
 
     result = AsyncResult(task_id)
@@ -382,18 +334,6 @@ def get_bgg_sync_status(user: User, task_id: str) -> dict[str, Any] | None:
     :rtype: dict | None
     """
     return get_import_status(PLAYS, user, task_id)
-        status = "succeeded" if outcome.get("success") else "failed"
-        return {
-            "task_id": task_id,
-            "status": status,
-            "detail": outcome.get("detail", INTERNAL_ERROR_MESSAGE),
-            "imported": outcome.get("imported", 0),
-        }
-    if state == "FAILURE":
-        return {"task_id": task_id, "status": "failed", "detail": INTERNAL_ERROR_MESSAGE, "imported": 0}
-
-    status = {"STARTED": "running", "RETRY": "retrying"}.get(state, "queued")
-    return {"task_id": task_id, "status": status, "detail": QUEUED_MESSAGE, "imported": 0}
 
 
 def _linked_bgg_username(user: User) -> str:
@@ -422,7 +362,6 @@ def _is_retryable(exception: requests.RequestException) -> bool:
 def _retry_delay(retries: int) -> int:
     """
     Seconds to wait before retrying after an outage: exponential backoff from RETRY_BACKOFF_SECONDS.
-    Seconds to wait before the next retry: exponential backoff from RETRY_BACKOFF_SECONDS.
 
     :param retries: How many retries have already happened.
     :returns: The delay.
@@ -453,10 +392,6 @@ def _finish(
     Release the user's import lock and build the task's result.
 
     :param kind: Which import this is.
-def _finish(user_id: str, task_id: str | None, *, success: bool, detail: str, imported: int = 0) -> dict[str, Any]:
-    """
-    Release the user's import lock and build the task's result.
-
     :param user_id: The user's primary key.
     :param task_id: The finishing task's ID.
     :param success: Whether the import succeeded.
@@ -469,14 +404,6 @@ def _finish(user_id: str, task_id: str | None, *, success: bool, detail: str, im
 
 
 def _release_lock(kind: ImportKind, user_id: str, task_id: str | None) -> None:
-    :param imported: The number of plays imported.
-    :returns: The task result.
-    """
-    _release_lock(user_id, task_id)
-    return {"success": success, "detail": detail, "imported": imported}
-
-
-def _release_lock(user_id: str, task_id: str | None) -> None:
     """
     Let the user start another import, if the lock still belongs to this task (it may have expired and been taken by a
     newer import).
@@ -486,9 +413,5 @@ def _release_lock(user_id: str, task_id: str | None) -> None:
     :param task_id: The finishing task's ID.
     """
     key = kind.lock_key.format(user_id=user_id)
-    :param user_id: The user's primary key.
-    :param task_id: The finishing task's ID.
-    """
-    key = USER_LOCK_KEY.format(user_id=user_id)
     if cache.get(key) == task_id:
         cache.delete(key)

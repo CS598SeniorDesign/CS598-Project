@@ -442,17 +442,6 @@ class PlaySessionViewSet(
     def sync_status(self, request, task_id=None):
         """
         Report the progress of a BGG import started by the requesting user.
-        """
-
-    @action(
-        detail=False,
-        methods=["get"],
-        url_path=r"sync/(?P<task_id>[0-9a-f-]{36})",
-        url_name="sync-status",
-    )
-    def sync_status(self, request, task_id=None):
-        """
-        Report the progress of a BGG import started by the requesting user.
 
         :param request: The authenticated request.
         :type request: rest_framework.request.Request
