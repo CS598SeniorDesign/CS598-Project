@@ -3,12 +3,9 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-import requests
-from defusedxml import ElementTree
 from django.db import transaction
 
-from core.constants import REQUEST_HEADERS, VALID_STATUS_CODES
-from core.metrics import observe_external_call
+from catalog import bgg_client
 from tracking.models import PlaySession
 
 if TYPE_CHECKING:
@@ -51,10 +48,10 @@ def fetch_bgg_plays(user: User, bgg_username: str) -> tuple[bool, str]:
 
         return True, f"Successfully imported {total_processed_plays} plays."
 
-    except requests.RequestException as exception:
+    except bgg_client.BoardGameGeekUnavailableError as exception:
         logger.warning("BGG API fetch failed during play sync: %s", exception)
         return False, "Connection to BGG failed. Please try again later."
-    except ElementTree.ParseError as exception:
+    except bgg_client.BoardGameGeekMalformedResponseError as exception:
         logger.error("Malformed BGG XML during play sync: %s", exception)
         return False, "An internal error occurred during synchronization."
     except (AttributeError, OSError, TypeError, ValueError) as exception:
@@ -77,24 +74,11 @@ def _sync_plays_page(user: User, bgg_username: str, page: int) -> tuple[int, int
     :type page: int
     :returns: A tuple of (total_records_available_on_bgg, records_processed_this_page).
     :rtype: tuple[int, int]
-    :raises requests.HTTPError: If the API returns an error status code.
+    :raises catalog.bgg_client.BoardGameGeekUnavailableError: If BGG cannot be reached or refuses the request.
+    :raises catalog.bgg_client.BoardGameGeekMalformedResponseError: If BGG's response cannot be parsed.
     """
 
-    # Pass  username through params to encode it in URL
-    url = "https://boardgamegeek.com/xmlapi2/plays"
-    params: dict[str, str | int] = {"username": bgg_username, "page": page}
-    with observe_external_call("bgg", "plays"):
-        response = requests.get(url=url, params=params, headers=REQUEST_HEADERS, timeout=15)
-        response.raise_for_status()
-
-    if response.status_code not in VALID_STATUS_CODES:
-        logger.warning(
-            "BGG returned success code %s, but we expected 200/202.",
-            response.status_code,
-        )
-        return 0, 0
-
-    response_root: Element = ElementTree.fromstring(response.content)
+    response_root: Element = bgg_client.fetch_plays_page(bgg_username, page)
     total_on_bgg = int(response_root.get("total", 0))
     plays: list[Element[str]] = response_root.findall("play")
 

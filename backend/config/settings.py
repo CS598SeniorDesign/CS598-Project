@@ -47,6 +47,10 @@ environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env.str("DJANGO_SECRET_KEY", default="")
 BGG_API_TOKEN = env.str("BGG_API_TOKEN", default="")
+# The shortest gap QuestLog leaves between any two requests to BGG, across every process (see catalog.bgg_client).
+BGG_MINIMUM_SECONDS_BETWEEN_REQUESTS = env.float("BGG_MINIMUM_SECONDS_BETWEEN_REQUESTS", default=2.0)
+# How long BGG search results are kept before BGG is asked again for the same query.
+BGG_SEARCH_CACHE_SECONDS = env.int("BGG_SEARCH_CACHE_SECONDS", default=60 * 60 * 24)
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env.bool("DEBUG", default=False)
