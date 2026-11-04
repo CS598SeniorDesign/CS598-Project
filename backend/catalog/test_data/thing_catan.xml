@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<items termsofuse="https://boardgamegeek.com/xmlapi/termsofuse">
+  <item type="boardgame" id="13">
+    <thumbnail>https://cf.geekdo-images.com/0XODRpReiZBFUffEcqT5-Q__small/img/SNVfF23OQafv3u8xdFolJnMkBoM=/fit-in/200x150/filters:strip_icc()/pic9156909.png</thumbnail>
+    <image>https://cf.geekdo-images.com/0XODRpReiZBFUffEcqT5-Q__original/img/oRc0AomWA9ZtFqQDZiZbIyKE1j0=/0x0/filters:format(png)/pic9156909.png</image>
+    <name type="primary" sortindex="1" value="Catan" />
+    <name type="alternate" sortindex="1" value="Catan (Колонизаторы)" />
+    <name type="alternate" sortindex="1" value="Catan telepesei" />
+    <description>In CATAN (formerly The Settlers of Catan), players try to be the dominant force on the island of Catan by building settlements, cities and roads.</description>
+    <yearpublished value="1995" />
+    <minplayers value="3" />
+    <maxplayers value="4" />
+    <playingtime value="120" />
+    <minplaytime value="60" />
+    <maxplaytime value="120" />
+    <minage value="10" />
+    <link type="boardgamecategory" id="1021" value="Economic" />
+    <link type="boardgamecategory" id="1026" value="Negotiation" />
+    <link type="boardgamemechanic" id="2956" value="Chaining" />
+    <link type="boardgamemechanic" id="2072" value="Dice Rolling" />
+    <link type="boardgamefamily" id="7481" value="Animals: Sheep" />
+    <link type="boardgamefamily" id="67874" value="Components: Hexagonal Tiles" />
+    <link type="boardgameexpansion" id="447533" value="The Dragon &amp; Wizards of Catan" />
+    <link type="boardgameexpansion" id="452137" value="18CTN" />
+    <link type="boardgameaccessory" id="399943" value="Catan x Goat Simulator 3: Resource Replacement Cards" />
+    <link type="boardgameaccessory" id="273558" value="Catan: 3D Clay Pieces" />
+    <link type="boardgameintegration" id="437214" value="EXIT: The Game – Adventures on Catan" />
+    <link type="boardgamecompilation" id="17419" value="Catan 3D Collector's Edition" />
+    <link type="boardgamecompilation" id="298278" value="Catan: 25 Jahre Jubiläums-Edition" />
+    <link type="boardgameimplementation" id="123386" value="Baden-Württemberg Catan" />
+    <link type="boardgameimplementation" id="451387" value="Catan Connect" />
+    <link type="boardgamedesigner" id="11" value="Klaus Teuber" />
+    <link type="boardgameartist" id="12036" value="Volkan Baga" />
+    <link type="boardgameartist" id="12382" value="Tanja Donner" />
+    <link type="boardgamepublisher" id="37" value="KOSMOS" />
+    <link type="boardgamepublisher" id="24874" value="64 Ounce Games" />
+    <statistics page="1">
+      <ratings>
+        <usersrated value="145158" />
+        <average value="7.09011" />
+        <bayesaverage value="6.90129" />
+        <ranks>
+          <rank type="subtype" id="1" name="boardgame" friendlyname="Board Game Rank" value="624" bayesaverage="6.90129" />
+          <rank type="family" id="5497" name="strategygames" friendlyname="Strategy Game Rank" value="596" bayesaverage="6.76988" />
+          <rank type="family" id="5499" name="familygames" friendlyname="Family Game Rank" value="211" bayesaverage="6.84923" />
+        </ranks>
+        <stddev value="1.50666" />
+        <median value="0" />
+        <owned value="246399" />
+        <trading value="2406" />
+        <wanting value="525" />
+        <wishing value="8439" />
+        <numcomments value="24273" />
+        <numweights value="8654" />
+        <averageweight value="2.2795" />
+      </ratings>
+    </statistics>
+  </item>
+</items>

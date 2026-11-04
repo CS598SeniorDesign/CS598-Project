@@ -36,6 +36,7 @@ class BoardGameListSerializer(serializers.ModelSerializer):
         model = BoardGame
         fields: ClassVar[list[str]] = [
             "bgg_id",
+            "item_type",
             "primary_name",
             "year_published",
             "thumbnail_url",
@@ -60,6 +61,7 @@ class BoardGameDetailSerializer(serializers.ModelSerializer):
         model = BoardGame
         fields: ClassVar[list[str]] = [
             "bgg_id",
+            "item_type",
             "primary_name",
             "description",
             "year_published",

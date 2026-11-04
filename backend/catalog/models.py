@@ -4,10 +4,12 @@ from typing import TYPE_CHECKING, Any
 
 from django.db import models
 
-from core.utils import get_attribute_value, parse_optional_float
+from core.utils import get_attribute_value, parse_optional_float, parse_optional_integer
 
 if TYPE_CHECKING:
     from xml.etree.ElementTree import Element
+
+UNKNOWN_GAME_NAME = "Unknown"
 
 type LinkModel = type[Category] | type[Mechanic] | type[Publisher] | type[Designer] | type[Artist] | type[Family]
 
@@ -93,10 +95,18 @@ class Family(BGGAttribute):
 
 class BoardGame(models.Model):
     """
-    Represents the <item type="boardgame"> object from the BGG XML API2.
+    Represents an <item type="boardgame"> or <item type="boardgameexpansion"> object from the BGG XML API2.
     """
 
+    BOARD_GAME = "boardgame"
+    EXPANSION = "boardgameexpansion"
+    ITEM_TYPE_CHOICES = (
+        (BOARD_GAME, "Board game"),
+        (EXPANSION, "Expansion"),
+    )
+
     bgg_id = models.IntegerField(primary_key=True)
+    item_type = models.CharField(max_length=30, choices=ITEM_TYPE_CHOICES, default=BOARD_GAME, db_default=BOARD_GAME)
     primary_name = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
     year_published = models.IntegerField(null=True, blank=True)
@@ -142,29 +152,40 @@ class BoardGame(models.Model):
         This method extracts attributes (ID, name, players, etc.) from an <item> node, updates the database if the
         record exists, or creates a new one if it does not.
 
+        Every number is parsed defensively, because BGG sends text where a number is unknown: expansions and new games
+        have a rank of "Not Ranked", and BGG sends 0 for an unknown publication year and for the average rating and
+        complexity weight of a game nobody has rated. All of these are stored as unknown rather than failing the save.
+
         :param xml_item: The XML element representing a board game item.
         :type xml_item: xml.etree.ElementTree.Element
+        :param backup_name: The name to store if the item has no primary name.
+        :type backup_name: str | None
         :return: The persisted BoardGame instance.
         :rtype: BoardGame
         """
         detailed_name = get_attribute_value(xml_item, 'name[@type="primary"]')
+        average_rating = parse_optional_float(get_attribute_value(xml_item, "statistics/ratings/average"))
         average_weight = parse_optional_float(get_attribute_value(xml_item, "statistics/ratings/averageweight"))
+        year_published = parse_optional_integer(get_attribute_value(xml_item, "yearpublished"))
 
         data = {
             "bgg_id": xml_item.attrib.get("id"),
-            "primary_name": detailed_name or backup_name,
+            "item_type": cls.EXPANSION if xml_item.attrib.get("type") == cls.EXPANSION else cls.BOARD_GAME,
+            "primary_name": detailed_name or backup_name or UNKNOWN_GAME_NAME,
             "description": xml_item.findtext("description"),
-            "year_published": get_attribute_value(xml_item, "yearpublished"),
-            "minimum_players": get_attribute_value(xml_item, "minplayers"),
-            "maximum_players": get_attribute_value(xml_item, "maxplayers"),
-            "playing_time": get_attribute_value(xml_item, "playingtime"),
-            "minimum_playtime": get_attribute_value(xml_item, "minplaytime"),
-            "maximum_playtime": get_attribute_value(xml_item, "maxplaytime"),
-            "minimum_age": get_attribute_value(xml_item, "minage"),
+            "year_published": year_published or None,
+            "minimum_players": parse_optional_integer(get_attribute_value(xml_item, "minplayers")),
+            "maximum_players": parse_optional_integer(get_attribute_value(xml_item, "maxplayers")),
+            "playing_time": parse_optional_integer(get_attribute_value(xml_item, "playingtime")),
+            "minimum_playtime": parse_optional_integer(get_attribute_value(xml_item, "minplaytime")),
+            "maximum_playtime": parse_optional_integer(get_attribute_value(xml_item, "maxplaytime")),
+            "minimum_age": parse_optional_integer(get_attribute_value(xml_item, "minage")),
             "thumbnail_url": xml_item.findtext("thumbnail"),
             "image_url": xml_item.findtext("image"),
-            "average_rating": get_attribute_value(xml_item, "statistics/ratings/average"),
-            "bgg_rank": get_attribute_value(xml_item, "statistics/ratings/ranks/rank[@name='boardgame']"),
+            "average_rating": round(average_rating, 3) if average_rating else None,
+            "bgg_rank": parse_optional_integer(
+                get_attribute_value(xml_item, "statistics/ratings/ranks/rank[@name='boardgame']")
+            ),
             "average_weight": round(average_weight, 3) if average_weight else None,
         }
 
