@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -52,14 +51,11 @@ async function fetchGame(
   id: string,
   signal: AbortSignal,
 ): Promise<GameDetails> {
-  const response = await fetch(
-    `/api/v1/games/${encodeURIComponent(id)}/`,
-    {
-      credentials: "same-origin",
-      cache: "no-store",
-      signal,
-    },
-  );
+  const response = await fetch(`/api/v1/games/${encodeURIComponent(id)}/`, {
+    credentials: "same-origin",
+    cache: "no-store",
+    signal,
+  });
 
   if (!response.ok) {
     throw new Error(getGameError(response.status));
@@ -93,13 +89,7 @@ function GameImage({ game }: { game: GameDetails }) {
   );
 }
 
-function GameTags({
-  title,
-  items,
-}: {
-  title: string;
-  items: GameAttribute[];
-}) {
+function GameTags({ title, items }: { title: string; items: GameAttribute[] }) {
   if (!items?.length) return null;
 
   return (
@@ -126,8 +116,7 @@ function GameInformation({ game }: { game: GameDetails }) {
       <div>
         <p className="text-sm text-gray-400">Players</p>
         <p className="font-semibold">
-          {game.minimum_players ?? "?"}–
-          {game.maximum_players ?? "?"}
+          {game.minimum_players ?? "?"}–{game.maximum_players ?? "?"}
         </p>
       </div>
 
@@ -143,17 +132,13 @@ function GameInformation({ game }: { game: GameDetails }) {
       <div>
         <p className="text-sm text-gray-400">Minimum Age</p>
         <p className="font-semibold">
-          {game.minimum_age != null
-            ? `${game.minimum_age}+`
-            : "Unknown"}
+          {game.minimum_age != null ? `${game.minimum_age}+` : "Unknown"}
         </p>
       </div>
 
       <div>
         <p className="text-sm text-gray-400">Published</p>
-        <p className="font-semibold">
-          {game.year_published ?? "Unknown"}
-        </p>
+        <p className="font-semibold">{game.year_published ?? "Unknown"}</p>
       </div>
 
       <div>
@@ -167,9 +152,7 @@ function GameInformation({ game }: { game: GameDetails }) {
 
       <div>
         <p className="text-sm text-gray-400">BGG Rank</p>
-        <p className="font-semibold">
-          {game.bgg_rank ?? "Unranked"}
-        </p>
+        <p className="font-semibold">{game.bgg_rank ?? "Unranked"}</p>
       </div>
     </div>
   );
@@ -193,25 +176,15 @@ function GameContent({ game }: { game: GameDetails }) {
         </div>
 
         <div>
-          <h1 className="mb-2 text-3xl font-bold">
-            {game.primary_name}
-          </h1>
+          <h1 className="mb-2 text-3xl font-bold">{game.primary_name}</h1>
 
-          <p className="mb-6 text-gray-400">
-            BoardGameGeek ID: {game.bgg_id}
-          </p>
+          <p className="mb-6 text-gray-400">BoardGameGeek ID: {game.bgg_id}</p>
 
           <GameInformation game={game} />
 
-          <GameTags
-            title="Categories"
-            items={game.categories}
-          />
+          <GameTags title="Categories" items={game.categories} />
 
-          <GameTags
-            title="Mechanics"
-            items={game.mechanics}
-          />
+          <GameTags title="Mechanics" items={game.mechanics} />
 
           {/* Jen's updated Library/Wishlist controls */}
           <LibraryStatus gameId={game.bgg_id} />
@@ -228,9 +201,7 @@ function GameContent({ game }: { game: GameDetails }) {
 
       {game.description && (
         <section className="mt-10 rounded-2xl bg-gray-900 p-6">
-          <h2 className="mb-4 text-2xl font-semibold">
-            About This Game
-          </h2>
+          <h2 className="mb-4 text-2xl font-semibold">About This Game</h2>
 
           <p className="whitespace-pre-line leading-7 text-gray-300">
             {game.description}
@@ -238,15 +209,9 @@ function GameContent({ game }: { game: GameDetails }) {
         </section>
       )}
 
-      <GameTags
-        title="Publishers"
-        items={game.publishers}
-      />
+      <GameTags title="Publishers" items={game.publishers} />
 
-      <GameTags
-        title="Designers"
-        items={game.designers}
-      />
+      <GameTags title="Designers" items={game.designers} />
 
       {/* Preserve existing play logging functionality */}
       {isLogPlayOpen && (
@@ -285,11 +250,7 @@ export default function GameDetailsPage() {
         if (controller.signal.aborted) return;
 
         setGame(null);
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Something went wrong.",
-        );
+        setError(err instanceof Error ? err.message : "Something went wrong.");
       } finally {
         if (!controller.signal.aborted) {
           setLoading(false);
@@ -309,18 +270,13 @@ export default function GameDetailsPage() {
           Loading game details...
         </p>
       ) : error ? (
-        <p
-          role="alert"
-          className="mt-10 text-center text-red-400"
-        >
+        <p role="alert" className="mt-10 text-center text-red-400">
           {error}
         </p>
       ) : game ? (
         <GameContent game={game} />
       ) : (
-        <p className="mt-10 text-center text-gray-400">
-          Game not found.
-        </p>
+        <p className="mt-10 text-center text-gray-400">Game not found.</p>
       )}
     </main>
   );
