@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 interface Player {
   user_id: string;
   display_name: string;
+  avatar?: string | null;
 }
 
 interface FriendRequest {
@@ -20,6 +21,28 @@ interface FriendRequests {
   outgoing: FriendRequest[];
 }
 
+const DEFAULT_AVATAR = "/avatars/avatar1.webp";
+
+const ALLOWED_AVATARS = new Set([
+  "/avatars/brandon.webp",
+  "/avatars/sydney.webp",
+  "/avatars/jennifer.webp",
+  "/avatars/supriya.webp",
+  "/avatars/avatar1.webp",
+  "/avatars/avatar2.webp",
+  "/avatars/avatar3.webp",
+  "/avatars/avatar4.webp",
+  "/avatars/avatar5.webp",
+]);
+
+function getPlayerAvatar(avatar?: string | null): string {
+  return avatar && ALLOWED_AVATARS.has(avatar) ? avatar : DEFAULT_AVATAR;
+}
+
+function isOptionalAvatar(value: unknown): boolean {
+  return value === undefined || value === null || typeof value === "string";
+}
+
 function isPlayer(value: unknown): value is Player {
   return (
     typeof value === "object" &&
@@ -27,7 +50,8 @@ function isPlayer(value: unknown): value is Player {
     "user_id" in value &&
     typeof value.user_id === "string" &&
     "display_name" in value &&
-    typeof value.display_name === "string"
+    typeof value.display_name === "string" &&
+    (!("avatar" in value) || isOptionalAvatar(value.avatar))
   );
 }
 
@@ -477,7 +501,7 @@ export default function FriendsList() {
               >
                 <div className="flex min-w-0 items-center gap-3">
                   <Image
-                    src="/avatars/avatar1.webp"
+                    src={getPlayerAvatar(friend.avatar)}
                     alt=""
                     width={48}
                     height={48}
