@@ -30,6 +30,10 @@ const nextConfig: NextConfig = {
         destination: `${backend}/_allauth/:path*`,
       },
       {
+        source: "/csrf/",
+        destination: `${backend}/csrf/`,
+      },
+      {
         source: "/api/:path*/",
         destination: `${backend}/api/:path*/`,
       },

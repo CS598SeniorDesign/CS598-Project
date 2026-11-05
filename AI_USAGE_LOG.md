@@ -491,6 +491,42 @@ AI proved:
 
 ---
 
+## Entry 14: [Prototype 3] — [Fixing Errors Thrown by E2E and Accesibility Pipeline]
+
+* **Date:** : November 3rd
+* **Team Member:** Sydney Epke (`@vortex278`)
+* **Tool Used:** Github Copilot
+* **Associated Git Issue:** Closes `#`
+* **Associated Feature Branch:** `chore/fix_e2e_and_accessibility_errors`
+
+### Exact Prompt Submitted:
+
+> "can you look at PR #170 and help me fix the failing checks?"
+
+### AI Output Summary & Code Generated:
+
+The AI found a .env error and replaced the reference to the original hardcoded .env to an example .env file in docker.ts and docker-compose.yml
+
+### Human Review, Refactoring & Modifications Made:
+
+* I checked to make sure this was a good change and that the example .env did not have any secrets in it
+* I ran the commands to run the checks locally
+* I pushed the code and ran the checks in GitHub
+
+### Verification & Testing Method:
+
+* Just running the checks locally and then running it in GitHub after pushing again
+
+---
+
+## Audit Certification
+
+I certify as Team Lead that all entries above accurately represent AI usage within this project phase, all prompts have been recorded, and all code has been validated by human review and automated testing.
+
+**Sydney Epke:** *[Testing Lead]* — **Date:** [11/03/26]
+
+---
+
 ## Entry 15: Prototype 3 — Merge Celery Background Tasks into the BGG Refresh Branch
 
 * **Date:** November 3, 2026

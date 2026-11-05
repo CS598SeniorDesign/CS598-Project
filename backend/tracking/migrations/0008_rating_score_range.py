@@ -6,48 +6,65 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('catalog', '0002_boardgame_average_weight'),
-        ('tracking', '0007_merge_play_session_soft_delete_and_library'),
+        ("catalog", "0002_boardgame_average_weight"),
+        ("tracking", "0007_merge_play_session_soft_delete_and_library"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='rating',
-            name='enjoyment',
-            field=models.FloatField(validators=[django.core.validators.MinValueValidator(1), django.core.validators.MaxValueValidator(5)]),
+            model_name="rating",
+            name="enjoyment",
+            field=models.FloatField(
+                validators=[django.core.validators.MinValueValidator(1), django.core.validators.MaxValueValidator(5)]
+            ),
         ),
         migrations.AlterField(
-            model_name='rating',
-            name='experience',
-            field=models.FloatField(validators=[django.core.validators.MinValueValidator(1), django.core.validators.MaxValueValidator(5)]),
+            model_name="rating",
+            name="experience",
+            field=models.FloatField(
+                validators=[django.core.validators.MinValueValidator(1), django.core.validators.MaxValueValidator(5)]
+            ),
         ),
         migrations.AlterField(
-            model_name='rating',
-            name='mechanics',
-            field=models.FloatField(validators=[django.core.validators.MinValueValidator(1), django.core.validators.MaxValueValidator(5)]),
+            model_name="rating",
+            name="mechanics",
+            field=models.FloatField(
+                validators=[django.core.validators.MinValueValidator(1), django.core.validators.MaxValueValidator(5)]
+            ),
         ),
         migrations.AlterField(
-            model_name='rating',
-            name='replayability',
-            field=models.FloatField(validators=[django.core.validators.MinValueValidator(1), django.core.validators.MaxValueValidator(5)]),
+            model_name="rating",
+            name="replayability",
+            field=models.FloatField(
+                validators=[django.core.validators.MinValueValidator(1), django.core.validators.MaxValueValidator(5)]
+            ),
         ),
         migrations.AddConstraint(
-            model_name='rating',
-            constraint=models.CheckConstraint(condition=models.Q(('experience__gte', 1), ('experience__lte', 5)), name='rating_experience_within_range'),
+            model_name="rating",
+            constraint=models.CheckConstraint(
+                condition=models.Q(("experience__gte", 1), ("experience__lte", 5)),
+                name="rating_experience_within_range",
+            ),
         ),
         migrations.AddConstraint(
-            model_name='rating',
-            constraint=models.CheckConstraint(condition=models.Q(('mechanics__gte', 1), ('mechanics__lte', 5)), name='rating_mechanics_within_range'),
+            model_name="rating",
+            constraint=models.CheckConstraint(
+                condition=models.Q(("mechanics__gte", 1), ("mechanics__lte", 5)), name="rating_mechanics_within_range"
+            ),
         ),
         migrations.AddConstraint(
-            model_name='rating',
-            constraint=models.CheckConstraint(condition=models.Q(('replayability__gte', 1), ('replayability__lte', 5)), name='rating_replayability_within_range'),
+            model_name="rating",
+            constraint=models.CheckConstraint(
+                condition=models.Q(("replayability__gte", 1), ("replayability__lte", 5)),
+                name="rating_replayability_within_range",
+            ),
         ),
         migrations.AddConstraint(
-            model_name='rating',
-            constraint=models.CheckConstraint(condition=models.Q(('enjoyment__gte', 1), ('enjoyment__lte', 5)), name='rating_enjoyment_within_range'),
+            model_name="rating",
+            constraint=models.CheckConstraint(
+                condition=models.Q(("enjoyment__gte", 1), ("enjoyment__lte", 5)), name="rating_enjoyment_within_range"
+            ),
         ),
     ]

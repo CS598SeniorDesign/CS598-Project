@@ -1,0 +1,23 @@
+meta {
+  name: Get Profile
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/profile/
+  body: none
+  auth: none
+}
+
+docs {
+  Returns the signed-in user's profile. An account without a profile yet gets one with a generated name such as
+  `Player-1a2b`. The email address is never included.
+}
+
+tests {
+  test("returns the profile", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.all.keys("user_id", "display_name", "bio", "privacy_level", "bgg_username");
+  });
+}

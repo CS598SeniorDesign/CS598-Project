@@ -353,6 +353,7 @@ REST_FRAMEWORK = {
         "user": "300/min",
         "bgg-sync": "3/min",
         "bgg-search": "30/min",
+        "player-search": "60/min",
         "recommendations": "60/min",
     },
 }

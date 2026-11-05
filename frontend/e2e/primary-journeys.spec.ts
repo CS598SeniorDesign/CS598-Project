@@ -21,7 +21,6 @@ test.describe("primary user journeys", () => {
     page,
   }) => {
     await page.goto("/signup");
-    const signupRequest = page.waitForRequest("**/auth/signup");
 
     await expect(page.getByPlaceholder("Email")).toHaveAttribute(
       "required",
@@ -34,52 +33,14 @@ test.describe("primary user journeys", () => {
     await page.getByPlaceholder("Email").fill("existing@example.com");
     await page.getByPlaceholder("Password").fill("Password123!");
 
-    await page.route("**/auth/session", async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({}),
-      });
-    });
-    await page.context().addCookies([
-      {
-        name: "csrf_token",
-        value: "e2e-token",
-        url: "http://localhost:3000",
-      },
-    ]);
-    await page.route("**/auth/signup", async (route) => {
-      await route.fulfill({
-        status: 400,
-        contentType: "application/json",
-        body: JSON.stringify({
-          errors: [{ message: "An account with this email already exists." }],
-        }),
-      });
-    });
-
     await page.getByRole("button", { name: "Sign Up" }).click();
-    await signupRequest;
-    await expect(page.getByRole("alert").first()).toHaveText(
+    await expect(page.locator('p[role="alert"]')).toHaveText(
       "An account with this email already exists.",
     );
   });
 
   test("login reports invalid credentials", async ({ page }) => {
     await page.goto("/login");
-    await page.context().addCookies([
-      {
-        name: "csrf_token",
-        value: "e2e-token",
-        url: "http://localhost:3000",
-      },
-    ]);
-    await page.route("**/auth/session", async (route) => {
-      await route.fulfill({ status: 401, body: "{}" });
-    });
-    await page.route("**/auth/login", async (route) => {
-      await route.fulfill({ status: 401, body: "{}" });
-    });
 
     await page.getByPlaceholder("Email").fill("unknown@example.com");
     await page.getByPlaceholder("Password").fill("wrong-password");
@@ -91,7 +52,7 @@ test.describe("primary user journeys", () => {
     );
     await page.getByRole("button", { name: "Sign In" }).click();
 
-    await expect(page.getByRole("alert").first()).toHaveText(
+    await expect(page.locator('p[role="alert"]')).toHaveText(
       "Unable to sign in. Check your email and password, or verify your account.",
     );
   });
@@ -99,25 +60,8 @@ test.describe("primary user journeys", () => {
   test("catalog search renders results and supports clearing", async ({
     page,
   }) => {
-    await page.route(/\/api\/v1\/games/, async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify([
-          {
-            bgg_id: 13,
-            primary_name: "Catan",
-            year_published: 1995,
-            thumbnail_url: null,
-            average_rating: 7.1,
-            bgg_rank: 1,
-          },
-        ]),
-      });
-    });
-
     await page.goto("/games/search");
-    await page.getByPlaceholder("Search games...").fill("cat");
+    await page.getByPlaceholder("Search games...").fill("Catan");
     await expect(page.getByRole("button", { name: "Search" })).toBeEnabled();
     await page.getByRole("button", { name: "Search" }).click();
 
@@ -131,13 +75,11 @@ test.describe("primary user journeys", () => {
   test("library filtering shows an empty state for unmatched games", async ({
     page,
   }) => {
-    await page.route(/\/api\/v1\/library\/(?:\?.*)?$/, async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify([]),
-      });
-    });
+    await page.goto("/login");
+    await page.getByPlaceholder("Email").fill("demo@questlog.local");
+    await page.getByPlaceholder("Password").fill("password123");
+    await page.getByRole("button", { name: "Sign In" }).click();
+    await page.waitForURL(/\/(avatar-selection|library)/);
 
     await page.goto("/library");
     const searchInput = page.getByPlaceholder("Search your collection...");
