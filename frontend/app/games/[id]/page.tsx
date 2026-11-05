@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -5,6 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useParams } from "next/navigation";
 import LogPlayForm from "../../../components/games/LogPlayForm";
+import LibraryStatus from "@/components/library/LibraryStatus";
 
 interface GameAttribute {
   bgg_id: number;
@@ -34,12 +36,6 @@ interface GameDetails {
   families: GameAttribute[];
 }
 
-type Ownership = "OWNED" | "WISHLISTED";
-
-interface LibraryItem {
-  ownership: Ownership;
-}
-
 function getGameError(status: number): string {
   if (status === 401 || status === 403) {
     return "Please log in to view this game.";
@@ -56,99 +52,20 @@ async function fetchGame(
   id: string,
   signal: AbortSignal,
 ): Promise<GameDetails> {
-  const response = await fetch(`/api/v1/games/${encodeURIComponent(id)}/`, {
-    credentials: "same-origin",
-    cache: "no-store",
-    signal,
-  });
+  const response = await fetch(
+    `/api/v1/games/${encodeURIComponent(id)}/`,
+    {
+      credentials: "same-origin",
+      cache: "no-store",
+      signal,
+    },
+  );
 
   if (!response.ok) {
     throw new Error(getGameError(response.status));
   }
 
   return (await response.json()) as GameDetails;
-}
-
-function getCookie(name: string): string | null {
-  const cookie = document.cookie
-    .split("; ")
-    .find((item) => item.startsWith(`${name}=`));
-
-  return cookie
-    ? decodeURIComponent(cookie.split("=").slice(1).join("="))
-    : null;
-}
-
-function getCsrfToken(): string | null {
-  return getCookie("csrftoken") ?? getCookie("csrf_token");
-}
-
-async function fetchLibraryItem(
-  gameId: number,
-  signal: AbortSignal,
-): Promise<LibraryItem | null> {
-  const response = await fetch(`/api/v1/library/${gameId}/`, {
-    credentials: "same-origin",
-    cache: "no-store",
-    signal,
-  });
-
-  if (response.status === 404) {
-    return null;
-  }
-
-  if (response.status === 401 || response.status === 403) {
-    throw new Error("Please log in to manage your library.");
-  }
-
-  if (!response.ok) {
-    throw new Error("Unable to check your library status.");
-  }
-
-  return (await response.json()) as LibraryItem;
-}
-
-async function addGameToLibrary(
-  gameId: number,
-  ownership: Ownership,
-): Promise<void> {
-  const csrfToken = getCsrfToken();
-
-  const response = await fetch("/api/v1/library/", {
-    method: "POST",
-    credentials: "same-origin",
-    headers: {
-      "Content-Type": "application/json",
-      ...(csrfToken ? { "X-CSRFToken": csrfToken } : {}),
-    },
-    body: JSON.stringify({
-      game_id: gameId,
-      ownership,
-      is_played: false,
-    }),
-  });
-
-  if (response.ok) {
-    return;
-  }
-
-  if (response.status === 401 || response.status === 403) {
-    throw new Error(
-      "Please log in again. If you're already logged in, check your session and CSRF token.",
-    );
-  }
-
-  if (response.status === 409) {
-    throw new Error("This game is already in your library or wishlist.");
-  }
-
-  if (response.status === 400) {
-    throw new Error(
-      "Unable to add this game. Make sure it exists in the QuestLog catalog.",
-    );
-  }
-
-  throw new Error("Something went wrong. Please try again.");
 }
 
 function GameImage({ game }: { game: GameDetails }) {
@@ -176,7 +93,13 @@ function GameImage({ game }: { game: GameDetails }) {
   );
 }
 
-function GameTags({ title, items }: { title: string; items: GameAttribute[] }) {
+function GameTags({
+  title,
+  items,
+}: {
+  title: string;
+  items: GameAttribute[];
+}) {
   if (!items?.length) return null;
 
   return (
@@ -203,7 +126,8 @@ function GameInformation({ game }: { game: GameDetails }) {
       <div>
         <p className="text-sm text-gray-400">Players</p>
         <p className="font-semibold">
-          {game.minimum_players ?? "?"}–{game.maximum_players ?? "?"}
+          {game.minimum_players ?? "?"}–
+          {game.maximum_players ?? "?"}
         </p>
       </div>
 
@@ -219,13 +143,17 @@ function GameInformation({ game }: { game: GameDetails }) {
       <div>
         <p className="text-sm text-gray-400">Minimum Age</p>
         <p className="font-semibold">
-          {game.minimum_age != null ? `${game.minimum_age}+` : "Unknown"}
+          {game.minimum_age != null
+            ? `${game.minimum_age}+`
+            : "Unknown"}
         </p>
       </div>
 
       <div>
         <p className="text-sm text-gray-400">Published</p>
-        <p className="font-semibold">{game.year_published ?? "Unknown"}</p>
+        <p className="font-semibold">
+          {game.year_published ?? "Unknown"}
+        </p>
       </div>
 
       <div>
@@ -239,129 +167,11 @@ function GameInformation({ game }: { game: GameDetails }) {
 
       <div>
         <p className="text-sm text-gray-400">BGG Rank</p>
-        <p className="font-semibold">{game.bgg_rank ?? "Unranked"}</p>
+        <p className="font-semibold">
+          {game.bgg_rank ?? "Unranked"}
+        </p>
       </div>
     </div>
-  );
-}
-
-function AddToLibrary({ gameId }: { gameId: number }) {
-  const [ownership, setOwnership] = useState<Ownership | null>(null);
-  const [checking, setChecking] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    async function checkLibrary() {
-      try {
-        const item = await fetchLibraryItem(gameId, controller.signal);
-
-        if (!controller.signal.aborted) {
-          setOwnership(item?.ownership ?? null);
-        }
-      } catch (err) {
-        if (!controller.signal.aborted) {
-          setError(
-            err instanceof Error
-              ? err.message
-              : "Unable to check your library.",
-          );
-        }
-      } finally {
-        if (!controller.signal.aborted) {
-          setChecking(false);
-        }
-      }
-    }
-
-    void checkLibrary();
-
-    return () => controller.abort();
-  }, [gameId]);
-
-  async function handleAdd(selectedOwnership: Ownership) {
-    setSaving(true);
-    setError("");
-    setMessage("");
-
-    try {
-      await addGameToLibrary(gameId, selectedOwnership);
-
-      setOwnership(selectedOwnership);
-      setMessage(
-        selectedOwnership === "OWNED"
-          ? "Game successfully added to your Owned library!"
-          : "Game successfully added to your Wishlist!",
-      );
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Unable to save this game.",
-      );
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  if (checking) {
-    return <p className="mt-8 text-gray-400">Checking your library...</p>;
-  }
-
-  return (
-    <section className="mt-8">
-      <h2 className="mb-3 text-xl font-semibold">My Library</h2>
-
-      {ownership ? (
-        <div className="rounded-xl border border-green-700 bg-green-950/30 p-4">
-          <p className="font-medium text-green-400">
-            {ownership === "OWNED"
-              ? "Already in your Owned library"
-              : "Already in your Wishlist"}
-          </p>
-
-          <Link
-            href="/library"
-            className="mt-3 inline-block text-indigo-300 underline"
-          >
-            View My Library
-          </Link>
-        </div>
-      ) : (
-        <div className="flex flex-wrap gap-3">
-          <button
-            type="button"
-            disabled={saving}
-            onClick={() => void handleAdd("OWNED")}
-            className="rounded-xl bg-indigo-600 px-6 py-3 font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {saving ? "Saving..." : "Add to Owned"}
-          </button>
-
-          <button
-            type="button"
-            disabled={saving}
-            onClick={() => void handleAdd("WISHLISTED")}
-            className="rounded-xl border border-indigo-500 px-6 py-3 font-semibold text-indigo-300 transition hover:bg-indigo-500/10 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {saving ? "Saving..." : "Add to Wishlist"}
-          </button>
-        </div>
-      )}
-
-      {message && (
-        <p role="status" className="mt-3 text-green-400">
-          {message}
-        </p>
-      )}
-
-      {error && (
-        <p role="alert" className="mt-3 text-red-400">
-          {error}
-        </p>
-      )}
-    </section>
   );
 }
 
@@ -383,16 +193,28 @@ function GameContent({ game }: { game: GameDetails }) {
         </div>
 
         <div>
-          <h1 className="mb-2 text-3xl font-bold">{game.primary_name}</h1>
+          <h1 className="mb-2 text-3xl font-bold">
+            {game.primary_name}
+          </h1>
 
-          <p className="mb-6 text-gray-400">BoardGameGeek ID: {game.bgg_id}</p>
+          <p className="mb-6 text-gray-400">
+            BoardGameGeek ID: {game.bgg_id}
+          </p>
 
           <GameInformation game={game} />
 
-          <GameTags title="Categories" items={game.categories} />
-          <GameTags title="Mechanics" items={game.mechanics} />
+          <GameTags
+            title="Categories"
+            items={game.categories}
+          />
 
-          <AddToLibrary gameId={game.bgg_id} />
+          <GameTags
+            title="Mechanics"
+            items={game.mechanics}
+          />
+
+          {/* Jen's updated Library/Wishlist controls */}
+          <LibraryStatus gameId={game.bgg_id} />
 
           <button
             type="button"
@@ -406,7 +228,9 @@ function GameContent({ game }: { game: GameDetails }) {
 
       {game.description && (
         <section className="mt-10 rounded-2xl bg-gray-900 p-6">
-          <h2 className="mb-4 text-2xl font-semibold">About This Game</h2>
+          <h2 className="mb-4 text-2xl font-semibold">
+            About This Game
+          </h2>
 
           <p className="whitespace-pre-line leading-7 text-gray-300">
             {game.description}
@@ -414,9 +238,17 @@ function GameContent({ game }: { game: GameDetails }) {
         </section>
       )}
 
-      <GameTags title="Publishers" items={game.publishers} />
-      <GameTags title="Designers" items={game.designers} />
+      <GameTags
+        title="Publishers"
+        items={game.publishers}
+      />
 
+      <GameTags
+        title="Designers"
+        items={game.designers}
+      />
+
+      {/* Preserve existing play logging functionality */}
       {isLogPlayOpen && (
         <LogPlayForm
           gameId={game.bgg_id}
@@ -453,7 +285,11 @@ export default function GameDetailsPage() {
         if (controller.signal.aborted) return;
 
         setGame(null);
-        setError(err instanceof Error ? err.message : "Something went wrong.");
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Something went wrong.",
+        );
       } finally {
         if (!controller.signal.aborted) {
           setLoading(false);
@@ -473,13 +309,18 @@ export default function GameDetailsPage() {
           Loading game details...
         </p>
       ) : error ? (
-        <p role="alert" className="mt-10 text-center text-red-400">
+        <p
+          role="alert"
+          className="mt-10 text-center text-red-400"
+        >
           {error}
         </p>
       ) : game ? (
         <GameContent game={game} />
       ) : (
-        <p className="mt-10 text-center text-gray-400">Game not found.</p>
+        <p className="mt-10 text-center text-gray-400">
+          Game not found.
+        </p>
       )}
     </main>
   );
