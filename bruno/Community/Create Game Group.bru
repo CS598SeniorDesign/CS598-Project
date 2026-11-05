@@ -1,0 +1,38 @@
+meta {
+  name: Create Game Group
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/v1/groups/
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "Bruno Test Group",
+    "description": "Created from Bruno"
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    bru.setVar("groupId", res.getBody().id);
+  }
+}
+
+docs {
+  Creates a game group owned by the user. Add friends straight away with `member_ids`, or later with
+  `POST /api/v1/groups/<id>/members/ {"user_id": "<uuid>"}`. Only friends can be added, and only the owner can change
+  the group.
+}
+
+tests {
+  test("creates the group with the user as owner and only member", function () {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().is_owner).to.equal(true);
+    expect(res.getBody().member_count).to.equal(1);
+  });
+}

@@ -31,6 +31,7 @@ This document provides guidance on running the backend through Docker and locall
   - [Logging \& Monitoring](#logging--monitoring)
   - [Background Tasks (Celery)](#background-tasks-celery)
   - [Library \& Wishlist API](#library--wishlist-api)
+  - [Community API](#community-api)
   - [Recommendation Engine](#recommendation-engine)
 
 ## Backend File Structure
@@ -38,6 +39,8 @@ This document provides guidance on running the backend through Docker and locall
 ```bash
 /catalog
 |- 'Django app for the board game library: game metadata, BGG XML API integration, search/filter, and wishlist models'
+/community
+|- 'Django app for community features: friend requests, game group and event (game night) APIs, the activity feed, and trending games'
 /config
 |- 'Django project configuration: settings, ASGI/WSGI entrypoint, root urls.py'
 /core
@@ -474,6 +477,38 @@ Without Docker, start a worker in another terminal: `uv run celery -A config wor
 **BGG collection import** only adds information. Games owned or wishlisted on BGG are added, owned wins over wishlisted, and BGG plays mark a game played. Existing entries can move from wishlist to library, become played, or gain a priority, but nothing is ever downgraded, and house rules are untouched. Games the user removed in QuestLog are not re-added. Games marked only as previously owned or for trade are skipped. Expansions are excluded. Games missing from the catalog are fetched from BGG one at a time, so a large first import takes a while. Play and collection syncs share the 3-per-minute BGG sync throttle.
 
 `house_rules` is limited to 5,000 characters.
+
+## Community API
+
+The `community` app powers the community page. Every endpoint requires sign-in, and users are always shown as `user_id` (a UUID string) and `display_name`, never with their email address. Groups, events and players a user may not see answer **404**, the same as ones that don't exist.
+
+| Endpoint | Purpose |
+| :--- | :--- |
+| `GET /api/v1/friends/` | The user's friends (from `profiles`; Private-profile friends are left out) |
+| `DELETE /api/v1/friends/{user_id}/` | End a friendship, for both users |
+| `GET /api/v1/friend-requests/` | Pending requests: `incoming` and `outgoing` |
+| `POST /api/v1/friend-requests/` | Send one (`user_id`). 201 when created, 200 if already pending, 200 `ACCEPTED` if that player had already asked you. Limited to 30 per hour |
+| `POST /api/v1/friend-requests/{id}/accept/`, `/decline/` | Answer a request sent to you |
+| `DELETE /api/v1/friend-requests/{id}/` | Withdraw a request you sent |
+| `GET/POST /api/v1/groups/` | Your game groups; create one (`name`, `description`, optional friends in `member_ids`) |
+| `GET/PATCH/DELETE /api/v1/groups/{id}/` | A group with its `members`; owner-only changes. Deleting a group also deletes its events and the plays logged for it |
+| `POST /api/v1/groups/{id}/members/`, `DELETE .../members/{user_id}/`, `POST .../leave/` | Owner adds a friend or removes a member; members leave (the owner deletes instead) |
+| `GET/POST /api/v1/events/` | Upcoming game nights (`?scope=past`, `?days=`, `?group_id=`); plan one (`title`, `starts_at` in the future, optional `description`, `location`, `game_id`, `group_id`) |
+| `GET/PATCH/DELETE /api/v1/events/{id}/` | An event with everyone's `rsvps`; host-only changes |
+| `POST /api/v1/events/{id}/rsvp/` | Answer `GOING`, `MAYBE` or `NOT_GOING` (replaces an earlier answer) |
+| `GET /api/v1/community/feed/` | Plays and library/wishlist additions by you and your friends, newest first (`?limit=`, max 50) |
+| `GET /api/v1/community/trending/` | Most played on QuestLog in the last `?days=` (default 7), topped up with BGG's top-ranked games |
+| `GET /api/v1/community/summary/` | For notifications: pending friend requests, events in the next 7 days, and the next event |
+
+**Who can see what.**
+- Friend requests can be sent to anyone the player search shows: Public profiles, and Friends profiles of existing friends. Private profiles can't be asked.
+- Groups are visible only to their members. Only the creator (owner) can change one, and members can only be added from the owner's friends. Friends with a Private profile can be added too: other members then see their display name.
+- An event in a group is visible to the group's members. An event without a group is visible to its host and the host's friends.
+- The feed leaves out friends with a Private profile.
+- Trending uses everyone's plays in aggregate, so it reveals nothing about individual players.
+- Inactive and deleted accounts are left out everywhere: group member lists and counts (a group whose owner left shows `owner: null`), RSVP lists and `going_count`, friend requests in both directions, and the events they host.
+
+`manage.py seed` gives the demo login a group, two upcoming game nights and a pending friend request. The `bruno/Community` folder exercises every endpoint.
 
 ## Recommendation Engine
 

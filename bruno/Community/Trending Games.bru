@@ -1,0 +1,26 @@
+meta {
+  name: Trending Games
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/community/trending/?days=7&limit=4
+  body: none
+  auth: none
+}
+
+docs {
+  The games played most on QuestLog in the last `days` days, topped up with BGG's highest-ranked games when fewer were
+  played (`reason` questlog_plays or bgg_rank). Built from everyone's plays in aggregate.
+}
+
+tests {
+  test("returns trending games", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().days).to.equal(7);
+    for (const item of res.getBody().results) {
+      expect(["questlog_plays", "bgg_rank"]).to.include(item.reason);
+    }
+  });
+}

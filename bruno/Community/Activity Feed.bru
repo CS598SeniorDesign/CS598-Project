@@ -1,0 +1,26 @@
+meta {
+  name: Activity Feed
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/community/feed/?limit=10
+  body: none
+  auth: none
+}
+
+docs {
+  Recent plays and library/wishlist additions by the user and their friends, newest first. `type` is play, library or
+  wishlist, and `actor.is_you` marks the user's own activity. Friends with a Private profile are left out.
+}
+
+tests {
+  test("returns activity entries", function () {
+    expect(res.getStatus()).to.equal(200);
+    for (const entry of res.getBody()) {
+      expect(["play", "library", "wishlist"]).to.include(entry.type);
+      expect(entry.actor).to.have.all.keys("user_id", "display_name", "is_you");
+    }
+  });
+}

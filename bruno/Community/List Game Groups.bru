@@ -1,0 +1,24 @@
+meta {
+  name: List Game Groups
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/v1/groups/
+  body: none
+  auth: none
+}
+
+docs {
+  The groups the user belongs to, alphabetically. Groups are visible only to their members. The seeded demo login owns
+  "Weeknight Gamers".
+}
+
+tests {
+  test("includes the group just created", function () {
+    expect(res.getStatus()).to.equal(200);
+    const ids = res.getBody().map((group) => group.id);
+    expect(ids).to.include(bru.getVar("groupId"));
+  });
+}

@@ -441,7 +441,7 @@ AI proved:
 * **Date:** November 1, 2026
 * **Team Member:** Jennifer Isobe (`@Jisobe`)
 * **Tool Used:** Claude Code (Claude Opus 5.5)
-* **Associated Git Issue:** Closes `#`
+* **Associated Git Issue:** Closes `#145`
 * **Associated Feature Branch:** `feature/add-logging-and-monitoring`
 
 ### Exact Prompt Submitted:
@@ -477,8 +477,9 @@ AI proved:
 
 ### Human Review, Refactoring & Modifications Made:
 
-*
-*
+* Review the ai produced code for backend logging and monitoring via prometheus
+* Tested the prometheus monitoring endpoint and identified and issue with .env file variable keeping monitoring from executing
+* Review the added monitoring for the recommender system
 
 ### Verification & Testing Method:
 
@@ -568,6 +569,32 @@ I certify as Team Lead that all entries above accurately represent AI usage with
 
 ---
 
+## Entry 16: Prototype 3 — Add community feature bruno endpoints
+
+* **Date:** November 4, 2026
+* **Team Member:** Jennifer Isobe (`@Jisobe`)
+* **Tool Used:** Claude Code (Claude Opus 5.5)
+* **Associated Git Issue:** Closes `#183`
+* **Associated Feature Branch:** `feature/backend-community-features`
+
+### Exact Prompt Submitted:
+
+> "add bruno test endpoints for the community features in the backend/community dir"
+
+### AI Output Summary & Code Generated:
+
+* Created bruno api test endpoints in the bruno/Community folder to test each api endpoint
+
+### Human Review, Refactoring & Modifications Made:
+
+* Reviewed the added bruno endpoints for the community feature
+
+### Verification & Testing Method:
+
+* Tested community endpoints in Bruno
+
+---
+
 ## Entry 17: Prototype 3 — Resolve Library Updates Merge Conflicts in the BGG Refresh Branch
 
 * **Date:** November 5, 2026
@@ -608,3 +635,11 @@ I certify as Team Lead that all entries above accurately represent AI usage with
 * AI ran the full backend suite against a temporary `pgvector/pgvector:pg17` container with outbound network connections blocked: 406 tests passed. The collection import, library, play import batching and catalog refresh tests also passed when run on their own (67 tests).
 * AI ran Ruff lint and format, mypy, `uv lock --check`, `makemigrations --check` (no drift; #173's `tracking/0009` and this branch's `catalog/0004` coexist) and `lintmigrations` (0 erroneous migrations of 41). All passed.
 * No external APIs (BoardGameGeek) were called.
+
+---
+
+## Audit Certification
+
+I certify as Team Lead that all entries above accurately represent AI usage within this project phase, all prompts have been recorded, and all code has been validated by human review and automated testing.
+
+**Sydney Epke:** *[Testing Lead]* — **Date:** [11/03/26]

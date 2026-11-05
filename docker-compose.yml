@@ -55,7 +55,8 @@ services:
     env_file:
       - ${DOCKER_ENV_FILE:-.env}
     environment:
-      DEBUG: ${DOCKER_DEBUG:-False}
+      # DOCKER_DEBUG lets the e2e tests force DEBUG on; otherwise use DEBUG from .env (default off).
+      DEBUG: ${DOCKER_DEBUG:-${DEBUG:-False}}
       CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS}
       # Install dependencies added since the backend_venv volume was created (see entrypoint.sh).
       SYNC_DEPENDENCIES: "true"
