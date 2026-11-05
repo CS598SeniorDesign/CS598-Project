@@ -565,3 +565,46 @@ I certify as Team Lead that all entries above accurately represent AI usage with
 * AI ran the full backend suite against a temporary `pgvector/pgvector:pg17` container: 299 tests passed, including Jennifer's Celery task tests and the new unreadable-XML test.
 * AI ran Ruff lint and format, mypy, `uv lock --check` (the merged lockfile resolves), `makemigrations --check` (no drift) and `lintmigrations` (no erroneous migrations). All passed.
 * No external APIs (BoardGameGeek) were called; the tests mock the BGG client.
+
+---
+
+## Entry 17: Prototype 3 — Resolve Library Updates Merge Conflicts in the BGG Refresh Branch
+
+* **Date:** November 5, 2026
+* **Team Member:** Brandon Nguyen (`@Meynok`)
+* **Tool Used:** Claude Code (Claude Opus 5.5)
+* **Associated Git Issue:** Closes `#`
+* **Associated Feature Branch:** `feat/bgg-refresh` (PR #176)
+* **Commits:** `26648d1` (`Merge branch 'main' into feat/bgg-refresh`, bringing in #173)
+
+### Exact Prompt Submitted:
+
+> "i just pulled from main. please take a look at the merge conflicts, then give me a list of conflicts, their impact, and your intended resolution"
+
+> "your resolution looks good, go ahead and resolve these conflicts"
+
+### AI Output Summary & Code Generated:
+
+**Conflict analysis (first prompt).** AI inspected the merge of `main` (#173, backend library updates and BGG collection import) into `feat/bgg-refresh` without changing any files, and reported:
+
+* One conflicted file, `backend/tracking/utils.py`, with two hunks, both where each side added different code in the same place:
+  * **Imports:** this branch added `UNKNOWN_GAME_NAME`, `CatalogSyncService` and `get_attribute` (batched game lookups during play imports); #173 added `get_existing_board_game`, `LibraryItem` and `LibraryItemAlreadyExistsError` (BGG collection import). Dropping either side would break that feature, and #173's tests patch `tracking.utils.get_existing_board_game`, so that import had to stay.
+  * **End of file:** this branch added `_game_names_by_id()`; #173 added the collection import section (`import_bgg_collection`, its result and error classes, helpers and message).
+* Files changed on both sides that merged automatically, checked for problems that would not appear as conflicts: `catalog/bgg_client.py` (#173 only adds `fetch_collection()`, built on the existing client), `config/settings.py` and `.env.example` (#173's `LIBRARY_ITEM_RETENTION_DAYS` and daily purge task alongside this branch's nightly game refresh), and the batched lookup in `_sync_plays_page`, which remained intact. The collection task already uses the BGG client's `is_retryable`.
+* A follow-up outside the merge: #173's collection import fetches each new game with its own BGG request (at least 2 seconds apart), so a large first import could approach the task's 15-minute limit; calling `CatalogSyncService.ensure_games()` before the loop would fetch games 20 per request.
+
+**Resolution (second prompt).**
+
+* Kept both sides' imports as one sorted list with no duplicates.
+* Kept `_game_names_by_id()` followed by #173's collection import section, both unchanged.
+* Left the collection import's per-game lookups unchanged, to be raised with Jennifer as a follow-up.
+
+### Human Review, Refactoring & Modifications Made:
+
+* AI suggested merge conflicts were simple enough to accept both changes. Went ahead and told it to do so and inspected the changes and manually tested endpoints/ran tests to verify nothing went wrong
+
+### Verification & Testing Method:
+
+* AI ran the full backend suite against a temporary `pgvector/pgvector:pg17` container with outbound network connections blocked: 406 tests passed. The collection import, library, play import batching and catalog refresh tests also passed when run on their own (67 tests).
+* AI ran Ruff lint and format, mypy, `uv lock --check`, `makemigrations --check` (no drift; #173's `tracking/0009` and this branch's `catalog/0004` coexist) and `lintmigrations` (0 erroneous migrations of 41). All passed.
+* No external APIs (BoardGameGeek) were called.
