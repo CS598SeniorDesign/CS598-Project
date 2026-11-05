@@ -54,7 +54,22 @@ MAXIMUM_REQUEST_SLOT_WAIT_SECONDS = 30
 
 
 class BoardGameGeekUnavailableError(Exception):
-    """BGG could not be reached, refused the request, or kept asking QuestLog to slow down or retry later."""
+    """BGG could not be reached, refused the request, or kept asking QuestLog to slow down or retry later.
+
+    :ivar status_code: BGG's last HTTP status, or None when no response arrived (connection failure, timeout, or no
+        free request slot). Lets callers that retry later, such as Celery tasks, tell a temporary problem (None, 202,
+        429, 5xx) from one that will not go away (e.g. 404).
+    """
+
+    def __init__(self, message: str, *, status_code: int | None = None) -> None:
+        """
+        :param message: What went wrong.
+        :type message: str
+        :param status_code: BGG's last HTTP status, if it answered.
+        :type status_code: int | None
+        """
+        super().__init__(message)
+        self.status_code = status_code
 
 
 class BoardGameGeekMalformedResponseError(Exception):
@@ -172,6 +187,31 @@ def fetch_plays_page(bgg_username: str, page: int) -> Element:
     return _request_xml("plays", {"username": bgg_username, "page": page})
 
 
+def fetch_collection(bgg_username: str) -> Element:
+    """
+    Fetch the board games in a BGG user's collection, with their owned/wishlist status and play counts.
+
+    BGG answers HTTP 202 while it prepares a collection it has not built recently; _request_xml retries that a few
+    times, and raises BoardGameGeekUnavailableError with ``status_code=202`` if BGG is still preparing it. Expansions
+    are excluded (they would otherwise be listed under the boardgame subtype too).
+
+    An unknown username is answered with HTTP 200 and an ``<errors>`` document, which is returned as is for the caller
+    to check.
+
+    :param bgg_username: The BoardGameGeek username. Sent as a query parameter, so it is URL-encoded.
+    :type bgg_username: str
+    :returns: The ``<items>`` root element (or ``<errors>``).
+    :rtype: xml.etree.ElementTree.Element
+    :raises BoardGameGeekUnavailableError: If the request fails or BGG is still preparing the collection.
+    :raises BoardGameGeekMalformedResponseError: If the response cannot be parsed.
+    """
+
+    return _request_xml(
+        "collection",
+        {"username": bgg_username, "subtype": BOARD_GAME_ITEM_TYPE, "excludesubtype": EXPANSION_ITEM_TYPE},
+    )
+
+
 def _request_xml(endpoint: str, parameters: dict[str, str | int]) -> Element:
     """
     Send one GET request to a BGG XML API2 endpoint and parse the response, retrying when BGG asks for it.
@@ -201,14 +241,18 @@ def _request_xml(endpoint: str, parameters: dict[str, str | int]) -> Element:
             return _parse_xml(response.content, endpoint)
 
         if response.status_code not in RETRYABLE_STATUS_CODES:
-            raise BoardGameGeekUnavailableError(f"BGG /{endpoint} returned HTTP {response.status_code}.")
+            raise BoardGameGeekUnavailableError(
+                f"BGG /{endpoint} returned HTTP {response.status_code}.", status_code=response.status_code
+            )
 
         if attempt < MAXIMUM_ATTEMPTS:
             delay = _retry_delay_seconds(response, attempt)
             logger.info("BGG /%s returned HTTP %s; retrying in %s s.", endpoint, response.status_code, delay)
             time.sleep(delay)
 
-    raise BoardGameGeekUnavailableError(f"BGG /{endpoint} was still unavailable after {MAXIMUM_ATTEMPTS} attempts.")
+    raise BoardGameGeekUnavailableError(
+        f"BGG /{endpoint} was still unavailable after {MAXIMUM_ATTEMPTS} attempts.", status_code=response.status_code
+    )
 
 
 class _UnsuccessfulStatusError(Exception):

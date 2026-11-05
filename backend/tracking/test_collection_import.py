@@ -1,11 +1,12 @@
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
-from defusedxml import ElementTree
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.test import TestCase, override_settings
 
+from catalog import bgg_client
+from catalog.bgg_test_responses import bgg_response
 from catalog.models import BoardGame
 from profiles.models import Profile
 from tracking.models import LibraryItem
@@ -40,9 +41,12 @@ def collection_item(bgg_id, name, *, own=0, wishlist=0, priority=None, numplays=
 
 def collection_response(*items, status_code=200):
     body = f'<items totalitems="{len(items)}">{"".join(items)}</items>'
-    return Mock(status_code=status_code, content=body.encode())
+    return bgg_response(body.encode(), status_code=status_code)
 
 
+# Requests go through catalog.bgg_client: its HTTP call and retry waits are replaced, and request spacing is off.
+@override_settings(CACHES=LOCAL_MEMORY_CACHE, BGG_MINIMUM_SECONDS_BETWEEN_REQUESTS=0)
+@patch("catalog.bgg_client.time.sleep")
 class ImportBggCollectionTest(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(email="player@example.com", password="S3cure-pass!x")
@@ -54,8 +58,8 @@ class ImportBggCollectionTest(TestCase):
     def entry(self, game):
         return LibraryItem.objects.get(user=self.user, game=game)
 
-    @patch("tracking.utils.requests.get")
-    def test_adds_owned_and_wishlisted_games(self, get):
+    @patch("catalog.bgg_client.requests.get")
+    def test_adds_owned_and_wishlisted_games(self, get, sleep):
         get.return_value = collection_response(
             collection_item(13, "Catan", own=1, numplays=4),
             collection_item(230802, "Azul", wishlist=1, priority=2),
@@ -73,8 +77,8 @@ class ImportBggCollectionTest(TestCase):
         self.assertEqual(params["username"], "boardgamer")
         self.assertEqual(params["excludesubtype"], "boardgameexpansion")
 
-    @patch("tracking.utils.requests.get")
-    def test_only_adds_information_to_existing_entries(self, get):
+    @patch("catalog.bgg_client.requests.get")
+    def test_only_adds_information_to_existing_entries(self, get, sleep):
         LibraryItem.add_for_user(self.user, self.catan, ownership=LibraryItem.WISHLISTED, wishlist_priority=4)
         LibraryItem.add_for_user(self.user, self.azul, ownership=LibraryItem.WISHLISTED)
         LibraryItem.add_for_user(self.user, self.brass, house_rules="Our rules")
@@ -94,8 +98,8 @@ class ImportBggCollectionTest(TestCase):
         brass = self.entry(self.brass)
         self.assertEqual((brass.ownership, brass.wishlist_priority, brass.house_rules), ("OWNED", None, "Our rules"))
 
-    @patch("tracking.utils.requests.get")
-    def test_games_removed_in_questlog_are_not_re_added(self, get):
+    @patch("catalog.bgg_client.requests.get")
+    def test_games_removed_in_questlog_are_not_re_added(self, get, sleep):
         LibraryItem.add_for_user(self.user, self.wingspan).soft_delete()
         get.return_value = collection_response(collection_item(266192, "Wingspan", own=1))
 
@@ -105,8 +109,8 @@ class ImportBggCollectionTest(TestCase):
         self.assertFalse(LibraryItem.objects.filter(user=self.user, game=self.wingspan).exists())
 
     @patch("tracking.utils.get_existing_board_game")
-    @patch("tracking.utils.requests.get")
-    def test_fetches_games_missing_from_the_catalog(self, get, get_existing_board_game):
+    @patch("catalog.bgg_client.requests.get")
+    def test_fetches_games_missing_from_the_catalog(self, get, get_existing_board_game, sleep):
         new_game = BoardGame.objects.create(bgg_id=174430, primary_name="Gloomhaven")
         get_existing_board_game.return_value = new_game
         get.return_value = collection_response(collection_item(174430, "Gloomhaven", own=1))
@@ -116,30 +120,43 @@ class ImportBggCollectionTest(TestCase):
         get_existing_board_game.assert_called_once_with(174430, "Gloomhaven")
         self.assertTrue(LibraryItem.objects.filter(user=self.user, game=new_game).exists())
 
-    @patch("tracking.utils.requests.get")
-    def test_bgg_still_preparing_the_collection(self, get):
-        get.return_value = Mock(status_code=202, content=b"<message>Your request has been accepted</message>")
+    @patch("catalog.bgg_client.requests.get")
+    def test_bgg_still_preparing_the_collection(self, get, sleep):
+        get.return_value = bgg_response(b"<message>Your request has been accepted</message>", status_code=202)
 
         with pytest.raises(BggCollectionNotReadyError):
             import_bgg_collection(self.user, "boardgamer")
 
-    @patch("tracking.utils.requests.get")
-    def test_bgg_error_documents(self, get):
-        get.return_value = Mock(
-            status_code=200, content=b"<errors><error><message>Invalid username specified</message></error></errors>"
+        # The BGG client retried briefly before giving up; the Celery task retries for longer.
+        self.assertEqual(get.call_count, bgg_client.MAXIMUM_ATTEMPTS)
+
+    @patch("catalog.bgg_client.requests.get")
+    def test_other_bgg_failures_keep_their_status(self, get, sleep):
+        get.return_value = bgg_response(b"Not found", status_code=404)
+
+        with pytest.raises(bgg_client.BoardGameGeekUnavailableError) as raised:
+            import_bgg_collection(self.user, "boardgamer")
+
+        self.assertEqual(raised.value.status_code, 404)
+        get.assert_called_once()
+
+    @patch("catalog.bgg_client.requests.get")
+    def test_bgg_error_documents(self, get, sleep):
+        get.return_value = bgg_response(
+            b"<errors><error><message>Invalid username specified</message></error></errors>"
         )
 
         with pytest.raises(BggCollectionError, match="Invalid username"):
             import_bgg_collection(self.user, "nobody")
 
-    @patch("tracking.utils.requests.get")
-    def test_malformed_xml(self, get):
-        get.return_value = Mock(status_code=200, content=b"<items>")
+    @patch("catalog.bgg_client.requests.get")
+    def test_malformed_xml(self, get, sleep):
+        get.return_value = bgg_response(b"<items>")
 
-        with pytest.raises(ElementTree.ParseError):
+        with pytest.raises(bgg_client.BoardGameGeekMalformedResponseError):
             import_bgg_collection(self.user, "boardgamer")
 
-    def test_messages(self):
+    def test_messages(self, sleep):
         self.assertIn("already matches", imported_collection_message(CollectionImportResult(skipped=3)))
         self.assertEqual(
             imported_collection_message(CollectionImportResult(added=2, updated=1)),

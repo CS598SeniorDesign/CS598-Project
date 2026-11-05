@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING
 
 from django.db import transaction
 
-from catalog.utils import get_existing_board_game
 from catalog import bgg_client
+from catalog.utils import get_existing_board_game
 from core.utils import parse_optional_integer
 from tracking.models import LibraryItem, LibraryItemAlreadyExistsError, PlaySession
 
@@ -38,8 +38,9 @@ def import_bgg_plays(user: User, bgg_username: str) -> int:
     :type bgg_username: str
     :returns: The number of plays imported.
     :rtype: int
-    :raises requests.RequestException: If BGG cannot be reached or returns an error status. Worth retrying.
-    :raises defusedxml.ElementTree.ParseError: If BGG returns malformed XML.
+    :raises catalog.bgg_client.BoardGameGeekUnavailableError: If BGG cannot be reached or refuses the request. Its
+        ``status_code`` says whether retrying later can help.
+    :raises catalog.bgg_client.BoardGameGeekMalformedResponseError: If BGG's response cannot be parsed.
     """
 
     current_page: int = 1
@@ -72,26 +73,11 @@ def fetch_bgg_plays(user: User, bgg_username: str) -> tuple[bool, str]:
     :rtype: tuple[bool, str]
     """
 
-    current_page: int = 1
-    total_processed_plays: int = 0
-    total_plays_to_fetch: int = 1
-
     try:
-        while total_processed_plays < total_plays_to_fetch:
-            page_total, processed_count = _sync_plays_page(user, bgg_username, current_page)
-
-            if processed_count == 0 and total_processed_plays == 0:
-                return True, "No plays found for this user."
-
-            total_plays_to_fetch = page_total
-            total_processed_plays += processed_count
-            current_page += 1
-
-        return True, f"Successfully imported {total_processed_plays} plays."
-
+        imported = import_bgg_plays(user, bgg_username)
     except bgg_client.BoardGameGeekUnavailableError as exception:
         logger.warning("BGG API fetch failed during play sync: %s", exception)
-        return False, "Connection to BGG failed. Please try again later."
+        return False, CONNECTION_FAILED_MESSAGE
     except bgg_client.BoardGameGeekMalformedResponseError as exception:
         logger.error("Malformed BGG XML during play sync: %s", exception)
         return False, INTERNAL_ERROR_MESSAGE
@@ -146,17 +132,13 @@ def _sync_plays_page(user: User, bgg_username: str, page: int) -> tuple[int, int
 
 # --- BGG collection import ------------------------------------------------------------------------------------------
 
-COLLECTION_URL = "https://boardgamegeek.com/xmlapi2/collection"
-# Expansions are listed under the boardgame subtype too unless excluded explicitly.
-COLLECTION_PARAMS = {"subtype": "boardgame", "excludesubtype": "boardgameexpansion"}
-
 ADDED = "added"
 UPDATED = "updated"
 SKIPPED = "skipped"
 
 
 class BggCollectionNotReadyError(Exception):
-    """BGG accepted the collection request but is still preparing it (HTTP 202). Ask again after a short wait."""
+    """BGG is still preparing the collection (HTTP 202, even after the BGG client's own retries). Ask again later."""
 
 
 class BggCollectionError(Exception):
@@ -201,7 +183,8 @@ def import_bgg_collection(user: User, bgg_username: str) -> CollectionImportResu
     * Games the user removed in QuestLog are not added back.
 
     Games missing from the catalog are fetched from BGG, so a large first import can take a while; it runs in a Celery
-    worker (tracking.tasks.sync_bgg_collection).
+    worker (tracking.tasks.sync_bgg_collection). Every BGG request goes through catalog.bgg_client, which spaces
+    requests out and retries briefly when BGG asks it to.
 
     :param user: The Django user the library belongs to.
     :type user: users.models.User
@@ -211,23 +194,17 @@ def import_bgg_collection(user: User, bgg_username: str) -> CollectionImportResu
     :rtype: tracking.utils.CollectionImportResult
     :raises BggCollectionNotReadyError: If BGG is still preparing the collection.
     :raises BggCollectionError: If BGG reports an error, such as an unknown username.
-    :raises requests.RequestException: If BGG cannot be reached or returns an error status.
-    :raises defusedxml.ElementTree.ParseError: If BGG returns malformed XML.
+    :raises catalog.bgg_client.BoardGameGeekUnavailableError: If BGG cannot be reached or refuses the request.
+    :raises catalog.bgg_client.BoardGameGeekMalformedResponseError: If BGG's response cannot be parsed.
     """
 
-    with observe_external_call("bgg", "collection"):
-        response = requests.get(
-            url=COLLECTION_URL,
-            params={"username": bgg_username, **COLLECTION_PARAMS},
-            headers=REQUEST_HEADERS,
-            timeout=30,
-        )
-        response.raise_for_status()
+    try:
+        root: Element = bgg_client.fetch_collection(bgg_username)
+    except bgg_client.BoardGameGeekUnavailableError as exception:
+        if exception.status_code == 202:
+            raise BggCollectionNotReadyError("BGG is still preparing the collection.") from exception
+        raise
 
-    if response.status_code == 202:
-        raise BggCollectionNotReadyError("BGG is preparing the collection.")
-
-    root: Element = ElementTree.fromstring(response.content)
     if root.tag == "errors":
         raise BggCollectionError(root.findtext("error/message") or "BGG returned an error.")
 

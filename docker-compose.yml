@@ -86,7 +86,7 @@ services:
     container_name: questlog-celery-worker
     command: ["celery", "-A", "config", "worker", "--loglevel=INFO", "--concurrency=2"]
     env_file:
-      - .env
+      - ${DOCKER_ENV_FILE:-.env}
     environment:
       RUN_MIGRATIONS: "false"
     healthcheck:
@@ -116,7 +116,7 @@ services:
     # The schedule state file lives outside the bind-mounted source tree. Run exactly one beat, or tasks are queued twice.
     command: ["celery", "-A", "config", "beat", "--loglevel=INFO", "--schedule=/tmp/celerybeat-schedule"]
     env_file:
-      - .env
+      - ${DOCKER_ENV_FILE:-.env}
     environment:
       RUN_MIGRATIONS: "false"
     depends_on:
@@ -138,7 +138,7 @@ services:
     container_name: questlog-flower
     command: ["celery", "-A", "config", "flower", "--port=5555"]
     env_file:
-      - .env
+      - ${DOCKER_ENV_FILE:-.env}
     environment:
       RUN_MIGRATIONS: "false"
     ports:

@@ -1,10 +1,10 @@
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
-import requests
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.test import TestCase, override_settings
 
+from catalog.bgg_client import BoardGameGeekUnavailableError
 from profiles.models import Profile
 from tracking.tasks import USER_LOCK_KEY, sync_bgg_plays
 
@@ -15,8 +15,9 @@ LOCAL_MEMORY_CACHE = {
 TASK_ID = "11111111-1111-1111-1111-111111111111"
 
 
-def http_error(status_code):
-    return requests.HTTPError(f"{status_code} error", response=Mock(status_code=status_code))
+def bgg_unavailable(status_code=None):
+    """The BGG client's error: status_code None means no response arrived (e.g. a timeout)."""
+    return BoardGameGeekUnavailableError(f"BGG returned {status_code}", status_code=status_code)
 
 
 @override_settings(CACHES=LOCAL_MEMORY_CACHE)
@@ -45,14 +46,14 @@ class SyncBggPlaysTaskTests(TestCase):
 
     @patch("tracking.tasks.import_bgg_plays")
     def test_retries_when_bgg_is_down_or_rate_limiting(self, import_plays):
-        import_plays.side_effect = [requests.ConnectionError("down"), http_error(429), 3]
+        import_plays.side_effect = [bgg_unavailable(), bgg_unavailable(429), 3]
 
         result = self.run_task()
 
         assert result["success"] is True
         assert import_plays.call_count == 3
 
-    @patch("tracking.tasks.import_bgg_plays", side_effect=requests.Timeout("slow"))
+    @patch("tracking.tasks.import_bgg_plays", side_effect=bgg_unavailable())
     def test_gives_up_after_the_last_retry(self, import_plays):
         result = self.run_task()
 
@@ -64,7 +65,7 @@ class SyncBggPlaysTaskTests(TestCase):
         assert import_plays.call_count == 4
         assert cache.get(self.lock_key) is None
 
-    @patch("tracking.tasks.import_bgg_plays", side_effect=http_error(404))
+    @patch("tracking.tasks.import_bgg_plays", side_effect=bgg_unavailable(404))
     def test_client_errors_are_not_retried(self, import_plays):
         result = self.run_task()
 

@@ -27,15 +27,14 @@ from dataclasses import asdict, dataclass
 from datetime import timedelta
 from typing import TYPE_CHECKING, Any
 
-import requests
 from celery import shared_task
 from celery.result import AsyncResult
-from defusedxml import ElementTree
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.utils import timezone
 
+from catalog import bgg_client
 from profiles.models import Profile
 from tracking.models import LibraryItem
 from tracking.utils import (
@@ -59,7 +58,8 @@ logger = logging.getLogger(__name__)
 # Retries for BGG outages and rate limiting: 1, 2 and 4 minutes apart.
 MAX_RETRIES = 3
 RETRY_BACKOFF_SECONDS = 60
-RETRYABLE_HTTP_STATUSES = frozenset({429, 500, 502, 503, 504})
+# 202 means BGG queued the request and is still working on it.
+RETRYABLE_HTTP_STATUSES = frozenset({202, 429, 500, 502, 503, 504})
 # BGG answers a collection request with 202 until it has prepared the collection, usually within a minute. Each retry
 # waits a little longer: 15, 30, 45 ... seconds, about 9 minutes in all.
 COLLECTION_MAX_RETRIES = 8
@@ -214,7 +214,7 @@ def _run_import(task: Task, kind: ImportKind, user_id: str, run: ImportRun) -> d
         counts, message = run(user, bgg_username)
     except BggCollectionNotReadyError as exception:
         return _retry_or_fail(task, kind, user_id, exception, _not_ready_delay(task.request.retries))
-    except requests.RequestException as exception:
+    except bgg_client.BoardGameGeekUnavailableError as exception:
         if not _is_retryable(exception):
             logger.warning("BGG %s import failed: %s", kind.name, exception)
             return _finish(kind, user_id, task_id, success=False, detail=CONNECTION_FAILED_MESSAGE)
@@ -222,7 +222,7 @@ def _run_import(task: Task, kind: ImportKind, user_id: str, run: ImportRun) -> d
     except BggCollectionError as exception:
         logger.warning("BGG rejected the %s import: %s", kind.name, exception)
         return _finish(kind, user_id, task_id, success=False, detail=COLLECTION_NOT_FOUND_MESSAGE)
-    except ElementTree.ParseError as exception:
+    except bgg_client.BoardGameGeekMalformedResponseError as exception:
         logger.error("Malformed BGG XML during %s import: %s", kind.name, exception)
         return _finish(kind, user_id, task_id, success=False, detail=INTERNAL_ERROR_MESSAGE)
     except Exception:
@@ -346,17 +346,17 @@ def _linked_bgg_username(user: User) -> str:
     return (Profile.objects.filter(user=user).values_list("bgg_username", flat=True).first() or "").strip()
 
 
-def _is_retryable(exception: requests.RequestException) -> bool:
+def _is_retryable(exception: bgg_client.BoardGameGeekUnavailableError) -> bool:
     """
-    Whether a failed BGG request is worth retrying: connection problems, timeouts, rate limiting and server errors.
+    Whether a failed BGG request is worth retrying later: connection problems, timeouts, rate limiting and server
+    errors. The BGG client has already retried briefly; these retries wait minutes instead.
 
     :param exception: The failure.
     :returns: False for client errors such as an unknown username, which would fail again.
     """
-    response = getattr(exception, "response", None)
-    if response is None:
+    if exception.status_code is None:
         return True
-    return response.status_code in RETRYABLE_HTTP_STATUSES
+    return exception.status_code in RETRYABLE_HTTP_STATUSES
 
 
 def _retry_delay(retries: int) -> int:
