@@ -35,6 +35,17 @@ class PlayerSearchRateThrottle(UserRateThrottle):
     scope = "player-search"
 
 
+class FriendRequestRateThrottle(UserRateThrottle):
+    """
+    Throttle for sending friend requests, keyed per user.
+
+    Uses the "friend-requests" rate from ``REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]``: plenty for adding friends, but
+    not for spamming every player in the directory.
+    """
+
+    scope = "friend-requests"
+
+
 class RecommendationRateThrottle(ScopedRateThrottle):
     """Throttle for the recommendation endpoint, which can train models on a cache miss.
     Uses the "recommendations" rate from REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"].

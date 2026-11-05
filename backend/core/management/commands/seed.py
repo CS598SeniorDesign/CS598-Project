@@ -9,7 +9,8 @@ from django.utils import timezone
 from faker import Faker
 
 from catalog.models import BoardGame, Category, Mechanic
-from profiles.models import Profile
+from community.models import EventRSVP, FriendRequest, GameEvent
+from profiles.models import GameGroup, Profile
 from recommendations.models import RecommendationProfile
 from tracking.models import LibraryItem, PlaySession, Rating, SessionPlayer
 from tracking.services import PlaySessionDetails, PlaySessionService, SessionPlayerDetails
@@ -58,6 +59,8 @@ class Command(BaseCommand):
         self.stdout.write("Clearing existing records...")
         User.objects.all().delete()
         BoardGame.objects.all().delete()
+        # Groups outlive their creator (created_by is set to null), so they are cleared separately.
+        GameGroup.objects.all().delete()
 
         self.stdout.write("Seeding Board Games...")
         categories = [Category.objects.get_or_create(bgg_id=bgg_id, name=name)[0] for bgg_id, name in SEED_CATEGORIES]
@@ -138,9 +141,61 @@ class Command(BaseCommand):
         self.stdout.write("Seeding play sessions for the demonstration login...")
         self._seed_demonstration_play_sessions(fake, demonstration_user, games)
 
+        self.stdout.write("Seeding game groups, events and friend requests for the demonstration login...")
+        self._seed_community(demonstration_profile, seeded_profiles, games)
+
         self._seed_superuser()
 
         self.stdout.write(self.style.SUCCESS("Successfully seeded database with synthetic data!"))
+
+    @staticmethod
+    def _seed_community(demonstration_profile: Profile, profiles: list[Profile], games: list[BoardGame]) -> None:
+        """
+        Give the demonstration login a game group with some friends, upcoming game nights, and a friend request to
+        answer, so every part of the community page has something to show.
+
+        :param demonstration_profile: The demonstration login's profile.
+        :type demonstration_profile: profiles.models.Profile
+        :param profiles: The other seeded users' profiles.
+        :type profiles: list[profiles.models.Profile]
+        :param games: The seeded games.
+        :type games: list[catalog.models.BoardGame]
+        :returns: None
+        """
+        demonstration_user = demonstration_profile.user
+        friends = list(demonstration_profile.friends.select_related("user"))
+        group_members = [friend.user for friend in friends[:3]]
+
+        group = GameGroup.objects.create(
+            name="Weeknight Gamers", description="Board games every other Thursday.", created_by=demonstration_user
+        )
+        group.members.add(demonstration_user, *group_members)
+
+        now = timezone.now()
+        group_night = GameEvent.objects.create(
+            title="Thursday Game Night",
+            description="Bring snacks!",
+            starts_at=now + timedelta(days=3),
+            location="Game Café",
+            game=random.choice(games),  # NOSONAR (S2245)
+            group=group,
+            host=demonstration_user,
+        )
+        EventRSVP.objects.create(event=group_night, user=demonstration_user, status=EventRSVP.GOING)
+        for member, answer in zip(group_members, [EventRSVP.GOING, EventRSVP.MAYBE, EventRSVP.NOT_GOING], strict=False):
+            EventRSVP.objects.create(event=group_night, user=member, status=answer)
+
+        if friends:
+            host = friends[0].user
+            friends_night = GameEvent.objects.create(
+                title="Weekend Board Game Marathon", starts_at=now + timedelta(days=10), location="Home", host=host
+            )
+            EventRSVP.objects.create(event=friends_night, user=host, status=EventRSVP.GOING)
+
+        friend_ids = {friend.pk for friend in friends}
+        requester = next((profile for profile in profiles if profile.pk not in friend_ids), None)
+        if requester is not None:
+            FriendRequest.objects.create(from_user=requester.user, to_user=demonstration_user)
 
     @staticmethod
     def _seed_friendships(profiles: list[Profile]) -> None:
