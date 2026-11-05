@@ -54,7 +54,26 @@ MAXIMUM_REQUEST_SLOT_WAIT_SECONDS = 30
 
 
 class BoardGameGeekUnavailableError(Exception):
-    """BGG could not be reached, refused the request, or kept asking QuestLog to slow down or retry later."""
+    """
+    BGG could not be reached, refused the request, or kept asking QuestLog to slow down or retry later.
+
+    ``is_retryable`` tells background tasks whether trying again later could succeed: True for timeouts, connection
+    failures, rate limiting, and server errors; False when BGG rejected the request itself (for example, an unknown
+    username), which would fail the same way again.
+    """
+
+    def __init__(self, message: str, *, is_retryable: bool = True, status_code: int | None = None) -> None:
+        """
+        :param message: What went wrong, for logs.
+        :type message: str
+        :param is_retryable: Whether the same request could succeed if tried again later.
+        :type is_retryable: bool
+        :param status_code: The HTTP status BGG last answered with, or None if no response was received.
+        :type status_code: int | None
+        """
+        super().__init__(message)
+        self.is_retryable = is_retryable
+        self.status_code = status_code
 
 
 class BoardGameGeekMalformedResponseError(Exception):
@@ -201,14 +220,20 @@ def _request_xml(endpoint: str, parameters: dict[str, str | int]) -> Element:
             return _parse_xml(response.content, endpoint)
 
         if response.status_code not in RETRYABLE_STATUS_CODES:
-            raise BoardGameGeekUnavailableError(f"BGG /{endpoint} returned HTTP {response.status_code}.")
+            raise BoardGameGeekUnavailableError(
+                f"BGG /{endpoint} returned HTTP {response.status_code}.",
+                is_retryable=False,
+                status_code=response.status_code,
+            )
 
         if attempt < MAXIMUM_ATTEMPTS:
             delay = _retry_delay_seconds(response, attempt)
             logger.info("BGG /%s returned HTTP %s; retrying in %s s.", endpoint, response.status_code, delay)
             time.sleep(delay)
 
-    raise BoardGameGeekUnavailableError(f"BGG /{endpoint} was still unavailable after {MAXIMUM_ATTEMPTS} attempts.")
+    raise BoardGameGeekUnavailableError(
+        f"BGG /{endpoint} was still unavailable after {MAXIMUM_ATTEMPTS} attempts.", status_code=response.status_code
+    )
 
 
 class _UnsuccessfulStatusError(Exception):
