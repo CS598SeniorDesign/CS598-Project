@@ -36,10 +36,6 @@ function getSignupErrorMessage(status: number, result?: AuthResponse): string {
     return "Unable to create your account. Please check your information and then try again.";
   }
 
-  if (status === 401) {
-    return "An account with this email already exists.";
-  }
-
   if (status === 403) {
     return "Signup was blocked by a security check. Please refresh and then try agian.";
   }
@@ -66,17 +62,9 @@ export default function SignupPage() {
     setIsLoading(true);
 
     try {
-      await fetch("/csrf/", {
-        credentials: "same-origin",
-        cache: "no-store",
-      });
-
       const sessionResponse = await fetch("/_allauth/browser/v1/auth/session", {
         credentials: "same-origin",
         cache: "no-store",
-        headers: {
-          Accept: "application/json",
-        },
       });
 
       if (!sessionResponse.ok && sessionResponse.status !== 401) {
@@ -95,7 +83,6 @@ export default function SignupPage() {
         method: "POST",
         credentials: "same-origin",
         headers: {
-          Accept: "application/json",
           "Content-Type": "application/json",
           "X-CSRFToken": csrfToken,
         },
@@ -111,17 +98,19 @@ export default function SignupPage() {
         (flow) => flow.id === "verify_email" && flow.is_pending === true,
       );
 
+      if (verificationPending) {
+        console.log("Privacy setting:", privacy);
+        setSignUpComplete(true);
+      }
+
       if (!response.ok) {
         setError(getSignupErrorMessage(response.status, result));
         return;
       }
-
-      if (verificationPending) {
-        console.log("Privacy setting:", privacy);
-      }
-
       // Note: privacy not sent to auth during account creation, as seen as profile preference.
       console.log("Selected privacy setting:", privacy);
+      setSignUpComplete(true);
+
       setSignUpComplete(true);
     } catch (err) {
       console.error("QuestLog signup error:", err);
@@ -192,19 +181,16 @@ export default function SignupPage() {
             disabled={isLoading}
           />
 
-          <label className="flex flex-col gap-2">
-            <span className="sr-only">Privacy</span>
-            <select
-              value={privacy}
-              onChange={(event) => setPrivacy(event.target.value)}
-              className="p-3 rounded bg-gray-800 border border-gray-700"
-              disabled={isLoading}
-            >
-              <option value="public">Public</option>
-              <option value="friends">Friends Only</option>
-              <option value="private">Private</option>
-            </select>
-          </label>
+          <select
+            value={privacy}
+            onChange={(event) => setPrivacy(event.target.value)}
+            className="p-3 rounded bg-gray-800 border border-gray-700"
+            disabled={isLoading}
+          >
+            <option value="public">Public</option>
+            <option value="friends">Friends Only</option>
+            <option value="private">Private</option>
+          </select>
 
           {error && (
             <p role="alert" className="text-sm text-red-400">
@@ -223,7 +209,7 @@ export default function SignupPage() {
 
         <p className="text-sm text-gray-400 mt-6 text-center">
           Already have an account?{" "}
-          <a href="/login" className="text-white underline">
+          <a href="/login" className="text-indigo-400 hover:underline">
             Login
           </a>
         </p>
