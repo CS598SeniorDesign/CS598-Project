@@ -362,9 +362,9 @@ REST_FRAMEWORK = {
         "anon": "60/min",
         "user": "300/min",
         "bgg-sync": "3/min",
+        "bgg-search": "30/min",
         "player-search": "60/min",
         "friend-requests": "30/hour",
-        "bgg-search": "30/min",
         "recommendations": "60/min",
     },
 }
