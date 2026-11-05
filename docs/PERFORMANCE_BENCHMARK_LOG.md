@@ -22,11 +22,35 @@ The executable scenario is [health-load.js](../performance/k6/health-load.js).
 
 ## Execution
 
-Start the backend stack first, then run:
+Start the backend stack first, verify both health endpoints, then run:
 
 ```bash
 k6 run --summary-export=performance/k6/results.json performance/k6/health-load.js
 ```
+
+### Windows with Docker Compose
+
+From the repository root, start the services required by the benchmark:
+
+```powershell
+docker compose up -d db redis backend
+```
+
+Wait for the backend to finish starting, then verify both endpoints:
+
+```powershell
+curl.exe http://localhost:8000/health/
+curl.exe http://localhost:8000/ready/
+```
+
+Both requests should return a successful response before running k6:
+
+```powershell
+k6 run --summary-export=performance/k6/results.json performance/k6/health-load.js
+```
+
+Use `curl.exe` rather than `curl` in PowerShell because `curl` is an alias for
+PowerShell's `Invoke-WebRequest`.
 
 For a different target or workload:
 

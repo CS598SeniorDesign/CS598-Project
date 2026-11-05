@@ -638,6 +638,40 @@ I certify as Team Lead that all entries above accurately represent AI usage with
 
 ---
 
+## Entry 18: Prototype 3 — README Documentation for Test Pipelines
+
+* **Date:** November 5, 2026
+* **Team Member:** Sydney Epke (`@vortex278`)
+* **Tool Used:** GitHub Copilot (Copilot SDK in VS Code)
+* **Associated Git Issue:** N/A
+* **Associated Feature Branch:** docs/e2e_benchmarking_accessibility_audit_docs
+
+### Exact Prompt Submitted:
+
+> "can you document the process for benchmark testing into the ReadMe so other devs can replicate the process?"
+
+> "can you do the same for the e2e pipeline and the accessibility checks?"
+
+> "can you add to the AI Log file that I used AI to generate sections on the ReadMe for documentation using the template given in that file?"
+
+### AI Output Summary & Code Generated:
+
+* Added reproducible README instructions for running the k6 performance benchmark, including Docker service startup, health and readiness checks, result export, and configurable workload variables.
+* Added README instructions for the frontend Playwright E2E pipeline and axe-core accessibility checks, including dependency installation, browser installation, headed execution, CI artifacts, and related documentation links.
+
+### Human Review, Refactoring & Modifications Made:
+
+* Reviewed the generated README sections for accuracy against the existing package scripts, Docker Compose configuration, CI workflow, and test documentation.
+* Confirmed that the instructions distinguish PowerShell's `curl.exe` command from its `curl` alias.
+
+### Verification & Testing Method:
+
+* Verified the documented k6 workflow against successful local `/health/` and `/ready/` requests and a passing benchmark run.
+* Verified the E2E and accessibility commands against `frontend/package.json`, `.github/workflows/ci.yml`, `docs/QA_TEST_EXECUTION_LOG.md`, and `docs/ACCESSIBILITY_AUDIT_LOG.md`.
+* Documentation-only changes did not require additional automated tests.
+
+---
+
 ## Audit Certification
 
 I certify as Team Lead that all entries above accurately represent AI usage within this project phase, all prompts have been recorded, and all code has been validated by human review and automated testing.

@@ -6,6 +6,12 @@ QuestLog is a web-based platform designed to help board game enthusiasts manage 
 
 - [Architecture Overview](#architecture-overview)
 - [Repository Structure](#repository-structure)
+- [Getting Started](#getting-started)
+- [Running Tests & Linting](#running-tests--linting)
+- [Running E2E and Accessibility Checks](#running-e2e-and-accessibility-checks)
+- [Running Performance Benchmarks](#running-performance-benchmarks)
+- [Production Builds](#production-builds)
+- [Further Documentation](#further-documentation)
 
 ## Architecture Overview
 
@@ -156,10 +162,44 @@ redis-cli -h localhost -p 6379 -a "$REDIS_PASSWORD"
 Playwright starts the Django, PostgreSQL, and Redis services with Docker Compose, applies migrations, and loads deterministic E2E data before running the browser tests. Start Docker Desktop first, then run:
 
 ```bash
+npm ci --prefix frontend
+npx --prefix frontend playwright install --with-deps chromium
 npm run e2e --prefix frontend
 ```
 
 The E2E tests use real HTTP calls; they do not stub frontend API requests. The Docker-backed setup uses an isolated seed command and stops the backend services when the run finishes.
+
+For a visible browser run during local debugging:
+
+```bash
+npm run e2e:headed --prefix frontend
+```
+
+### Running E2E and Accessibility Checks
+
+The CI `frontend-e2e` job runs the desktop and mobile Playwright journeys,
+then runs the axe-core accessibility suite even when the E2E tests fail. To
+reproduce both checks locally from the repository root:
+
+```bash
+npm ci --prefix frontend
+npx --prefix frontend playwright install --with-deps chromium
+npm run e2e --prefix frontend
+npm run a11y --prefix frontend
+```
+
+The accessibility command runs
+`frontend/e2e/accessibility.spec.ts` against desktop Chromium and the iPhone 13
+Chromium emulation profile. It checks automated axe-core rules and selected
+keyboard behavior; manual keyboard and screen-reader review is still required.
+
+Playwright writes the HTML report to
+[`frontend/playwright-report/`](frontend/playwright-report/). CI uploads the
+report as `e2e-test-report`, the test output as `e2e-test-log`, and the
+accessibility output as `accessibility-audit-log`. See
+[`docs/QA_TEST_EXECUTION_LOG.md`](docs/QA_TEST_EXECUTION_LOG.md) and
+[`docs/ACCESSIBILITY_AUDIT_LOG.md`](docs/ACCESSIBILITY_AUDIT_LOG.md) for the
+covered journeys, audit criteria, and current results.
 
 **Django management commands:**
 
@@ -218,6 +258,47 @@ Pull requests also run `uv audit` against the locked Python environment and `npm
 
 See [`backend/README.md`](backend/README.md) for the full backend command reference, including running these natively (outside Docker) via `uv`.
 
+## Running Performance Benchmarks
+
+The k6 benchmark exercises the public Django liveness and readiness endpoints
+under concurrent load. Install [k6](https://grafana.com/docs/k6/latest/set-up/)
+before running it.
+
+From the repository root, start the services required by the benchmark:
+
+```powershell
+docker compose up -d db redis backend
+```
+
+Wait for the backend to finish starting, then verify that both endpoints
+respond successfully:
+
+```powershell
+curl.exe http://localhost:8000/health/
+curl.exe http://localhost:8000/ready/
+```
+
+Run the benchmark and export its summary:
+
+```powershell
+k6 run --summary-export=performance/k6/results.json performance/k6/health-load.js
+```
+
+The default workload uses 10 virtual users for 30 seconds and tests both
+endpoints. To customize the target or workload:
+
+```powershell
+$env:BASE_URL="http://localhost:8000"
+$env:VUS="25"
+$env:DURATION="2m"
+k6 run --summary-export=performance/k6/results.json performance/k6/health-load.js
+```
+
+Use `curl.exe` rather than `curl` in PowerShell because `curl` is an alias for
+PowerShell's `Invoke-WebRequest`. The detailed workload, thresholds, and
+recorded results are documented in
+[`docs/PERFORMANCE_BENCHMARK_LOG.md`](docs/PERFORMANCE_BENCHMARK_LOG.md).
+
 ## Production Builds
 
 Both Dockerfiles include a `production` build target in addition to `dev`:
@@ -239,5 +320,7 @@ The same `--target production` pattern applies to `./backend`.
 - [`backend/README.md`](backend/README.md) — backend setup, dependency management, app structure, and test commands
 - [`frontend/README.md`](frontend/README.md) — frontend setup, dependency management, app structure, and test commands
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — architecture, UML class diagrams, ERDs, sequence diagrams, and CI/CD pipeline
+- [`docs/PERFORMANCE_BENCHMARK_LOG.md`](docs/PERFORMANCE_BENCHMARK_LOG.md) — k6 workload, thresholds, execution, and results
 - [`docs/SECURITY_AUDIT.md`](docs/SECURITY_AUDIT.md) — OWASP Top 10 audit, dependency scanning policy, and open security items
+- [`.github/workflows/ci.yml`](.github/workflows/ci.yml) — GitHub Actions lint, test, security, and E2E pipelines
 - `AI_USAGE_LOG.md` — required log of all generative AI usage across this project
