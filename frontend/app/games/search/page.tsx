@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -12,6 +13,22 @@ interface Game {
   thumbnail_url: string | null;
   average_rating: number | string | null;
   bgg_rank: number | null;
+}
+
+interface BggSearchResult {
+  bgg_id: number;
+  item_type: string;
+  name: string;
+  is_primary_name: boolean;
+  year_published: number | null;
+  is_in_catalog: boolean;
+  thumbnail_url: string | null;
+}
+
+interface BggSearchResponse {
+  query: string;
+  total_matches: number;
+  results: BggSearchResult[];
 }
 
 interface SubmittedSearch {
@@ -31,24 +48,64 @@ function getCatalogError(status: number): string {
     return "Please log in to search for games.";
   }
 
+  if (status === 400) {
+    return "Please enter a valid game name between 2 and 100 characters.";
+  }
+
+  if (status === 429) {
+    return "Too many searches. Please wait a moment and try again.";
+  }
+
+  if (status === 502) {
+    return "BoardGameGeek is temporarily unavailable. Please try again later.";
+  }
+
   return "Unable to load games. Please try again.";
 }
 
-function parseGames(data: unknown): Game[] {
-  if (Array.isArray(data)) {
-    return data as Game[];
+function isBggSearchResult(value: unknown): value is BggSearchResult {
+  if (value === null || typeof value !== "object") {
+    return false;
   }
+
+  const game = value as Partial<BggSearchResult>;
+
+  return (
+    typeof game.bgg_id === "number" &&
+    typeof game.name === "string" &&
+    (game.year_published === null ||
+      typeof game.year_published === "number") &&
+    (game.thumbnail_url === null ||
+      typeof game.thumbnail_url === "string")
+  );
+}
+
+function parseBggSearchResponse(data: unknown): BggSearchResponse {
+  if (data === null || typeof data !== "object") {
+    throw new Error("Unexpected response from BGG search.");
+  }
+
+  const response = data as Partial<BggSearchResponse>;
 
   if (
-    data !== null &&
-    typeof data === "object" &&
-    "results" in data &&
-    Array.isArray(data.results)
+    !Array.isArray(response.results) ||
+    !response.results.every(isBggSearchResult)
   ) {
-    return data.results as Game[];
+    throw new Error("Unexpected response from BGG search.");
   }
 
-  throw new Error("Unexpected response from the game catalog.");
+  return response as BggSearchResponse;
+}
+
+function mapBggGame(game: BggSearchResult): Game {
+  return {
+    bgg_id: game.bgg_id,
+    primary_name: game.name,
+    year_published: game.year_published,
+    thumbnail_url: game.thumbnail_url,
+    average_rating: null,
+    bgg_rank: null,
+  };
 }
 
 async function fetchGames(
@@ -56,21 +113,26 @@ async function fetchGames(
   signal: AbortSignal,
 ): Promise<Game[]> {
   const params = new URLSearchParams({
-    search: searchQuery,
+    query: searchQuery,
   });
 
-  const response = await fetch(`/api/v1/games/?${params.toString()}`, {
-    credentials: "same-origin",
-    cache: "no-store",
-    signal,
-  });
+  const response = await fetch(
+    `/api/v1/games/search/?${params.toString()}`,
+    {
+      credentials: "same-origin",
+      cache: "no-store",
+      signal,
+    },
+  );
 
   if (!response.ok) {
     throw new Error(getCatalogError(response.status));
   }
 
   const data: unknown = await response.json();
-  return parseGames(data);
+  const searchResponse = parseBggSearchResponse(data);
+
+  return searchResponse.results.map(mapBggGame);
 }
 
 function GameCard({ game }: { game: Game }) {
@@ -96,7 +158,9 @@ function GameCard({ game }: { game: Game }) {
         </div>
       )}
 
-      <h2 className="text-lg font-semibold">{game.primary_name}</h2>
+      <h2 className="text-lg font-semibold">
+        {game.primary_name}
+      </h2>
 
       <p className="text-sm text-gray-400">
         {game.year_published ?? "Year unknown"}
@@ -123,16 +187,21 @@ function GameResults({
         <p className="text-xl font-semibold text-gray-200">
           Ready to find your next favorite game?
         </p>
+
         <p className="mt-3 text-gray-400">
-          Search for a board game to explore titles available in the QuestLog
-          catalog.
+          Search for a board game to explore titles available
+          through BoardGameGeek.
         </p>
       </div>
     );
   }
 
   if (loading) {
-    return <p className="mt-10 text-center text-gray-400">Loading games...</p>;
+    return (
+      <p className="mt-10 text-center text-gray-400">
+        Searching BoardGameGeek...
+      </p>
+    );
   }
 
   if (error) {
@@ -157,7 +226,7 @@ function GameResults({
   if (games.length === 0) {
     return (
       <p className="mt-10 text-center text-gray-400">
-        No games found in the catalog for &quot;{submittedSearch.query}&quot;.
+        No games found for &quot;{submittedSearch.query}&quot;.
       </p>
     );
   }
@@ -192,16 +261,25 @@ export default function GameSearchPage() {
       setError("");
 
       try {
-        const results = await fetchGames(searchTerm, controller.signal);
+        const results = await fetchGames(
+          searchTerm,
+          controller.signal,
+        );
 
         if (!controller.signal.aborted) {
           setGames(results);
         }
       } catch (err) {
-        if (controller.signal.aborted) return;
+        if (controller.signal.aborted) {
+          return;
+        }
 
         setGames([]);
-        setError(err instanceof Error ? err.message : "Something went wrong.");
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Something went wrong.",
+        );
       } finally {
         if (!controller.signal.aborted) {
           setLoading(false);
@@ -217,9 +295,13 @@ export default function GameSearchPage() {
   function handleSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const searchTerm = query.trim();
+    const searchTerm = query.trim().replace(/\s+/g, " ");
 
-    if (!searchTerm) {
+    if (searchTerm.length < 2 || searchTerm.length > 100) {
+      setError("Please enter between 2 and 100 characters.");
+      setGames([]);
+      setSubmittedSearch(null);
+      setLoading(false);
       return;
     }
 
@@ -241,24 +323,37 @@ export default function GameSearchPage() {
     setLoading(false);
   }
 
+  const trimmedQuery = query.trim().replace(/\s+/g, " ");
+  const isValidQuery =
+    trimmedQuery.length >= 2 && trimmedQuery.length <= 100;
+
   return (
     <main className="min-h-screen bg-[#0F172A] p-8 text-[#F8FAFC]">
-      <h1 className="mb-2 text-3xl font-bold">Game Search</h1>
+      <h1 className="mb-2 text-3xl font-bold">
+        Game Search
+      </h1>
 
-      <p className="mb-6 text-gray-400">Find your next favorite game</p>
+      <p className="mb-6 text-gray-400">
+        Find your next favorite game
+      </p>
 
-      <form onSubmit={handleSearch} className="mb-8 flex gap-4">
+      <form
+        onSubmit={handleSearch}
+        className="mb-8 flex gap-4"
+      >
         <input
           type="search"
           placeholder="Search games..."
           value={query}
           onChange={(event) => setQuery(event.target.value)}
+          maxLength={100}
+          aria-label="Search board games"
           className="w-full rounded-2xl border border-gray-700 bg-gray-900 p-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
 
         <button
           type="submit"
-          disabled={!query.trim()}
+          disabled={!isValidQuery}
           className="rounded-xl bg-indigo-600 px-6 transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Search
@@ -275,6 +370,12 @@ export default function GameSearchPage() {
         )}
       </form>
 
+      {!submittedSearch && error && (
+        <p role="alert" className="mb-4 text-red-400">
+          {error}
+        </p>
+      )}
+
       <GameResults
         games={games}
         loading={loading}
@@ -284,3 +385,4 @@ export default function GameSearchPage() {
     </main>
   );
 }
+
