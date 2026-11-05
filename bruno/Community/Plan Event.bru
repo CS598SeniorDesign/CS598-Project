@@ -1,0 +1,46 @@
+meta {
+  name: Plan Event
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/api/v1/events/
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "title": "Bruno Game Night",
+    "starts_at": "{{eventStartsAt}}",
+    "location": "Home",
+    "group_id": {{groupId}},
+    "game_id": {{bggGameId}}
+  }
+}
+
+script:pre-request {
+  // Events must start in the future: three days from now.
+  bru.setVar("eventStartsAt", new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString());
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    bru.setVar("eventId", res.getBody().id);
+  }
+}
+
+docs {
+  Plans a game night in the group from **Create Game Group**. Leave out `group_id` for an event your friends can see
+  instead. `game_id` must be a BGG ID already in the catalog (open the game once to cache it). The host is recorded as
+  going.
+}
+
+tests {
+  test("creates the event with the host going", function () {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().my_rsvp).to.equal("GOING");
+    expect(res.getBody().group.id).to.equal(bru.getVar("groupId"));
+  });
+}

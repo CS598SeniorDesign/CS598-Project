@@ -1,0 +1,24 @@
+meta {
+  name: List Upcoming Events
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/api/v1/events/?days=30
+  body: none
+  auth: none
+}
+
+docs {
+  Upcoming events the user can see (in their groups, or hosted by them or their friends), soonest first. `?days=` limits
+  them to the next N days, `?group_id=` to one group, and `?scope=past` lists past events instead.
+}
+
+tests {
+  test("includes the planned event with the user's answer", function () {
+    expect(res.getStatus()).to.equal(200);
+    const event = res.getBody().find((item) => item.id === bru.getVar("eventId"));
+    expect(event.my_rsvp).to.equal("MAYBE");
+  });
+}

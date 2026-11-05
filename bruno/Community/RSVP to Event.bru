@@ -1,0 +1,28 @@
+meta {
+  name: RSVP to Event
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/api/v1/events/{{eventId}}/rsvp/
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "status": "MAYBE"
+  }
+}
+
+docs {
+  Answers an event: GOING, MAYBE or NOT_GOING. Answering again replaces the earlier answer.
+}
+
+tests {
+  test("records the answer", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().status).to.equal("MAYBE");
+  });
+}

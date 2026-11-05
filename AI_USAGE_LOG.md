@@ -567,6 +567,32 @@ I certify as Team Lead that all entries above accurately represent AI usage with
 
 ---
 
+## Entry 16: Prototype 3 — Add community feature bruno endpoints
+
+* **Date:** November 4, 2026
+* **Team Member:** Jennifer Isobe (`@Jisobe`)
+* **Tool Used:** Claude Code (Claude Opus 5.5)
+* **Associated Git Issue:** Closes `#175`
+* **Associated Feature Branch:** `feature/backend-community-features`
+
+### Exact Prompt Submitted:
+
+> "add bruno test endpoints for the community features in the backend/community dir"
+
+### AI Output Summary & Code Generated:
+
+* Created bruno api test endpoints in the bruno/Community folder to test each api endpoint
+
+### Human Review, Refactoring & Modifications Made:
+
+* Reviewed the added bruno endpoints for the community feature
+
+### Verification & Testing Method:
+
+* Tested community endpoints in Bruno
+
+---
+
 ## Audit Certification
 
 I certify as Team Lead that all entries above accurately represent AI usage within this project phase, all prompts have been recorded, and all code has been validated by human review and automated testing.

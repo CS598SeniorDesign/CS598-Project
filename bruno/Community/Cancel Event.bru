@@ -1,0 +1,21 @@
+meta {
+  name: Cancel Event
+  type: http
+  seq: 11
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/events/{{eventId}}/
+  body: none
+  auth: none
+}
+
+docs {
+  Cancels the event from **Plan Event**. Only the host can change or cancel an event.
+}
+
+tests {
+  test("cancels the event", function () {
+    expect(res.getStatus()).to.equal(204);
+  });
+}

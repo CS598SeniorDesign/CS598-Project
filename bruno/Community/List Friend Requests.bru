@@ -1,0 +1,31 @@
+meta {
+  name: List Friend Requests
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/friend-requests/
+  body: none
+  auth: none
+}
+
+script:post-response {
+  // Remember the first incoming request so Accept Friend Request can answer it.
+  const incoming = res.getBody().incoming || [];
+  if (incoming.length) {
+    bru.setVar("incomingFriendRequestId", incoming[0].id);
+  }
+}
+
+docs {
+  Pending friend requests: `incoming` (sent to the user) and `outgoing` (sent by the user). Send one with
+  `POST {"user_id": "<uuid>"}` to this URL; you can only ask players you can find in the player search.
+}
+
+tests {
+  test("lists incoming and outgoing requests", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.all.keys("incoming", "outgoing");
+  });
+}
