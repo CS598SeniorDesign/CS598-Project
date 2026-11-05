@@ -1,19 +1,17 @@
 "use client";
 
-import Image from "next/image";
-import React, { useState, useSyncExternalStore } from "react";
-import { useRouter } from "next/navigation";
+import Image, { type StaticImageData } from "next/image";
 import Link from "next/link";
-// import WinRateChart from "@/components/stats/WinRateChart";
+import { useRouter } from "next/navigation";
+import React, { useEffect, useState, useSyncExternalStore } from "react";
 
-// avatars
+// Avatars
 import brandonAvatar from "@/public/avatars/brandon.webp";
 import sydneyAvatar from "@/public/avatars/sydney.webp";
 import jenniferAvatar from "@/public/avatars/jennifer.webp";
 import supriyaAvatar from "@/public/avatars/supriya.webp";
-import { StaticImageData } from "next/image";
 
-// game images
+// Game images
 import terraformImg from "@/public/images/terraforming.webp";
 import catanImg from "@/public/images/catan.webp";
 import everdellImg from "@/public/images/everdell.webp";
@@ -26,7 +24,6 @@ type BaseGame = {
 
 type GameResult = BaseGame & {
   gameResult: "Won" | "Lost";
-  //TODO: extend to include score or draw in future
 };
 
 type Game = BaseGame;
@@ -43,40 +40,148 @@ type CommunityItem = GameResult & {
   avatar?: string | StaticImageData;
 };
 
-const days: string[] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-const subscribeToUserAvatar = () => {
+const games: Game[] = [
+  { gameName: "Botany", gameImg: "/images/botany.webp" },
+  { gameName: "Stardew Valley", gameImg: "/images/stardew.webp" },
+  { gameName: "Pandemic", gameImg: "/images/pandemic.webp" },
+  { gameName: "Root", gameImg: "/images/root.webp" },
+  { gameName: "Catan", gameImg: "/images/catan.webp" },
+];
+
+const recentPlays: Play[] = [
+  {
+    gameName: "Terraforming Mars",
+    gameImg: "/images/terraforming.webp",
+    gameResult: "Won",
+    playerCount: 2,
+    playDuration: "90 min",
+    playDate: "Feb 22",
+  },
+  {
+    gameName: "Catan",
+    gameImg: "/images/catan.webp",
+    gameResult: "Lost",
+    playerCount: 4,
+    playDuration: "60 min",
+    playDate: "March 11",
+  },
+  {
+    gameName: "Azul",
+    gameImg: "/images/azul.webp",
+    gameResult: "Won",
+    playerCount: 3,
+    playDuration: "30 min",
+    playDate: "January 21",
+  },
+];
+
+const community: CommunityItem[] = [
+  {
+    user: "Brandon",
+    timeAgo: "2hrs ago",
+    gameResult: "Won",
+    avatar: brandonAvatar,
+    gameName: "Terraforming Mars",
+    gameImg: terraformImg,
+  },
+  {
+    user: "Sydney",
+    timeAgo: "5hrs ago",
+    gameResult: "Lost",
+    avatar: sydneyAvatar,
+    gameName: "Catan",
+    gameImg: catanImg,
+  },
+  {
+    user: "Jennifer",
+    timeAgo: "1d ago",
+    gameResult: "Won",
+    avatar: jenniferAvatar,
+    gameName: "Everdell",
+    gameImg: everdellImg,
+  },
+  {
+    user: "Supriya",
+    timeAgo: "2d ago",
+    gameResult: "Lost",
+    avatar: supriyaAvatar,
+    gameName: "Botany",
+    gameImg: botanyImg,
+  },
+];
+
+function subscribeToUserAvatar() {
   return () => {};
-};
+}
 
-const getUserAvatarSnapshot = () => {
+function getUserAvatarSnapshot() {
   return localStorage.getItem("userAvatar");
-};
+}
 
-const getUserAvatarServerSnapshot = () => {
+function getUserAvatarServerSnapshot() {
   return null;
-};
+}
 
 export default function Page() {
-  // const [openChart, setOpenChart] = useState<null | "winrate" | "donut">(null);
-
   const router = useRouter();
+
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [profileLoading, setProfileLoading] = useState(true);
 
-  // Read avatar from localStorage while keeping server rendering hydration-safe
   const userAvatar = useSyncExternalStore(
     subscribeToUserAvatar,
     getUserAvatarSnapshot,
     getUserAvatarServerSnapshot,
   );
 
-  // const scrollToAnalytics = () => {
-  //   document.getElementById("analytics")?.scrollIntoView({
-  //     behavior: "smooth",
-  //     block: "start",
-  //   });
-  // };
+  // Load the signed-in user's actual profile
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadProfile() {
+      try {
+        const response = await fetch("/api/v1/profile/", {
+          method: "GET",
+          credentials: "same-origin",
+          cache: "no-store",
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error("Unable to load profile.");
+        }
+
+        const data: unknown = await response.json();
+
+        if (
+          typeof data === "object" &&
+          data !== null &&
+          "display_name" in data &&
+          typeof data.display_name === "string"
+        ) {
+          if (!controller.signal.aborted) {
+            setDisplayName(data.display_name);
+          }
+        }
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          console.error("Unable to load dashboard profile:", error);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setProfileLoading(false);
+        }
+      }
+    }
+
+    void loadProfile();
+
+    return () => controller.abort();
+  }, []);
 
   async function handleLogout() {
     if (isLoggingOut) return;
@@ -124,118 +229,69 @@ export default function Page() {
     }
   }
 
-  const games: Game[] = [
-    { gameName: "Botany", gameImg: "/images/botany.webp" },
-    { gameName: "Stardew Valley", gameImg: "/images/stardew.webp" },
-    { gameName: "Pandemic", gameImg: "/images/pandemic.webp" },
-    { gameName: "Root", gameImg: "/images/root.webp" },
-    { gameName: "Catan", gameImg: "/images/catan.webp" },
-  ];
-
-  const recentPlays: Play[] = [
-    {
-      gameName: "Terraforming Mars",
-      gameImg: "/images/terraforming.webp",
-      gameResult: "Won",
-      playerCount: 2,
-      playDuration: "90 min",
-      playDate: "Feb 22",
-    },
-    {
-      gameName: "Catan",
-      gameImg: "/images/catan.webp",
-      gameResult: "Lost",
-      playerCount: 4,
-      playDuration: "60 min",
-      playDate: "March 11",
-    },
-    {
-      gameName: "Azul",
-      gameImg: "/images/azul.webp",
-      gameResult: "Won",
-      playerCount: 3,
-      playDuration: "30 min",
-      playDate: "January 21",
-    },
-  ];
-
-  const community: CommunityItem[] = [
-    {
-      user: "Brandon",
-      timeAgo: "2hrs ago",
-      gameResult: "Won",
-      avatar: brandonAvatar,
-      gameName: "Terraforming Mars",
-      gameImg: terraformImg,
-    },
-    {
-      user: "Sydney",
-      timeAgo: "5hrs ago",
-      gameResult: "Lost",
-      avatar: sydneyAvatar,
-      gameName: "Catan",
-      gameImg: catanImg,
-    },
-    {
-      user: "Jennifer",
-      timeAgo: "1d ago",
-      gameResult: "Won",
-      avatar: jenniferAvatar,
-      gameName: "Everdell",
-      gameImg: everdellImg,
-    },
-    {
-      user: "Supriya",
-      timeAgo: "2d ago",
-      gameResult: "Lost",
-      avatar: supriyaAvatar,
-      gameName: "Botany",
-      gameImg: botanyImg,
-    },
-  ];
-
   return (
-    <div className=" min-h-screen bg-[#0F172A] text-[#F8FAFC]">
+    <div className="min-h-screen bg-[#0F172A] text-[#F8FAFC]">
       {/* NAVBAR */}
-      <div className="flex justify-between items-center px-8 py-4 bg-gradient-to-r from-[#1E293B] to-[#0F172A] shadow-xl">
+      <div className="flex flex-wrap items-center justify-between gap-4 bg-gradient-to-r from-[#1E293B] to-[#0F172A] px-4 py-4 shadow-xl sm:px-8">
         <h1 className="text-xl font-bold">QuestLog</h1>
 
-        <div className="flex gap-10 text-gray-300">
-          <p className="border-b-2 border-[#4F46E5] pb-1 cursor-pointer">
+        <nav
+          aria-label="Dashboard navigation"
+          className="flex flex-wrap items-center gap-4 text-gray-300 lg:gap-10"
+        >
+          <Link
+            href="/library"
+            className="border-b-2 border-[#4F46E5] pb-1 transition hover:text-white"
+          >
             Game Library
-          </p>
-          <Link href="/games/search">
-            <p className="hover:text-white cursor-pointer transition">
-              Recommendations for you
-            </p>
           </Link>
-          <p className="hover:text-white cursor-pointer transition">Weeple</p>
-          <Link href="/analytics">
-            <p className="hover:text-white cursor-pointer transition">
-              Your Analytics
-            </p>
-          </Link>
-        </div>
 
+          <Link href="/games/search" className="transition hover:text-white">
+            Recommendations for you
+          </Link>
+
+          <Link href="/community" className="transition hover:text-white">
+            Weeple
+          </Link>
+
+          <Link href="/analytics" className="transition hover:text-white">
+            Your Analytics
+          </Link>
+        </nav>
+
+        {/* Clickable user profile */}
         <div className="flex items-center gap-3">
-          {userAvatar ? (
-            <Image
-              src={userAvatar}
-              alt="User Avatar"
-              width={32}
-              height={32}
-              className="w-8 h-8 rounded-full object-cover"
-            />
-          ) : (
-            <div className="w-8 h-8 bg-gray-500 rounded-full" />
-          )}
-          <p>MeepleTeam</p>
+          <Link
+            href="/profile"
+            className="flex items-center gap-3 rounded-lg p-1 transition hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400"
+            aria-label="View your profile"
+          >
+            {userAvatar ? (
+              <Image
+                src={userAvatar}
+                alt="User Avatar"
+                width={32}
+                height={32}
+                className="h-8 w-8 rounded-full object-cover"
+              />
+            ) : (
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-sm font-bold text-white">
+                {displayName.trim().charAt(0).toUpperCase() || "?"}
+              </div>
+            )}
+
+            <span className="max-w-36 truncate text-sm font-medium text-white">
+              {profileLoading
+                ? "Loading..."
+                : displayName.trim() || "My Profile"}
+            </span>
+          </Link>
 
           <button
             type="button"
             onClick={handleLogout}
             disabled={isLoggingOut}
-            className="ml-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm font-medium text-white transition disabled:opacity-50"
+            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-500 disabled:opacity-50"
           >
             {isLoggingOut ? "Logging Out..." : "Log Out"}
           </button>
@@ -243,67 +299,74 @@ export default function Page() {
       </div>
 
       {logoutError && (
-        <p role="alert" className="text-red-400 text-sm px-8 pt-3">
+        <p role="alert" className="px-8 pt-3 text-sm text-red-400">
           {logoutError}
         </p>
       )}
 
-      <div className="p-8">
+      <div className="p-4 sm:p-8">
         {/* TITLE */}
         <h1 className="text-4xl font-extrabold tracking-tight text-white">
           Welcome to QuestLog
         </h1>
-        <p className="text-gray-400 mb-6">Your shared activity hub</p>
+
+        <p className="mb-6 text-gray-400">Your shared activity hub</p>
 
         {/* TOP ROW */}
-        <div className="grid grid-cols-3 gap-6">
-          {/* RECENT GROUP GAMES */}
-          <div className="col-span-2 bg-[#1E293B]/70 p-5 rounded-2xl shadow-lg transition duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-indigo-500/10">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          {/* RECENTLY PLAYED */}
+          <div className="rounded-2xl bg-[#1E293B]/70 p-5 shadow-lg transition duration-300 hover:shadow-xl hover:shadow-indigo-500/10 lg:col-span-2">
             <h2 className="mb-4 text-gray-300">Recently Played</h2>
 
-            <div className="flex gap-5">
-              {games.map((game, i) => (
-                <Link key={i} href={`/games/${game.gameName}`}>
-                  <div className="w-44 cursor-pointer">
+            <div className="flex gap-5 overflow-x-auto pb-2">
+              {games.map((game) => (
+                <Link
+                  key={game.gameName}
+                  href="/games/search"
+                  className="block shrink-0"
+                >
+                  <div className="w-36 cursor-pointer sm:w-44">
                     <Image
                       src={game.gameImg}
                       alt={game.gameName}
                       width={200}
                       height={160}
-                      className="rounded-xl mb-2 h-40 w-full object-cover transition duration-300 hover:scale-105 hover:shadow-[0_0_20px_rgba(79,70,229,0.4)]"
+                      className="mb-2 h-40 w-full rounded-xl object-cover transition duration-300 hover:scale-105 hover:shadow-[0_0_20px_rgba(79,70,229,0.4)]"
                     />
+
                     <p className="text-sm font-semibold">{game.gameName}</p>
-                    <div className="text-[#FFBF00] text-sm">★★★★★</div>
+
+                    <div className="text-sm text-[#FFBF00]">★★★★★</div>
                   </div>
                 </Link>
               ))}
             </div>
           </div>
+
           {/* CALENDAR */}
-          <div className="bg-[#1E293B]/70 p-5 rounded-2xl shadow-lg transition duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-indigo-500/10">
+          <div className="rounded-2xl bg-[#1E293B]/70 p-5 shadow-lg transition duration-300 hover:shadow-xl hover:shadow-indigo-500/10">
             <h2 className="mb-2 text-gray-300">Calendar</h2>
-            <h3 className="text-center mb-3 font-semibold tracking-wide">
+
+            <h3 className="mb-3 text-center font-semibold tracking-wide">
               FEBRUARY
             </h3>
 
-            {/* Days */}
-            <div className="grid grid-cols-7 text-xs text-gray-400 mb-2 text-center">
-              {days.map((d) => (
-                <div key={d}>{d}</div>
+            <div className="mb-2 grid grid-cols-7 text-center text-xs text-gray-400">
+              {days.map((day) => (
+                <div key={day}>{day}</div>
               ))}
             </div>
 
-            {/* Dates */}
-            <div className="grid grid-cols-7 gap-2 text-sm text-center">
-              {[...Array(31)].map((_, i) => (
+            <div className="grid grid-cols-7 gap-2 text-center text-sm">
+              {Array.from({ length: 31 }, (_, index) => (
                 <div
-                  key={i}
-                  className="h-10 flex items-center justify-center rounded-lg bg-[#0F172A] hover:bg-[#4F46E5] transition relative"
+                  key={index}
+                  className="relative flex h-10 items-center justify-center rounded-lg bg-[#0F172A] transition hover:bg-[#4F46E5]"
                 >
-                  {i + 1}
+                  {index + 1}
 
-                  {(i === 9 || i === 22) && (
-                    <div className="absolute bottom-1 text-[10px] bg-[#10B981] text-indigo-300 px-2 rounded">
+                  {(index === 9 || index === 22) && (
+                    <div className="absolute bottom-1 rounded bg-[#10B981] px-2 text-[10px] text-indigo-300">
                       Game
                     </div>
                   )}
@@ -314,26 +377,27 @@ export default function Page() {
         </div>
 
         {/* MIDDLE ROW */}
-        <div className="grid grid-cols-3 gap-6 mt-6">
+        <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* RECENT PLAYS */}
-          <div className="bg-[#1E293B]/70 p-5 rounded-2xl shadow-lg transition duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-indigo-500/10">
+          <div className="rounded-2xl bg-[#1E293B]/70 p-5 shadow-lg transition duration-300 hover:shadow-xl hover:shadow-indigo-500/10">
             <h2 className="mb-3">Recent Plays</h2>
 
-            {recentPlays.map((play, i) => (
+            {recentPlays.map((play) => (
               <div
-                key={i}
-                className="flex gap-3 bg-[#0F172A] p-3 rounded-lg mb-2"
+                key={`${play.gameName}-${play.playDate}`}
+                className="mb-2 flex gap-3 rounded-lg bg-[#0F172A] p-3"
               >
                 <Image
                   src={play.gameImg}
                   alt={play.gameName}
                   width={48}
                   height={48}
-                  className="w-12 h-12 rounded-lg object-cover"
+                  className="h-12 w-12 rounded-lg object-cover"
                 />
 
-                <div className="flex-1">
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold">{play.gameName}</p>
+
                   <p className="text-xs text-gray-400">
                     {play.playDate} | {play.playerCount} Players |{" "}
                     {play.playDuration}
@@ -354,23 +418,31 @@ export default function Page() {
           </div>
 
           {/* COMMUNITY */}
-          <div className="bg-[#1E293B]/70 p-5 rounded-2xl shadow-lg transition duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-indigo-500/10">
-            <h2 className="mb-3">Weeple Community Feed</h2>
+          <div className="rounded-2xl bg-[#1E293B]/70 p-5 shadow-lg transition duration-300 hover:shadow-xl hover:shadow-indigo-500/10">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h2>Weeple Community Feed</h2>
 
-            {community.map((item, i) => (
-              <div
-                key={i}
-                className="flex items-center gap-3 bg-[#0F172A] p-2 rounded-lg mb-2"
+              <Link
+                href="/community"
+                className="text-sm font-medium text-indigo-400 transition hover:text-indigo-300 hover:underline"
               >
-                {/* Avatar */}
+                View Community →
+              </Link>
+            </div>
+
+            {community.map((item) => (
+              <div
+                key={`${item.user}-${item.gameName}`}
+                className="mb-2 flex items-center gap-3 rounded-lg bg-[#0F172A] p-2"
+              >
                 <Image
                   src={item.avatar!}
                   alt={item.user}
                   width={40}
                   height={40}
-                  className="w-10 h-10 rounded-full object-cover"
+                  className="h-10 w-10 rounded-full object-cover"
                 />
-                {/* Game Image */}
+
                 <Image
                   src={item.gameImg}
                   alt={item.gameName}
@@ -383,24 +455,20 @@ export default function Page() {
                   <span className="text-sm font-semibold">
                     {item.user} • {item.timeAgo}
                   </span>
+
                   <span className="text-xs text-gray-400">
                     Played {item.gameName}
                   </span>
                 </div>
-                {/* Result */}
-                {item.gameResult && (
-                  <span
-                    className={`ml-auto text-xs px-2 py-1 rounded font-semibold ${
-                      item.gameResult === "Won"
-                        ? "bg-green-600 text-white"
-                        : "bg-red-600 text-white"
-                    }`}
-                  >
-                    {item.gameResult}
-                  </span>
-                )}
-                <span className="ml-auto text-xs bg-[#4F46E5] px-2 py-1 rounded">
-                  Game Night
+
+                <span
+                  className={`ml-auto rounded px-2 py-1 text-xs font-semibold ${
+                    item.gameResult === "Won"
+                      ? "bg-green-600 text-white"
+                      : "bg-red-600 text-white"
+                  }`}
+                >
+                  {item.gameResult}
                 </span>
               </div>
             ))}
@@ -408,18 +476,19 @@ export default function Page() {
         </div>
 
         {/* BOTTOM ROW */}
-        <div className="grid grid-cols-2 gap-6 mt-6">
+        <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
           {/* MEMBERS */}
-          <div className="bg-[#1E293B]/70 p-5 rounded-2xl shadow-lg transition duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-indigo-500/10">
+          <div className="rounded-2xl bg-[#1E293B]/70 p-5 shadow-lg transition duration-300 hover:shadow-xl hover:shadow-indigo-500/10">
             <h2 className="mb-3">Members</h2>
 
-            {["Brandon", "Jennifer", "Sydney", "Supriya"].map((m) => (
+            {["Brandon", "Jennifer", "Sydney", "Supriya"].map((member) => (
               <div
-                key={m}
-                className="flex justify-between bg-[#0F172A] p-2 rounded-lg mb-2"
+                key={member}
+                className="mb-2 flex justify-between rounded-lg bg-[#0F172A] p-2"
               >
-                <span>{m}</span>
-                <span className="text-[#FFBF00] text-xs">Tag</span>
+                <span>{member}</span>
+
+                <span className="text-xs text-[#FFBF00]">Tag</span>
               </div>
             ))}
           </div>
