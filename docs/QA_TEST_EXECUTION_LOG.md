@@ -11,8 +11,8 @@ iPhone 13 emulation profile:
 - catalog search, result rendering, and clearing
 - library filtering and empty-state behavior
 
-The suite is deterministic: backend-dependent journeys stub the browser's
-`/_allauth` and `/api/v1/games` responses, so failures represent frontend
+The suite uses the deterministic Docker-backed Django environment started by
+Playwright global setup, so failures represent frontend or integration
 regressions rather than missing seeded accounts or third-party catalog data.
 
 ## Execution record

@@ -8,21 +8,24 @@ export const setupMarker = path.join(
   os.tmpdir(),
   "questlog-e2e-docker-started",
 );
-export const composeArguments = [
-  "compose",
-  "--env-file",
-  ".env.example",
-  "-f",
-  "docker-compose.yml",
-];
+export const composeArguments = ["compose", "-f", "docker-compose.yml"];
+
+function ensureDockerEnvFile(): void {
+  const envFile = path.join(repositoryRoot, ".env");
+
+  if (!fs.existsSync(envFile)) {
+    fs.copyFileSync(path.join(repositoryRoot, ".env.example"), envFile);
+  }
+}
 
 export function runCompose(args: string[]): void {
+  ensureDockerEnvFile();
+
   execFileSync("docker", [...composeArguments, ...args], {
     cwd: repositoryRoot,
     env: {
       ...process.env,
       DOCKER_DEBUG: "True",
-      DOCKER_ENV_FILE: ".env.example",
       CSRF_TRUSTED_ORIGINS: "http://localhost:3000,http://localhost:3100",
     },
     stdio: "inherit",

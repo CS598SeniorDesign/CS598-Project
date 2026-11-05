@@ -552,6 +552,7 @@ jobs:
 
       - name: Create frontend E2E environment
         run: |
+          cp .env.example .env
           cp frontend/.env.example frontend/.env
           {
             echo "NEXT_PUBLIC_API_URL=http://127.0.0.1:8000"

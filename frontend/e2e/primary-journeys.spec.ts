@@ -72,6 +72,32 @@ test.describe("primary user journeys", () => {
     ).toBeVisible();
   });
 
+  test("authenticated users can log a play through the real API", async ({
+    page,
+  }) => {
+    await page.goto("/login");
+    await page.getByPlaceholder("Email").fill("demo@questlog.local");
+    await page.getByPlaceholder("Password").fill("password123");
+    await page.getByRole("button", { name: "Sign In" }).click();
+    await page.waitForURL(/\/(avatar-selection|library)/);
+
+    await page.goto("/games/13");
+    await expect(page.getByRole("heading", { name: "Catan" })).toBeVisible();
+    await page.getByRole("button", { name: "Log Play" }).click();
+
+    const dialog = page.getByRole("dialog", { name: "Log a Play" });
+    await dialog.getByPlaceholder("Enter player name").fill("E2E Guest");
+    await dialog.getByRole("button", { name: "Save Play" }).click();
+
+    await expect(
+      dialog.getByRole("status").getByText(
+        "Your play session was saved successfully!",
+      ),
+    ).toBeVisible();
+    await dialog.getByRole("button", { name: "Done" }).click();
+    await expect(dialog).toBeHidden();
+  });
+
   test("library filtering shows an empty state for unmatched games", async ({
     page,
   }) => {
