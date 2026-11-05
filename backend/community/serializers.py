@@ -55,6 +55,7 @@ class UserSummaryField(serializers.Field):
     def to_representation(self, value: Any) -> dict[str, Any] | None:
         return user_summary(value)
 
+
 class FriendRequestSerializer(serializers.ModelSerializer):
     """A friend request. ``status`` is PENDING, ACCEPTED or DECLINED."""
 
@@ -71,6 +72,7 @@ class FriendRequestCreateSerializer(InputSerializer):
     """Input for sending a friend request: the other player's ``user_id``."""
 
     user_id = serializers.UUIDField()
+
 
 class GameGroupSerializer(serializers.ModelSerializer):
     """A game group as listed: its owner, how many members it has, and whether the viewer owns it.
@@ -121,6 +123,7 @@ class GroupMemberSerializer(InputSerializer):
     """Input for adding a member: a friend's ``user_id``."""
 
     user_id = serializers.UUIDField()
+
 
 class GameEventSerializer(serializers.ModelSerializer):
     """An event as listed: when and where, the planned game and group, the host, and the viewer's own RSVP."""
@@ -240,6 +243,7 @@ class EventListQuerySerializer(InputSerializer):
     scope = serializers.ChoiceField(choices=["upcoming", "past"], default="upcoming")
     days = serializers.IntegerField(min_value=1, max_value=365, required=False)
     group_id = serializers.IntegerField(min_value=1, required=False)
+
 
 class FeedQuerySerializer(InputSerializer):
     limit = serializers.IntegerField(min_value=1, max_value=MAXIMUM_FEED_LIMIT, default=DEFAULT_FEED_LIMIT)

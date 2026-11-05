@@ -76,6 +76,7 @@ def requesting_user(request: Any) -> User:
     """
     return cast("User", request.user)
 
+
 class FriendRequestListView(APIView):
     """
     The requesting user's pending friend requests, and sending new ones.
@@ -167,6 +168,7 @@ class FriendDetailView(APIView):
         FriendshipService.remove_friend(requesting_user(request), user_id)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+
 class GameGroupViewSet(viewsets.ViewSet):
     """
     The requesting user's game groups. Groups are visible only to their members; only the owner (creator) can change
@@ -257,6 +259,7 @@ class GameGroupViewSet(viewsets.ViewSet):
         context = {"request": self.request, "members": GroupService.members_of(group)}
         return GameGroupDetailSerializer(group, context=context).data
 
+
 class GameEventViewSet(viewsets.ViewSet):
     """
     Game nights the requesting user can see: events in their groups, and events (without a group) hosted by them or
@@ -329,6 +332,7 @@ class GameEventViewSet(viewsets.ViewSet):
     def _detail(self, event: GameEvent) -> dict[str, Any]:
         context = {"request": self.request, "rsvps": EventService.rsvps_for(event)}
         return GameEventDetailSerializer(event, context=context).data
+
 
 class CommunityFeedView(APIView):
     """
