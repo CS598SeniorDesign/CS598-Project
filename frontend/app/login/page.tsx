@@ -57,9 +57,17 @@ function getLoginDestination(): string {
 }
 
 async function getSession(): Promise<AuthResponse> {
+  await fetch("/csrf/", {
+    credentials: "same-origin",
+    cache: "no-store",
+  });
+
   const response = await fetch("/_allauth/browser/v1/auth/session", {
     credentials: "same-origin",
     cache: "no-store",
+    headers: {
+      Accept: "application/json",
+    },
   });
 
   if (!response.ok && response.status !== 401) {
@@ -104,6 +112,7 @@ async function postAuth(
     method: "POST",
     credentials: "same-origin",
     headers: {
+      Accept: "application/json",
       "Content-Type": "application/json",
       "X-CSRFToken": csrfToken,
     },
@@ -331,7 +340,7 @@ export default function LoginPage() {
         {!requiresMfaCode && (
           <p className="text-sm text-gray-400 mt-6 text-center">
             Don&apos;t have an account?{" "}
-            <a href="/signup" className="text-indigo-400 hover:underline">
+            <a href="/signup" className="text-white underline">
               Sign Up
             </a>
           </p>

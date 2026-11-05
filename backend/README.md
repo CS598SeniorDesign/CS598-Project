@@ -29,6 +29,7 @@ This document provides guidance on running the backend through Docker and locall
   - [Running tests](#running-tests)
   - [Health Endpoints](#health-endpoints)
   - [Logging \& Monitoring](#logging--monitoring)
+  - [Background Tasks (Celery)](#background-tasks-celery)
   - [Recommendation Engine](#recommendation-engine)
 
 ## Backend File Structure
@@ -415,6 +416,40 @@ The production image runs gunicorn with `config/gunicorn.conf.py` and sets `PROM
 docker compose --profile monitoring up
 ```
 
+## Background Tasks (Celery)
+
+Slow and scheduled work runs in [Celery](https://docs.celeryq.dev/) workers instead of web requests, with Redis database 2 as the broker and result store. The app is defined in `config/celery.py`, and each Django app keeps its tasks in `tasks.py`.
+
+| Task | Runs | What it does |
+| :--- | :--- | :--- |
+| `tracking.tasks.sync_bgg_plays` | When a user calls `POST /api/v1/plays/sync/` | Imports the user's BGG plays. Retries up to 3 times (1, 2, 4 minutes apart) when BGG is down or rate limiting; client errors are not retried. |
+| `recommendations.tasks.refresh_recommender_caches` | Every 30 minutes | Rebuilds the cached content and collaborative models before they expire, so requests rarely build them |
+| `recommendations.tasks.train_recommender` | Daily, 03:00 UTC | `manage.py train_recommender`: models, pgvector embeddings, offline evaluation, experiment tracking |
+| `recommendations.tasks.recommendation_report` | Mondays, 04:00 UTC | `manage.py recommendation_report --days 7` |
+
+The schedule is `CELERY_BEAT_SCHEDULE` in `config/settings.py`. Scheduled tasks hold a lock while they run, so a slow run is skipped by the next one rather than overlapped.
+
+**Play sync API.** `POST /api/v1/plays/sync/` returns `202 Accepted` with a `task_id` and `status_url` (also in the `Location` header) instead of waiting for the import. Poll `GET /api/v1/plays/sync/<task_id>/` for its `status` (`queued`, `running`, `retrying`, `succeeded`, `failed`), `detail` message and number of plays `imported`. Each user has at most one import queued or running; syncing again returns the same task. Only the user who started an import can see its status, which is kept for 24 hours.
+
+**Running it.** `docker compose up` starts three extra containers from the backend image:
+
+- `celery-worker` runs tasks (2 processes). Celery does not reload on code changes, so run `docker compose restart celery-worker celery-beat` after editing tasks.
+- `celery-beat` queues the scheduled tasks. Run exactly one beat, or every scheduled task is queued twice.
+- `flower` is a web UI for workers, tasks, retries and failures at <http://localhost:5555> (bound to localhost only). Set `FLOWER_BASIC_AUTH=user:password` in `.env` to require a login. Flower also serves Prometheus metrics for tasks at `/metrics`.
+
+These containers set `RUN_MIGRATIONS=false` so only the web container runs migrations. In production, run the worker and beat from the production image the same way, overriding its command:
+
+```bash
+celery -A config worker --loglevel=INFO
+celery -A config beat --loglevel=INFO --schedule=/tmp/celerybeat-schedule
+```
+
+Without Docker, start a worker in another terminal: `uv run celery -A config worker --loglevel=INFO`. On macOS, add `--pool=solo`; Celery's default process pool fails there with `ValueError: not enough values to unpack`. Alternatively, set `CELERY_TASK_ALWAYS_EAGER=True` to run tasks inline in the web process, with no worker (development only: requests then wait for the task again).
+
+**Logs.** Workers write the same JSON log lines as the web app. A task queued during an API request keeps that request's `request_id` and `user_id` and adds `task_id` and `task_name`, so you can follow an import from the request that started it. The `questlog.tasks` logger records each task's start, finish (state and `duration_ms`) and failures with stack traces.
+
+**Tests** never need a worker or broker: tests mock `apply_async`, or run tasks in-process with `.apply()`.
+
 ## Recommendation Engine
 
 The `recommendations` app serves game recommendations at `GET /api/v1/recommendations/?strategy=<strategy>`. `GET /api/v1/recommendations/options/` lists every strategy with its parameters, plus the choices for the decision chart and onboarding form.
@@ -431,7 +466,7 @@ The database needs the pgvector extension. `docker-compose.yml` and CI use the `
 
 **Feedback.** `POST /api/v1/recommendations/feedback/` with `game_id` and `sentiment` (`LIKE`/`DISLIKE`). Disliked games are never recommended again, and both reactions feed the user's taste.
 
-**Caching.** Results are cached in Redis per user for 10 minutes. Saving a library item, rating, play, feedback, or setting clears that user's cache. The content model is cached for an hour, or until the catalog grows. The collaborative model is cached for an hour, or until a user opts in or out, so an opted-out user's data stops shaping other users' recommendations on the next request. Both are built on demand. This command rebuilds them and the stored game embeddings ahead of time, and should run on a schedule (`--skip-embeddings` rebuilds only the cached models). An opted-out user's activity stays in the stored embeddings until the next run:
+**Caching.** Results are cached in Redis per user for 10 minutes. Saving a library item, rating, play, feedback, or setting clears that user's cache. The content model is cached for an hour, or until the catalog grows. The collaborative model is cached for an hour, or until a user opts in or out, so an opted-out user's data stops shaping other users' recommendations on the next request. Both are built on demand. Celery beat refreshes both every 30 minutes and runs the full `train_recommender` (models and stored game embeddings) nightly; see [Background Tasks](#background-tasks-celery). An opted-out user's activity stays in the stored embeddings until the next nightly run. To rebuild by hand (`--skip-embeddings` rebuilds only the cached models):
 
 ```bash
 uv run python manage.py train_recommender

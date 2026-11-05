@@ -162,28 +162,29 @@ class PlaySyncEndpointTests(TestCase):
         self.profile = Profile.objects.create(user=self.user, display_name="Player", bgg_username="boardgamer")
         self.client = APIClient()
         self.client.force_authenticate(self.user)
+        queue = patch("tracking.tasks.sync_bgg_plays.apply_async")
+        self.apply_async = queue.start()
+        self.addCleanup(queue.stop)
 
-    @patch("tracking.views.fetch_bgg_plays")
-    def test_sync_imports_plays_for_linked_bgg_username_ignoring_request_body(self, fetch_bgg_plays):
-        fetch_bgg_plays.return_value = (True, "Successfully imported 2 plays.")
-
+    def test_sync_queues_an_import_for_the_requesting_user(self):
         response = self.client.post("/api/v1/plays/sync/", {"bgg_username": "someone_else"}, format="json")
 
-        assert response.status_code == 200
-        assert response.json() == {"detail": "Successfully imported 2 plays."}
-        fetch_bgg_plays.assert_called_once_with(self.user, "boardgamer")
+        assert response.status_code == 202
+        body = response.json()
+        assert body["status"] == "queued"
+        assert body["status_url"].endswith(f"/api/v1/plays/sync/{body['task_id']}/")
+        assert response.headers["Location"] == body["status_url"]
+        # The task reads the BGG username from the profile itself; nothing from the request body is passed on.
+        self.apply_async.assert_called_once_with(args=[str(self.user.pk)], task_id=body["task_id"])
 
-    @patch("tracking.views.fetch_bgg_plays")
-    def test_sync_reports_bgg_failure_as_bad_gateway(self, fetch_bgg_plays):
-        fetch_bgg_plays.return_value = (False, "Connection to BGG failed. Please try again later.")
+    def test_a_running_import_is_reused_instead_of_starting_another(self):
+        first = self.client.post("/api/v1/plays/sync/").json()
+        second = self.client.post("/api/v1/plays/sync/").json()
 
-        response = self.client.post("/api/v1/plays/sync/")
+        assert first["task_id"] == second["task_id"]
+        self.apply_async.assert_called_once()
 
-        assert response.status_code == 502
-        assert response.json() == {"detail": "Connection to BGG failed. Please try again later."}
-
-    @patch("tracking.views.fetch_bgg_plays")
-    def test_sync_rejects_user_without_linked_bgg_username(self, fetch_bgg_plays):
+    def test_sync_rejects_user_without_linked_bgg_username(self):
         with self.subTest("profile has a blank BGG username"):
             self.profile.bgg_username = ""
             self.profile.save()
@@ -199,18 +200,47 @@ class PlaySyncEndpointTests(TestCase):
 
             assert response.status_code == 400
 
-        fetch_bgg_plays.assert_not_called()
+        self.apply_async.assert_not_called()
 
-    @patch("tracking.views.fetch_bgg_plays")
-    def test_sync_is_throttled_after_rate_limit(self, fetch_bgg_plays):
-        fetch_bgg_plays.return_value = (True, "No plays found for this user.")
-
+    def test_sync_is_throttled_after_rate_limit(self):
         status_codes = [self.client.post("/api/v1/plays/sync/").status_code for _ in range(4)]
 
-        assert status_codes == [200, 200, 200, 429]
-        assert fetch_bgg_plays.call_count == 3
+        assert status_codes == [202, 202, 202, 429]
 
     def test_sync_rejects_get(self):
         response = self.client.get("/api/v1/plays/sync/")
 
         assert response.status_code == 405
+
+    @patch("tracking.tasks.AsyncResult")
+    def test_status_reports_progress_and_outcome(self, async_result):
+        task_id = self.client.post("/api/v1/plays/sync/").json()["task_id"]
+        url = f"/api/v1/plays/sync/{task_id}/"
+
+        cases = [
+            (Mock(state="PENDING"), "queued"),
+            (Mock(state="STARTED"), "running"),
+            (Mock(state="RETRY"), "retrying"),
+            (Mock(state="SUCCESS", result={"success": True, "detail": "Imported 2.", "imported": 2}), "succeeded"),
+            (Mock(state="SUCCESS", result={"success": False, "detail": "No username.", "imported": 0}), "failed"),
+            (Mock(state="FAILURE"), "failed"),
+        ]
+        for result, expected in cases:
+            with self.subTest(state=result.state):
+                async_result.return_value = result
+
+                response = self.client.get(url)
+
+                assert response.status_code == 200
+                assert response.json()["status"] == expected
+
+        assert response.json()["detail"] == "An internal error occurred during synchronization."
+
+    def test_status_is_private_to_the_user_who_started_the_import(self):
+        task_id = self.client.post("/api/v1/plays/sync/").json()["task_id"]
+        other_user = get_user_model().objects.create_user(email="other@example.com", password="S3cure-pass!x")
+        other_client = APIClient()
+        other_client.force_authenticate(other_user)
+
+        assert other_client.get(f"/api/v1/plays/sync/{task_id}/").status_code == 404
+        assert self.client.get("/api/v1/plays/sync/00000000-0000-0000-0000-000000000000/").status_code == 404

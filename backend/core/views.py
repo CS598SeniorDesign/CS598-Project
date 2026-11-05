@@ -17,6 +17,9 @@ import logging
 
 from django.core.cache import cache
 from django.db import connection
+from django.http import JsonResponse
+from django.middleware.csrf import get_token
+from django.views.decorators.csrf import ensure_csrf_cookie
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -25,6 +28,11 @@ from rest_framework.views import APIView
 from core.metrics import DEPENDENCY_UP
 
 logger = logging.getLogger(__name__)
+
+
+@ensure_csrf_cookie
+def csrf_token_view(request):
+    return JsonResponse({"csrfToken": get_token(request)})
 
 
 class HealthCheckView(APIView):

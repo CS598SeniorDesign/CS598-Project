@@ -109,11 +109,14 @@ docker compose up --build   # Initial run, or after dependency/Dockerfile change
 docker compose up           # Subsequent runs
 ```
 
-This brings up four services:
+This brings up seven services:
 
 - `db` — PostgreSQL 17 with the pgvector extension
 - `redis` — Redis (cache, sessions, Celery broker)
 - `backend` — Django, served on `:8000`
+- `celery-worker` — runs background tasks (BGG play imports, recommender training)
+- `celery-beat` — schedules periodic tasks
+- `flower` — Celery monitoring UI, served on `localhost:5555`
 - `frontend` — Next.js, served on `:3000`
 
 Code changes on your host are picked up automatically without rebuilding the image — dependency changes (`pyproject.toml`/`uv.lock` or `package.json`/`package-lock.json`) do require `docker compose up --build` to take effect, since installed packages live in named Docker volumes layered on top of the bind mounts.
@@ -147,6 +150,16 @@ redis-cli -h localhost -p 6379 -a "$REDIS_PASSWORD"
 **Django GUI:** `http://localhost:8000`
 
 **Frontend app:** `http://localhost:3000`
+
+### Running real frontend E2E tests
+
+Playwright starts the Django, PostgreSQL, and Redis services with Docker Compose, applies migrations, and loads deterministic E2E data before running the browser tests. Start Docker Desktop first, then run:
+
+```bash
+npm run e2e --prefix frontend
+```
+
+The E2E tests use real HTTP calls; they do not stub frontend API requests. The Docker-backed setup uses an isolated seed command and stops the backend services when the run finishes.
 
 **Django management commands:**
 

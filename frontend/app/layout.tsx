@@ -1,5 +1,11 @@
 import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "QuestLog",
+  description: "Track and discover your favorite board games.",
+};
 
 export default function RootLayout({
   children,
