@@ -58,8 +58,6 @@ logger = logging.getLogger(__name__)
 # Retries for BGG outages and rate limiting: 1, 2 and 4 minutes apart.
 MAX_RETRIES = 3
 RETRY_BACKOFF_SECONDS = 60
-# 202 means BGG queued the request and is still working on it.
-RETRYABLE_HTTP_STATUSES = frozenset({202, 429, 500, 502, 503, 504})
 # BGG answers a collection request with 202 until it has prepared the collection, usually within a minute. Each retry
 # waits a little longer: 15, 30, 45 ... seconds, about 9 minutes in all.
 COLLECTION_MAX_RETRIES = 8
@@ -215,7 +213,9 @@ def _run_import(task: Task, kind: ImportKind, user_id: str, run: ImportRun) -> d
     except BggCollectionNotReadyError as exception:
         return _retry_or_fail(task, kind, user_id, exception, _not_ready_delay(task.request.retries))
     except bgg_client.BoardGameGeekUnavailableError as exception:
-        if not _is_retryable(exception):
+        # The BGG client has already retried briefly and decides which failures (timeouts, rate limiting, server
+        # errors) are worth retrying; these retries wait minutes instead.
+        if not exception.is_retryable:
             logger.warning("BGG %s import failed: %s", kind.name, exception)
             return _finish(kind, user_id, task_id, success=False, detail=CONNECTION_FAILED_MESSAGE)
         return _retry_or_fail(task, kind, user_id, exception, _retry_delay(task.request.retries))
@@ -344,19 +344,6 @@ def _linked_bgg_username(user: User) -> str:
     :returns: The username, or an empty string if none is linked.
     """
     return (Profile.objects.filter(user=user).values_list("bgg_username", flat=True).first() or "").strip()
-
-
-def _is_retryable(exception: bgg_client.BoardGameGeekUnavailableError) -> bool:
-    """
-    Whether a failed BGG request is worth retrying later: connection problems, timeouts, rate limiting and server
-    errors. The BGG client has already retried briefly; these retries wait minutes instead.
-
-    :param exception: The failure.
-    :returns: False for client errors such as an unknown username, which would fail again.
-    """
-    if exception.status_code is None:
-        return True
-    return exception.status_code in RETRYABLE_HTTP_STATUSES
 
 
 def _retry_delay(retries: int) -> int:

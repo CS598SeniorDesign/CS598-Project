@@ -27,9 +27,6 @@ def bgg_rejected(status_code):
     return BoardGameGeekUnavailableError(
         f"BGG /plays returned HTTP {status_code}.", is_retryable=False, status_code=status_code
     )
-def bgg_unavailable(status_code=None):
-    """The BGG client's error: status_code None means no response arrived (e.g. a timeout)."""
-    return BoardGameGeekUnavailableError(f"BGG returned {status_code}", status_code=status_code)
 
 
 @override_settings(CACHES=LOCAL_MEMORY_CACHE)
