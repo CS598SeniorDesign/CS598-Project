@@ -5,13 +5,14 @@ meta {
 }
 
 delete {
-  url: {{baseUrl}}/api/v1/events/{{eventId}}/
+  url: {{baseUrl}}/api/v1/events/{{plannedEventId}}/
   body: none
   auth: none
 }
 
 docs {
-  Cancels the event from **Plan Event**. Only the host can change or cancel an event.
+  Cancels the event created by **Plan Event** (run that first; this never touches seeded events). Only the host can
+  change or cancel an event.
 }
 
 tests {

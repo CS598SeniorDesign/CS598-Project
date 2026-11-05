@@ -18,6 +18,9 @@ body:json {
 
 docs {
   Answers an event: GOING, MAYBE or NOT_GOING. Answering again replaces the earlier answer.
+
+  Uses `eventId`, set by **Plan Event** or, if that has not run, by **List Upcoming Events** (the first event it lists;
+  the seeded demo login has some).
 }
 
 tests {

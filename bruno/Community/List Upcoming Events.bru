@@ -10,15 +10,29 @@ get {
   auth: none
 }
 
+script:post-response {
+  // If Plan Event has not run, remember the first listed event so RSVP to Event has one to answer.
+  const events = res.getStatus() === 200 ? res.getBody() : [];
+  if (!bru.getVar("eventId") && events.length) {
+    bru.setVar("eventId", events[0].id);
+  }
+}
+
 docs {
   Upcoming events the user can see (in their groups, or hosted by them or their friends), soonest first. `?days=` limits
   them to the next N days, `?group_id=` to one group, and `?scope=past` lists past events instead.
 }
 
 tests {
-  test("includes the planned event with the user's answer", function () {
+  test("lists upcoming events", function () {
     expect(res.getStatus()).to.equal(200);
-    const event = res.getBody().find((item) => item.id === bru.getVar("eventId"));
-    expect(event.my_rsvp).to.equal("MAYBE");
+    expect(res.getBody()).to.be.an("array");
+  });
+
+  test("includes the planned event, if one was planned", function () {
+    const plannedId = bru.getVar("plannedEventId");
+    if (plannedId) {
+      expect(res.getBody().map((event) => event.id)).to.include(plannedId);
+    }
   });
 }

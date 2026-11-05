@@ -572,7 +572,7 @@ I certify as Team Lead that all entries above accurately represent AI usage with
 * **Date:** November 4, 2026
 * **Team Member:** Jennifer Isobe (`@Jisobe`)
 * **Tool Used:** Claude Code (Claude Opus 5.5)
-* **Associated Git Issue:** Closes `#175`
+* **Associated Git Issue:** Closes `#183`
 * **Associated Feature Branch:** `feature/backend-community-features`
 
 ### Exact Prompt Submitted:
