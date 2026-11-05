@@ -185,8 +185,10 @@ function GameContent({ game }: { game: GameDetails }) {
           <GameInformation game={game} />
 
           <GameTags title="Categories" items={game.categories} />
+
           <GameTags title="Mechanics" items={game.mechanics} />
 
+          {/* Jen's updated Library/Wishlist controls */}
           <LibraryStatus gameId={game.bgg_id} />
 
           <MyRating gameId={game.bgg_id} gameName={game.primary_name} />
@@ -212,6 +214,7 @@ function GameContent({ game }: { game: GameDetails }) {
       )}
 
       <GameTags title="Publishers" items={game.publishers} />
+
       <GameTags title="Designers" items={game.designers} />
 
       <RecommendationStrip
@@ -222,6 +225,7 @@ function GameContent({ game }: { game: GameDetails }) {
         className="mt-10 rounded-2xl bg-gray-900 p-6"
       />
 
+      {/* Preserve existing play logging functionality */}
       {isLogPlayOpen && (
         <LogPlayForm
           gameId={game.bgg_id}

@@ -40,6 +40,55 @@ function createPlayer(id: number): PlayerInput {
   };
 }
 
+function createCurrentPlayer(user: RegisteredPlayer): PlayerInput {
+  return {
+    ...createPlayer(1),
+    type: "registered",
+    userId: user.user_id,
+    displayName: user.display_name,
+  };
+}
+
+async function fetchCurrentPlayer(
+  signal: AbortSignal,
+): Promise<RegisteredPlayer> {
+  const response = await fetch("/api/v1/profile/", {
+    method: "GET",
+    credentials: "include",
+    headers: {
+      Accept: "application/json",
+    },
+    cache: "no-store",
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      response.status === 401 || response.status === 403
+        ? "Please log in to record your plays."
+        : "Unable to load your QuestLog profile.",
+    );
+  }
+
+  const data: unknown = await response.json();
+
+  if (
+    typeof data !== "object" ||
+    data === null ||
+    !("user_id" in data) ||
+    typeof data.user_id !== "string" ||
+    !("display_name" in data) ||
+    typeof data.display_name !== "string"
+  ) {
+    throw new Error("Unexpected profile response.");
+  }
+
+  return {
+    user_id: data.user_id,
+    display_name: data.display_name,
+  };
+}
+
 function getCookie(name: string): string | null {
   const cookie = document.cookie
     .split("; ")
@@ -64,6 +113,10 @@ function getLocalDate(): string {
 }
 
 function validatePlayers(players: PlayerInput[]): string | null {
+  if (players.length === 0) {
+    return "Please add at least one player.";
+  }
+
   const guests = players.filter((player) => player.type === "guest");
   const registered = players.filter((player) => player.type === "registered");
 
@@ -239,12 +292,6 @@ function usePlayerDirectory(source: PlayerSource, query: string) {
 
         try {
           const data = await fetchRegisteredPlayers(url, controller.signal);
-
-          console.log("QuestLog player search:", {
-            url,
-            data,
-            active,
-          });
 
           if (active) setPlayers(data);
         } catch (caughtError) {
@@ -593,6 +640,52 @@ export default function LogPlayForm({
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [profileError, setProfileError] = useState("");
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadCurrentPlayer() {
+      try {
+        const user = await fetchCurrentPlayer(controller.signal);
+
+        if (!controller.signal.aborted) {
+          setPlayers((current) =>
+            current.map((player) =>
+              player.id === 1 &&
+              player.type === "guest" &&
+              !player.guestName &&
+              !player.userId
+                ? {
+                    ...createCurrentPlayer(user),
+                    score: player.score,
+                    isWinner: player.isWinner,
+                  }
+                : player,
+            ),
+          );
+        }
+      } catch (caughtError) {
+        if (!controller.signal.aborted) {
+          setProfileError(
+            caughtError instanceof Error
+              ? caughtError.message
+              : "Unable to load your QuestLog profile.",
+          );
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setProfileLoading(false);
+        }
+      }
+    }
+
+    void loadCurrentPlayer();
+
+    return () => controller.abort();
+  }, []);
+
   useEffect(() => {
     function handleEscape(event: KeyboardEvent) {
       if (event.key === "Escape" && !isSubmitting) {
@@ -646,6 +739,11 @@ export default function LogPlayForm({
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
+
+    if (profileLoading || profileError) {
+      setError(profileError || "Please wait while your account loads.");
+      return;
+    }
 
     const validationError = validatePlayDetails(duration, players);
 
@@ -755,6 +853,21 @@ export default function LogPlayForm({
               </label>
             </div>
 
+            {profileLoading && (
+              <p role="status" className="text-sm text-indigo-300">
+                Loading your QuestLog account...
+              </p>
+            )}
+
+            {profileError && (
+              <p
+                role="alert"
+                className="rounded-lg border border-red-700 bg-red-950 p-3 text-sm text-red-300"
+              >
+                {profileError}
+              </p>
+            )}
+
             <div className="space-y-3">
               <h3 className="text-lg font-semibold">Players</h3>
 
@@ -815,7 +928,9 @@ export default function LogPlayForm({
 
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={
+                  isSubmitting || profileLoading || Boolean(profileError)
+                }
                 className="rounded-xl bg-indigo-600 px-6 py-3 font-semibold hover:bg-indigo-500 disabled:opacity-50"
               >
                 {isSubmitting ? "Saving..." : "Save Play"}

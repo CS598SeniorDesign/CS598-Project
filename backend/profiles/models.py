@@ -24,6 +24,8 @@ class Profile(models.Model):
     user = models.OneToOneField(to=settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     display_name = models.CharField(max_length=100)
     bio = models.TextField(null=True, blank=True)
+    # A built-in avatar path (see profiles.serializers.ALLOWED_AVATARS); empty until the user picks one.
+    avatar = models.CharField(max_length=255, blank=True, default="", db_default="")
     privacy_level = models.CharField(max_length=10, choices=PRIVACY_LEVEL_CHOICES, default=PUBLIC)
     friends = models.ManyToManyField(to="self", blank=True)
     # The BoardGameGeek account whose plays this user imports. Empty when the user has not linked a BGG account.
