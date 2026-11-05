@@ -20,13 +20,14 @@ from django.contrib import admin
 from django.urls import include, path
 
 from core.metrics import metrics_view
-from core.views import HealthCheckView, ReadinessCheckView
+from core.views import HealthCheckView, ReadinessCheckView, csrf_token_view
 
 API_PREFIX = "api/v1/"
 
 urlpatterns = [
     path("accounts/", include("allauth.urls")),
     path("_allauth/", include("allauth.headless.urls")),
+    path("csrf/", csrf_token_view, name="csrf-token"),
     path("health/", HealthCheckView.as_view(), name="health-check"),
     path("ready/", ReadinessCheckView.as_view(), name="readiness-check"),
     path("metrics/", metrics_view, name="metrics"),
