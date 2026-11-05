@@ -96,6 +96,7 @@ class TestOwnProfileEndpoint:
             "user_id": str(viewer.user.pk),
             "display_name": "Viewer",
             "bio": None,
+            "avatar": "",
             "privacy_level": Profile.PUBLIC,
             "bgg_username": "",
         }
@@ -193,13 +194,13 @@ class TestPlayerSearchEndpoint:
     def test_requires_authentication(self):
         assert APIClient().get(PLAYERS_URL, {"search": "al"}).status_code == status.HTTP_403_FORBIDDEN
 
-    def test_returns_only_the_user_id_and_display_name(self, viewer_client, make_player):
+    def test_returns_only_the_user_id_display_name_and_avatar(self, viewer_client, make_player):
         alice = make_player("Alice")
 
         response = viewer_client.get(PLAYERS_URL, {"search": "ali"})
 
         assert response.status_code == status.HTTP_200_OK
-        assert response.data == [{"user_id": str(alice.user.pk), "display_name": "Alice"}]
+        assert response.data == [{"user_id": str(alice.user.pk), "display_name": "Alice", "avatar": ""}]
 
     def test_matches_anywhere_in_the_name_with_names_starting_with_the_search_first(self, viewer_client, make_player):
         for name in ["Natalie", "Alina", "Al", "Bob"]:
@@ -242,7 +243,9 @@ class TestFriendListEndpoint:
     def test_requires_authentication(self):
         assert APIClient().get(FRIENDS_URL).status_code == status.HTTP_403_FORBIDDEN
 
-    def test_lists_friends_alphabetically_as_user_id_and_display_name(self, viewer_client, viewer, make_player):
+    def test_lists_friends_alphabetically_with_user_id_display_name_and_avatar(
+        self, viewer_client, viewer, make_player
+    ):
         zoe = make_player("Zoe")
         adam = make_player("adam", Profile.FRIENDS)
         make_player("Not A Friend")
@@ -252,8 +255,8 @@ class TestFriendListEndpoint:
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data == [
-            {"user_id": str(adam.user.pk), "display_name": "adam"},
-            {"user_id": str(zoe.user.pk), "display_name": "Zoe"},
+            {"user_id": str(adam.user.pk), "display_name": "adam", "avatar": ""},
+            {"user_id": str(zoe.user.pk), "display_name": "Zoe", "avatar": ""},
         ]
 
     def test_a_friendship_added_by_either_user_counts_for_both(self, viewer_client, viewer, make_player):
