@@ -54,21 +54,25 @@ MAXIMUM_REQUEST_SLOT_WAIT_SECONDS = 30
 
 
 class BoardGameGeekUnavailableError(Exception):
-    """BGG could not be reached, refused the request, or kept asking QuestLog to slow down or retry later.
+    """
+    BGG could not be reached, refused the request, or kept asking QuestLog to slow down or retry later.
 
-    :ivar status_code: BGG's last HTTP status, or None when no response arrived (connection failure, timeout, or no
-        free request slot). Lets callers that retry later, such as Celery tasks, tell a temporary problem (None, 202,
-        429, 5xx) from one that will not go away (e.g. 404).
+    ``is_retryable`` tells background tasks whether trying again later could succeed: True for timeouts, connection
+    failures, rate limiting, and server errors; False when BGG rejected the request itself (for example, an unknown
+    username), which would fail the same way again.
     """
 
-    def __init__(self, message: str, *, status_code: int | None = None) -> None:
+    def __init__(self, message: str, *, is_retryable: bool = True, status_code: int | None = None) -> None:
         """
-        :param message: What went wrong.
+        :param message: What went wrong, for logs.
         :type message: str
-        :param status_code: BGG's last HTTP status, if it answered.
+        :param is_retryable: Whether the same request could succeed if tried again later.
+        :type is_retryable: bool
+        :param status_code: The HTTP status BGG last answered with, or None if no response was received.
         :type status_code: int | None
         """
         super().__init__(message)
+        self.is_retryable = is_retryable
         self.status_code = status_code
 
 
@@ -242,7 +246,9 @@ def _request_xml(endpoint: str, parameters: dict[str, str | int]) -> Element:
 
         if response.status_code not in RETRYABLE_STATUS_CODES:
             raise BoardGameGeekUnavailableError(
-                f"BGG /{endpoint} returned HTTP {response.status_code}.", status_code=response.status_code
+                f"BGG /{endpoint} returned HTTP {response.status_code}.",
+                is_retryable=False,
+                status_code=response.status_code,
             )
 
         if attempt < MAXIMUM_ATTEMPTS:

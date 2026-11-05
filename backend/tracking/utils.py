@@ -38,9 +38,9 @@ def import_bgg_plays(user: User, bgg_username: str) -> int:
     :type bgg_username: str
     :returns: The number of plays imported.
     :rtype: int
-    :raises catalog.bgg_client.BoardGameGeekUnavailableError: If BGG cannot be reached or refuses the request. Its
-        ``status_code`` says whether retrying later can help.
-    :raises catalog.bgg_client.BoardGameGeekMalformedResponseError: If BGG's response cannot be parsed.
+    :raises catalog.bgg_client.BoardGameGeekUnavailableError: If BGG cannot be reached or refuses the request. Worth
+        retrying when its ``is_retryable`` is True.
+    :raises catalog.bgg_client.BoardGameGeekMalformedResponseError: If BGG returns malformed XML.
     """
 
     current_page: int = 1
