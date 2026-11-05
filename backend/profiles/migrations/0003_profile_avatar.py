@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('profiles', '0002_add_profile_bgg_username'),
+        ("profiles", "0002_add_profile_bgg_username"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='profile',
-            name='avatar',
-            field=models.CharField(blank=True, default='', max_length=255),
+            model_name="profile",
+            name="avatar",
+            field=models.CharField(blank=True, db_default="", default="", max_length=255),
         ),
     ]

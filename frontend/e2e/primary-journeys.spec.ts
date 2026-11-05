@@ -60,6 +60,34 @@ test.describe("primary user journeys", () => {
   test("catalog search renders results and supports clearing", async ({
     page,
   }) => {
+    // Game search requires a signed-in user and queries BoardGameGeek through the backend. Answer that request here
+    // so the test does not depend on BGG being reachable from CI.
+    await page.route("**/api/v1/games/search/?*", (route) =>
+      route.fulfill({
+        json: {
+          query: "Catan",
+          total_matches: 1,
+          results: [
+            {
+              bgg_id: 13,
+              item_type: "boardgame",
+              name: "Catan",
+              is_primary_name: true,
+              year_published: 1995,
+              is_in_catalog: true,
+              thumbnail_url: null,
+            },
+          ],
+        },
+      }),
+    );
+
+    await page.goto("/login");
+    await page.getByPlaceholder("Email").fill("demo@questlog.local");
+    await page.getByPlaceholder("Password").fill("password123");
+    await page.getByRole("button", { name: "Sign In" }).click();
+    await page.waitForURL(/\/(avatar-selection|library)/);
+
     await page.goto("/games/search");
     await page.getByPlaceholder("Search games...").fill("Catan");
     await expect(page.getByRole("button", { name: "Search" })).toBeEnabled();

@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useParams } from "next/navigation";
 import LogPlayForm from "../../../components/games/LogPlayForm";
 import LibraryStatus from "@/components/library/LibraryStatus";
+import RecommendationStrip from "@/components/recommendations/RecommendationStrip";
 
 interface GameAttribute {
   bgg_id: number;
@@ -212,6 +213,14 @@ function GameContent({ game }: { game: GameDetails }) {
       <GameTags title="Publishers" items={game.publishers} />
 
       <GameTags title="Designers" items={game.designers} />
+
+      <RecommendationStrip
+        title="Games like this one"
+        query={{ strategy: "similar_games", game_id: game.bgg_id, limit: 5 }}
+        excludeGameId={game.bgg_id}
+        emptyMessage="We don't have enough data to find similar games yet."
+        className="mt-10 rounded-2xl bg-gray-900 p-6"
+      />
 
       {/* Preserve existing play logging functionality */}
       {isLogPlayOpen && (

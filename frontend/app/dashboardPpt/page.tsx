@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import RecommendationStrip from "@/components/recommendations/RecommendationStrip";
 
 type ApiGame = {
   bgg_id: number;
@@ -849,6 +850,14 @@ export default function Page() {
 
         <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
           <Members state={friends} />
+
+          <div className={cardClass}>
+            <RecommendationStrip
+              title="Recommended for you"
+              query={{ strategy: "for_you", limit: 4 }}
+              emptyMessage="Log a few plays or like some games to get suggestions."
+            />
+          </div>
         </div>
       </main>
     </div>
