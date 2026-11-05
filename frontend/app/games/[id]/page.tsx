@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useParams } from "next/navigation";
+import LogPlayForm from "../../../components/games/LogPlayForm";
 
 interface GameAttribute {
   bgg_id: number;
@@ -365,6 +366,8 @@ function AddToLibrary({ gameId }: { gameId: number }) {
 }
 
 function GameContent({ game }: { game: GameDetails }) {
+  const [isLogPlayOpen, setIsLogPlayOpen] = useState(false);
+
   return (
     <>
       <Link
@@ -393,11 +396,10 @@ function GameContent({ game }: { game: GameDetails }) {
 
           <button
             type="button"
-            disabled
-            title="Play logging will be available after the backend integration."
-            className="mt-8 cursor-not-allowed rounded-xl bg-indigo-600 px-6 py-3 font-semibold text-white opacity-60"
+            onClick={() => setIsLogPlayOpen(true)}
+            className="mt-8 rounded-xl bg-indigo-600 px-6 py-3 font-semibold text-white transition hover:bg-indigo-500"
           >
-            Log Play (Coming Soon)
+            Log Play
           </button>
         </div>
       </div>
@@ -414,6 +416,14 @@ function GameContent({ game }: { game: GameDetails }) {
 
       <GameTags title="Publishers" items={game.publishers} />
       <GameTags title="Designers" items={game.designers} />
+
+      {isLogPlayOpen && (
+        <LogPlayForm
+          gameId={game.bgg_id}
+          gameName={game.primary_name}
+          onClose={() => setIsLogPlayOpen(false)}
+        />
+      )}
     </>
   );
 }
