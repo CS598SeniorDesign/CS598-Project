@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 from django.db import IntegrityError, transaction
@@ -10,9 +9,7 @@ from .models import Profile
 
 ROLE_HIERARCHY: tuple[str, ...] = ("admin", "moderator", "user")
 
-LINKED_ELSEWHERE_MESSAGE = (
-    "This BoardGameGeek account is already linked to another QuestLog account."
-)
+LINKED_ELSEWHERE_MESSAGE = "This BoardGameGeek account is already linked to another QuestLog account."
 
 # Built-in QuestLog avatars that users can select.
 ALLOWED_AVATARS = {
@@ -39,15 +36,9 @@ class ProfileSerializer(serializers.ModelSerializer[Profile]):
 
     def get_role(self, obj: Profile) -> str | None:
         """Return the user's highest-precedence role, if any."""
-        user_groups = set(
-            obj.user.groups.values_list("name", flat=True)
-        )
+        user_groups = set(obj.user.groups.values_list("name", flat=True))
         return next(
-            (
-                role
-                for role in ROLE_HIERARCHY
-                if role in user_groups
-            ),
+            (role for role in ROLE_HIERARCHY if role in user_groups),
             None,
         )
 
@@ -100,9 +91,7 @@ class OwnProfileSerializer(serializers.ModelSerializer[Profile]):
         selected an avatar yet.
         """
         if value and value not in ALLOWED_AVATARS:
-            raise serializers.ValidationError(
-                "Please select a valid QuestLog avatar."
-            )
+            raise serializers.ValidationError("Please select a valid QuestLog avatar.")
 
         return value
 
@@ -111,13 +100,8 @@ class OwnProfileSerializer(serializers.ModelSerializer[Profile]):
         Reject a BGG username that another QuestLog account
         has already linked.
         """
-        if (
-            bgg_username
-            and self._is_linked_elsewhere(bgg_username)
-        ):
-            raise serializers.ValidationError(
-                LINKED_ELSEWHERE_MESSAGE
-            )
+        if bgg_username and self._is_linked_elsewhere(bgg_username):
+            raise serializers.ValidationError(LINKED_ELSEWHERE_MESSAGE)
 
         return bgg_username
 
@@ -137,13 +121,7 @@ class OwnProfileSerializer(serializers.ModelSerializer[Profile]):
                     validated_data,
                 )
         except IntegrityError:
-            raise serializers.ValidationError(
-                {
-                    "bgg_username": [
-                        LINKED_ELSEWHERE_MESSAGE
-                    ]
-                }
-            ) from None
+            raise serializers.ValidationError({"bgg_username": [LINKED_ELSEWHERE_MESSAGE]}) from None
 
     def _is_linked_elsewhere(
         self,
@@ -153,14 +131,10 @@ class OwnProfileSerializer(serializers.ModelSerializer[Profile]):
         Check whether another profile has linked the BGG
         username, ignoring letter case.
         """
-        other_profiles = Profile.objects.filter(
-            bgg_username__iexact=bgg_username
-        )
+        other_profiles = Profile.objects.filter(bgg_username__iexact=bgg_username)
 
         if self.instance is not None:
-            other_profiles = other_profiles.exclude(
-                pk=self.instance.pk
-            )
+            other_profiles = other_profiles.exclude(pk=self.instance.pk)
 
         return other_profiles.exists()
 
@@ -173,9 +147,7 @@ class PlayerSearchQuerySerializer(serializers.Serializer):
     checking the search length.
     """
 
-    search = serializers.CharField(
-        trim_whitespace=False
-    )
+    search = serializers.CharField(trim_whitespace=False)
 
     def validate_search(self, raw_search: str) -> str:
         """
@@ -184,33 +156,21 @@ class PlayerSearchQuerySerializer(serializers.Serializer):
         search = " ".join(raw_search.split())
 
         if len(search) < MINIMUM_SEARCH_LENGTH:
-            raise serializers.ValidationError(
-                f"Enter at least {MINIMUM_SEARCH_LENGTH} "
-                "characters to search."
-            )
+            raise serializers.ValidationError(f"Enter at least {MINIMUM_SEARCH_LENGTH} characters to search.")
 
         if len(search) > MAXIMUM_SEARCH_LENGTH:
-            raise serializers.ValidationError(
-                f"Searches cannot be longer than "
-                f"{MAXIMUM_SEARCH_LENGTH} characters."
-            )
+            raise serializers.ValidationError(f"Searches cannot be longer than {MAXIMUM_SEARCH_LENGTH} characters.")
 
         return search
 
     def create(self, validated_data):
-        raise NotImplementedError(
-            "PlayerSearchQuerySerializer only validates input."
-        )
+        raise NotImplementedError("PlayerSearchQuerySerializer only validates input.")
 
     def update(self, instance, validated_data):
-        raise NotImplementedError(
-            "PlayerSearchQuerySerializer only validates input."
-        )
+        raise NotImplementedError("PlayerSearchQuerySerializer only validates input.")
 
 
-class PlayerSummarySerializer(
-    serializers.ModelSerializer[Profile]
-):
+class PlayerSummarySerializer(serializers.ModelSerializer[Profile]):
     """
     Summary of a registered player used by player search,
     friend requests, and the Friends list.
