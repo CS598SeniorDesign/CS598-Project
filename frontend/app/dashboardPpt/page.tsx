@@ -342,7 +342,7 @@ function DashboardNavbar() {
         <Link href="/library" className="hover:text-white">
           Game Library
         </Link>
-        <Link href="/games/search" className="hover:text-white">
+        <Link href="/recommendations" className="hover:text-white">
           Recommendations for you
         </Link>
         <Link href="/community" className="hover:text-white">
