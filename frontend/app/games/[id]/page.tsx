@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useParams } from "next/navigation";
 import LogPlayForm from "../../../components/games/LogPlayForm";
 import LibraryStatus from "@/components/library/LibraryStatus";
+import MyRating from "@/components/ratings/MyRating";
 import RecommendationStrip from "@/components/recommendations/RecommendationStrip";
 
 interface GameAttribute {
@@ -189,6 +190,8 @@ function GameContent({ game }: { game: GameDetails }) {
 
           {/* Jen's updated Library/Wishlist controls */}
           <LibraryStatus gameId={game.bgg_id} />
+
+          <MyRating gameId={game.bgg_id} gameName={game.primary_name} />
 
           <button
             type="button"

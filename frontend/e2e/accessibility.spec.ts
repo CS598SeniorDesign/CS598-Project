@@ -27,6 +27,8 @@ for (const pageDefinition of pages) {
 
 test("primary controls are keyboard reachable", async ({ page }) => {
   await page.goto("/login");
+  // The navbar shows Login and Sign Up once its session check finishes; tabbing earlier skips past them.
+  await expect(page.getByRole("link", { name: "Login" })).toBeVisible();
 
   await page.keyboard.press("Tab");
   await expect(page.getByRole("link", { name: "QuestLog" })).toBeFocused();

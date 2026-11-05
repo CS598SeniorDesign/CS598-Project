@@ -30,13 +30,29 @@ test.describe("primary user journeys", () => {
       "required",
       "",
     );
+    await page.getByPlaceholder("Email").fill("new.player@example.com");
+    await page.getByPlaceholder("Password").fill("short");
+
+    await page.getByRole("button", { name: "Sign Up" }).click();
+    await expect(page.locator('p[role="alert"]')).toHaveText(
+      "This password is too short. It must contain at least 8 characters.",
+    );
+  });
+
+  test("signup does not reveal whether an email is already registered", async ({
+    page,
+  }) => {
+    // allauth prevents account enumeration: signing up with a registered email gets the same "check your
+    // email" answer as a new signup (the existing account's owner is emailed instead).
+    await page.goto("/signup");
     await page.getByPlaceholder("Email").fill("existing@example.com");
     await page.getByPlaceholder("Password").fill("Password123!");
 
     await page.getByRole("button", { name: "Sign Up" }).click();
-    await expect(page.locator('p[role="alert"]')).toHaveText(
-      "An account with this email already exists.",
-    );
+    await expect(
+      page.getByRole("heading", { name: "Check Your Email" }),
+    ).toBeVisible();
+    await expect(page.locator('p[role="alert"]')).toHaveCount(0);
   });
 
   test("login reports invalid credentials", async ({ page }) => {
