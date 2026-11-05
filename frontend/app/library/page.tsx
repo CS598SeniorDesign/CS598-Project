@@ -1,173 +1,103 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import BggImportButton from "@/components/library/BggImportButton";
+import LibraryCard from "@/components/library/LibraryCard";
+import LibraryToolbar from "@/components/library/LibraryToolbar";
+import { useLibrary } from "@/components/library/useLibrary";
+import { useRatings } from "@/components/ratings/useRatings";
+import type {
+  LibraryItem,
+  LibraryItemChanges,
+  LibrarySummary,
+  Ownership,
+  PlayedFilter,
+} from "@/lib/library";
+import type { Rating } from "@/lib/ratings";
 
-type BoardGame = {
-  bgg_id: number;
-  primary_name: string;
-  year_published: number | null;
-  thumbnail_url: string | null;
-  average_rating: number | string | null;
-  bgg_rank: number | null;
-};
+/** How long to wait after the last keystroke before searching, in ms. */
+const SEARCH_DELAY = 300;
+const DEFAULT_ORDERING = "-added_at";
 
-type LibraryItem = {
-  game: BoardGame;
-  ownership: "OWNED" | "WISHLISTED";
-  is_played: boolean;
-  house_rules: string;
-  added_at: string;
-  updated_at: string;
-};
+const TABS: {
+  key: Ownership;
+  label: string;
+  countKey: keyof LibrarySummary;
+}[] = [
+  { key: "OWNED", label: "Library", countKey: "owned" },
+  { key: "WISHLISTED", label: "Wishlist", countKey: "wishlisted" },
+];
 
-type LibraryTab = "OWNED" | "WISHLISTED";
-
-type LibraryResponse =
-  | LibraryItem[]
-  | {
-      results: LibraryItem[];
-    };
-
-function getLibraryItems(data: LibraryResponse): LibraryItem[] {
-  return Array.isArray(data) ? data : data.results;
-}
-
-function getLibraryError(status: number): string {
-  if (status === 401 || status === 403) {
-    return "Please log in to view your library.";
-  }
-
-  return "Unable to load your library. Please try again.";
-}
-
-function useLibraryGames() {
-  const [games, setGames] = useState<LibraryItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+/** `value`, updated only once it has stopped changing for `delay` ms. */
+function useDebounced<T>(value: T, delay: number): T {
+  const [debounced, setDebounced] = useState(value);
 
   useEffect(() => {
-    const controller = new AbortController();
+    const timer = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
 
-    async function fetchLibrary() {
-      try {
-        const response = await fetch("/api/v1/library/", {
-          method: "GET",
-          credentials: "include",
-          headers: {
-            Accept: "application/json",
-          },
-          cache: "no-store",
-          signal: controller.signal,
-        });
-
-        if (!response.ok) {
-          throw new Error(getLibraryError(response.status));
-        }
-
-        const data: LibraryResponse = await response.json();
-        const items = getLibraryItems(data);
-
-        if (!Array.isArray(items)) {
-          throw new Error("Unexpected response from the library API.");
-        }
-
-        if (!controller.signal.aborted) {
-          setGames(items);
-        }
-      } catch (err) {
-        if (controller.signal.aborted) return;
-
-        setError(err instanceof Error ? err.message : "Something went wrong.");
-      } finally {
-        if (!controller.signal.aborted) {
-          setLoading(false);
-        }
-      }
-    }
-
-    void fetchLibrary();
-
-    return () => controller.abort();
-  }, []);
-
-  return { games, loading, error };
+  return debounced;
 }
 
-function GameRating({ rating }: { rating: number | string | null }) {
-  const numericRating = rating == null ? null : Number(rating);
+function EmptyLibrary({
+  filtered,
+  ownership,
+}: {
+  filtered: boolean;
+  ownership: Ownership;
+}) {
+  let message = "Your library is empty. Add some games to get started!";
 
-  const displayRating =
-    numericRating !== null && Number.isFinite(numericRating)
-      ? `★ ${numericRating.toFixed(1)} / 10`
-      : "Not rated";
-
-  return <div className="mt-2 text-center text-[#FACC15]">{displayRating}</div>;
-}
-
-function GameCard({ item }: { item: LibraryItem }) {
-  const { game } = item;
+  if (filtered) {
+    message = "No games match your search.";
+  } else if (ownership === "WISHLISTED") {
+    message = "Your wishlist is empty for now.";
+  }
 
   return (
-    <Link
-      href={`/games/${game.bgg_id}`}
-      className="block rounded-2xl bg-[#1E293B]/70 p-3 transition hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-500/20"
-    >
-      {game.thumbnail_url ? (
-        <Image
-          src={game.thumbnail_url}
-          alt={game.primary_name}
-          width={220}
-          height={280}
-          unoptimized
-          className="h-64 w-full rounded-xl object-cover"
-        />
-      ) : (
-        <div className="flex h-64 w-full items-center justify-center rounded-xl bg-[#334155] px-3 text-center text-sm text-gray-400">
-          No image available
-        </div>
+    <div className="mt-12 text-center">
+      <p className="text-lg text-gray-400">{message}</p>
+
+      {!filtered && (
+        <Link
+          href="/games/search"
+          className="mt-5 inline-block rounded-full bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500"
+        >
+          + Add Your First Game
+        </Link>
       )}
-
-      <h2 className="mt-3 text-center text-sm font-bold">
-        {game.primary_name}
-      </h2>
-
-      <GameRating rating={game.average_rating} />
-
-      <p className="mt-2 text-center text-xs text-gray-400">
-        {item.is_played ? "Played" : "Not played yet"}
-      </p>
-    </Link>
+    </div>
   );
 }
 
-function LibraryContent({
-  games,
+function LibraryGrid({
+  items,
   loading,
   error,
-  query,
-  activeTab,
+  filtered,
+  ownership,
+  onUpdate,
+  onRemove,
+  ratings,
+  onRatingChange,
 }: {
-  games: LibraryItem[];
+  items: LibraryItem[];
   loading: boolean;
   error: string;
-  query: string;
-  activeTab: LibraryTab;
+  filtered: boolean;
+  ownership: Ownership;
+  onUpdate: (gameId: number, changes: LibraryItemChanges) => Promise<unknown>;
+  onRemove: (gameId: number) => Promise<void>;
+  ratings: Record<number, Rating>;
+  onRatingChange: (gameId: number, rating: Rating | null) => void;
 }) {
-  const filteredGames = useMemo(() => {
-    const search = query.trim().toLowerCase();
-
-    return games.filter(
-      (item) =>
-        item.ownership === activeTab &&
-        item.game.primary_name.toLowerCase().includes(search),
-    );
-  }, [games, query, activeTab]);
-
   if (loading) {
     return (
-      <p className="mt-12 text-center text-gray-400">Loading your games...</p>
+      <p role="status" className="mt-12 text-center text-gray-400">
+        Loading your games...
+      </p>
     );
   }
 
@@ -182,115 +112,144 @@ function LibraryContent({
     );
   }
 
-  if (filteredGames.length === 0) {
-    return <EmptyLibrary query={query} activeTab={activeTab} />;
+  if (items.length === 0) {
+    return <EmptyLibrary filtered={filtered} ownership={ownership} />;
   }
 
   return (
     <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-      {filteredGames.map((item) => (
-        <GameCard key={item.game.bgg_id} item={item} />
+      {items.map((item) => (
+        <LibraryCard
+          key={item.game.bgg_id}
+          item={item}
+          onUpdate={onUpdate}
+          onRemove={onRemove}
+          rating={ratings[item.game.bgg_id] ?? null}
+          onRatingChange={onRatingChange}
+        />
       ))}
     </div>
   );
 }
 
-function EmptyLibrary({
-  query,
-  activeTab,
+function SummaryLine({
+  summary,
+  ownership,
 }: {
-  query: string;
-  activeTab: LibraryTab;
+  summary: LibrarySummary | null;
+  ownership: Ownership;
 }) {
-  let message = "Your library is empty. Add some games to get started!";
+  if (!summary) return null;
 
-  if (query.trim()) {
-    message = "No games match your search.";
-  } else if (activeTab === "WISHLISTED") {
-    message = "Your wishlist is empty for now.";
-  }
+  const unplayed =
+    ownership === "OWNED"
+      ? summary.owned_unplayed
+      : summary.wishlisted_unplayed;
+  if (unplayed === 0) return null;
 
   return (
-    <div className="mt-12 text-center">
-      <p className="text-lg text-gray-400">{message}</p>
-
-      {!query.trim() && (
-        <Link
-          href="/games/search"
-          className="mt-5 inline-block rounded-full bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500"
-        >
-          + Add Your First Game
-        </Link>
-      )}
-    </div>
+    <p className="mt-1 text-sm text-gray-500">
+      {unplayed} {unplayed === 1 ? "game" : "games"} not played yet
+    </p>
   );
 }
 
 export default function LibraryPage() {
-  const { games, loading, error } = useLibraryGames();
-  const [query, setQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<LibraryTab>("OWNED");
+  const [ownership, setOwnership] = useState<Ownership>("OWNED");
+  const [search, setSearch] = useState("");
+  const [played, setPlayed] = useState<PlayedFilter>("all");
+  const [ordering, setOrdering] = useState(DEFAULT_ORDERING);
+  const debouncedSearch = useDebounced(search, SEARCH_DELAY);
 
-  const isWishlist = activeTab === "WISHLISTED";
+  const library = useLibrary({
+    ownership,
+    search: debouncedSearch.trim() || undefined,
+    played,
+    ordering,
+  });
 
-  function toggleTab() {
-    setActiveTab(isWishlist ? "OWNED" : "WISHLISTED");
-    setQuery("");
+  const { ratings, setRating } = useRatings();
+
+  const isWishlist = ownership === "WISHLISTED";
+  const filtered = debouncedSearch.trim() !== "" || played !== "all";
+
+  function switchTab(next: Ownership) {
+    setOwnership(next);
+    setSearch("");
+    setPlayed("all");
+    setOrdering(DEFAULT_ORDERING);
   }
 
   return (
     <div className="min-h-screen bg-[#0F172A] px-8 py-10 text-white">
-      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-5xl font-black tracking-widest">
             {isWishlist ? "WISHLIST" : "LIBRARY"}
           </h1>
-
           <p className="mt-2 text-gray-400">
             {isWishlist
               ? "Board games you want to add to your collection"
               : "Board games in your QuestLog collection"}
           </p>
+          <SummaryLine summary={library.summary} ownership={ownership} />
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-start gap-3">
           <Link
             href="/games/search"
             className="rounded-full bg-indigo-600 px-7 py-3 text-sm font-bold uppercase tracking-wider text-white transition hover:bg-indigo-500"
           >
             + Add Game
           </Link>
-
-          <button
-            type="button"
-            onClick={toggleTab}
-            className="rounded-full bg-[#F87171] px-8 py-3 text-sm font-bold uppercase tracking-wider text-black transition hover:bg-[#FB7185]"
-          >
-            {isWishlist ? "Back to Library" : "Wishlist"}
-          </button>
+          <BggImportButton onImported={library.reload} />
         </div>
       </div>
 
-      {/* SEARCH */}
-      <div className="mb-8 flex items-center gap-4">
-        <input
-          type="search"
-          placeholder={
-            isWishlist ? "Search your wishlist..." : "Search your collection..."
-          }
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          className="w-full max-w-md rounded-full border border-gray-700 bg-[#1E293B] px-5 py-3 text-white outline-none focus:border-[#4F46E5]"
-        />
+      <div
+        role="tablist"
+        aria-label="Library or wishlist"
+        className="mb-6 flex gap-2"
+      >
+        {TABS.map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            role="tab"
+            aria-selected={ownership === tab.key}
+            onClick={() => switchTab(tab.key)}
+            className={`rounded-full px-6 py-2 text-sm font-bold uppercase tracking-wider transition ${
+              ownership === tab.key
+                ? "bg-[#F87171] text-black"
+                : "bg-[#1E293B] text-gray-300 hover:bg-[#334155]"
+            }`}
+          >
+            {tab.label}
+            {library.summary && ` (${library.summary[tab.countKey]})`}
+          </button>
+        ))}
       </div>
 
-      {/* LIBRARY CONTENT */}
-      <LibraryContent
-        games={games}
-        loading={loading}
-        error={error}
-        query={query}
-        activeTab={activeTab}
+      <LibraryToolbar
+        ownership={ownership}
+        search={search}
+        played={played}
+        ordering={ordering}
+        onSearchChange={setSearch}
+        onPlayedChange={setPlayed}
+        onOrderingChange={setOrdering}
+      />
+
+      <LibraryGrid
+        items={library.items}
+        loading={library.loading}
+        error={library.error}
+        filtered={filtered}
+        ownership={ownership}
+        onUpdate={library.update}
+        onRemove={library.remove}
+        ratings={ratings}
+        onRatingChange={setRating}
       />
     </div>
   );

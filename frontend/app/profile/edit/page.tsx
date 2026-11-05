@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { ArrowLeft, Camera, Save } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -281,8 +280,6 @@ function AvatarEditor({
 }
 
 export default function EditProfilePage() {
-  const router = useRouter();
-
   const [displayName, setDisplayName] = useState("");
   const [bio, setBio] = useState("");
   const [bggUsername, setBggUsername] = useState("");

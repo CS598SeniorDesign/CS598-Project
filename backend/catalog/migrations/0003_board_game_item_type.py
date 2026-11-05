@@ -4,19 +4,15 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
+
     dependencies = [
-        ("catalog", "0002_boardgame_average_weight"),
+        ('catalog', '0002_boardgame_average_weight'),
     ]
 
     operations = [
         migrations.AddField(
-            model_name="boardgame",
-            name="item_type",
-            field=models.CharField(
-                choices=[("boardgame", "Board game"), ("boardgameexpansion", "Expansion")],
-                db_default="boardgame",
-                default="boardgame",
-                max_length=30,
-            ),
+            model_name='boardgame',
+            name='item_type',
+            field=models.CharField(choices=[('boardgame', 'Board game'), ('boardgameexpansion', 'Expansion')], db_default='boardgame', default='boardgame', max_length=30),
         ),
     ]

@@ -213,8 +213,8 @@ def _run_import(task: Task, kind: ImportKind, user_id: str, run: ImportRun) -> d
     except BggCollectionNotReadyError as exception:
         return _retry_or_fail(task, kind, user_id, exception, _not_ready_delay(task.request.retries))
     except bgg_client.BoardGameGeekUnavailableError as exception:
-        # The BGG client decides what is worth retrying: timeouts, rate limiting and server errors, but not requests
-        # BGG rejected outright (such as an unknown username).
+        # The BGG client has already retried briefly and decides which failures (timeouts, rate limiting, server
+        # errors) are worth retrying; these retries wait minutes instead.
         if not exception.is_retryable:
             logger.warning("BGG %s import failed: %s", kind.name, exception)
             return _finish(kind, user_id, task_id, success=False, detail=CONNECTION_FAILED_MESSAGE)
