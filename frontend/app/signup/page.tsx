@@ -98,19 +98,16 @@ export default function SignupPage() {
         (flow) => flow.id === "verify_email" && flow.is_pending === true,
       );
 
-      if (verificationPending) {
-        console.log("Privacy setting:", privacy);
-        setSignUpComplete(true);
-      }
-
-      if (!response.ok) {
+      // With mandatory email verification, allauth answers a successful signup with 401 and a pending
+      // verify_email flow. It answers the same way when the email is already registered (and emails that
+      // account's owner instead), so the page never reveals whether an address has an account.
+      if (!verificationPending && !response.ok) {
         setError(getSignupErrorMessage(response.status, result));
         return;
       }
+
       // Note: privacy not sent to auth during account creation, as seen as profile preference.
       console.log("Selected privacy setting:", privacy);
-      setSignUpComplete(true);
-
       setSignUpComplete(true);
     } catch (err) {
       console.error("QuestLog signup error:", err);
@@ -181,16 +178,19 @@ export default function SignupPage() {
             disabled={isLoading}
           />
 
-          <select
-            value={privacy}
-            onChange={(event) => setPrivacy(event.target.value)}
-            className="p-3 rounded bg-gray-800 border border-gray-700"
-            disabled={isLoading}
-          >
-            <option value="public">Public</option>
-            <option value="friends">Friends Only</option>
-            <option value="private">Private</option>
-          </select>
+          <label className="flex flex-col gap-2">
+            <span className="sr-only">Privacy</span>
+            <select
+              value={privacy}
+              onChange={(event) => setPrivacy(event.target.value)}
+              className="p-3 rounded bg-gray-800 border border-gray-700"
+              disabled={isLoading}
+            >
+              <option value="public">Public</option>
+              <option value="friends">Friends Only</option>
+              <option value="private">Private</option>
+            </select>
+          </label>
 
           {error && (
             <p role="alert" className="text-sm text-red-400">
@@ -209,7 +209,7 @@ export default function SignupPage() {
 
         <p className="text-sm text-gray-400 mt-6 text-center">
           Already have an account?{" "}
-          <a href="/login" className="text-indigo-400 hover:underline">
+          <a href="/login" className="text-white underline">
             Login
           </a>
         </p>
