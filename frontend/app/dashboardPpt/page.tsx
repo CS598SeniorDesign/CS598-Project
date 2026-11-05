@@ -202,9 +202,11 @@ export default function Page() {
         <h1 className="text-xl font-bold">QuestLog</h1>
 
         <div className="flex gap-10 text-gray-300">
-          <p className="border-b-2 border-[#4F46E5] pb-1 cursor-pointer">
-            Game Library
-          </p>
+          <Link href="/library">
+            <p className="border-b-2 border-[#4F46E5] pb-1 cursor-pointer hover:text-white transition">
+              Game Library
+            </p>
+          </Link>
           <Link href="/recommendations">
             <p className="hover:text-white cursor-pointer transition">
               Recommendations for you
