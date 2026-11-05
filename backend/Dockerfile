@@ -12,6 +12,11 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 COPY pyproject.toml uv.lock /app/
 
 FROM base AS dev
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN uv sync --locked --no-install-project
 
 ENV PATH="/app/.venv/bin:$PATH"
