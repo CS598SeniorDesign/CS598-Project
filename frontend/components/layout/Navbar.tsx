@@ -103,14 +103,20 @@ export default function Navbar() {
 
         {/* Navigation Links */}
         <div className="flex items-center gap-6 text-xl">
-          <Link href="/login" className="hover:text-gray-400 transition">
-            Login
-          </Link>
+          {/* Show Login and Sign Up only when NOT authenticated */}
+          {!isLoading && !isAuthenticated && (
+            <>
+              <Link href="/login" className="hover:text-gray-400 transition">
+                Login
+              </Link>
 
-          <Link href="/signup" className="hover:text-gray-400 transition">
-            Sign Up
-          </Link>
+              <Link href="/signup" className="hover:text-gray-400 transition">
+                Sign Up
+              </Link>
+            </>
+          )}
 
+          {/* Show Log Out only when authenticated */}
           {!isLoading && isAuthenticated && (
             <button
               type="button"
@@ -124,6 +130,7 @@ export default function Navbar() {
         </div>
       </div>
 
+      {/* Logout Error Message */}
       {error && (
         <p role="alert" className="text-red-400 text-sm mt-3 text-right">
           {error}
