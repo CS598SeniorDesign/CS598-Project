@@ -4,6 +4,7 @@ import Image from "next/image";
 import React, { useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import RecommendationStrip from "@/components/recommendations/RecommendationStrip";
 // import WinRateChart from "@/components/stats/WinRateChart";
 
 // avatars
@@ -204,7 +205,7 @@ export default function Page() {
           <p className="border-b-2 border-[#4F46E5] pb-1 cursor-pointer">
             Game Library
           </p>
-          <Link href="/games/search">
+          <Link href="/recommendations">
             <p className="hover:text-white cursor-pointer transition">
               Recommendations for you
             </p>
@@ -422,6 +423,15 @@ export default function Page() {
                 <span className="text-[#FFBF00] text-xs">Tag</span>
               </div>
             ))}
+          </div>
+
+          {/* RECOMMENDED */}
+          <div className="bg-[#1E293B]/70 p-5 rounded-2xl shadow-lg transition duration-300 hover:shadow-xl hover:shadow-indigo-500/10">
+            <RecommendationStrip
+              title="Recommended for you"
+              query={{ strategy: "for_you", limit: 4 }}
+              emptyMessage="Log a few plays or like some games to get suggestions."
+            />
           </div>
         </div>
       </div>
