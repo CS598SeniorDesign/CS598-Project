@@ -52,6 +52,10 @@ BGG_API_TOKEN = env.str("BGG_API_TOKEN", default="")
 BGG_MINIMUM_SECONDS_BETWEEN_REQUESTS = env.float("BGG_MINIMUM_SECONDS_BETWEEN_REQUESTS", default=2.0)
 # How long BGG search results are kept before BGG is asked again for the same query.
 BGG_SEARCH_CACHE_SECONDS = env.int("BGG_SEARCH_CACHE_SECONDS", default=60 * 60 * 24)
+# Stored games older than this are fetched from BGG again (ratings and ranks change over time).
+BGG_CATALOG_REFRESH_DAYS = env.int("BGG_CATALOG_REFRESH_DAYS", default=30)
+# How many placeholder or stale games the nightly refresh fetches, 20 per BGG request.
+BGG_CATALOG_REFRESH_BATCH_SIZE = env.int("BGG_CATALOG_REFRESH_BATCH_SIZE", default=200)
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env.bool("DEBUG", default=False)
@@ -221,6 +225,12 @@ CELERY_BEAT_SCHEDULE = {
         "task": "recommendations.tasks.recommendation_report",
         "schedule": crontab(day_of_week="mon", hour=4, minute=0),
         "kwargs": {"days": 7},
+    },
+    # Fetches placeholder games (BGG was unreachable when they were stored) and games not refreshed in
+    # BGG_CATALOG_REFRESH_DAYS, up to BGG_CATALOG_REFRESH_BATCH_SIZE per night.
+    "refresh-stale-board-games-nightly": {
+        "task": "catalog.tasks.refresh_stale_board_games",
+        "schedule": crontab(hour=5, minute=0),
     },
 }
 

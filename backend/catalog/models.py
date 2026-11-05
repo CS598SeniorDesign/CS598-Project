@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from django.db import models
+from django.utils import timezone
 
 from core.utils import get_attribute_value, parse_optional_float, parse_optional_integer
 
@@ -136,6 +137,13 @@ class BoardGame(models.Model):
     bgg_rank = models.IntegerField(null=True, blank=True)
     average_weight = models.DecimalField(max_digits=4, decimal_places=3, null=True, blank=True)
 
+    last_synced_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes: ClassVar[list[models.Index]] = [
+            models.Index(fields=["last_synced_at"], name="board_game_last_synced_index"),
+        ]
+
     def __str__(self) -> str:
         """
         Return the string representation of a boardgame's name and year of publication
@@ -143,6 +151,16 @@ class BoardGame(models.Model):
         :return: A string containing the name and publication year for a board game.
         """
         return f"{self.primary_name} ({self.year_published})"
+
+    @property
+    def is_placeholder(self) -> bool:
+        """
+        Whether the game has never been fetched from BGG, so it only has an ID and a name.
+
+        :returns: True if the details are missing.
+        :rtype: bool
+        """
+        return self.last_synced_at is None
 
     @classmethod
     def create_from_xml(cls, xml_item: Element, backup_name: str | None = None):
@@ -187,6 +205,7 @@ class BoardGame(models.Model):
                 get_attribute_value(xml_item, "statistics/ratings/ranks/rank[@name='boardgame']")
             ),
             "average_weight": round(average_weight, 3) if average_weight else None,
+            "last_synced_at": timezone.now(),
         }
 
         instance: BoardGame

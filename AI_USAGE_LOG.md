@@ -489,6 +489,8 @@ AI proved:
 * AI validated `docker-compose.yml` with the monitoring profile using `docker compose config`.
 * No external APIs (BoardGameGeek, MLflow servers, Weights & Biases) were called.
 
+---
+
 ## Entry 14: [Prototype 3] — [Fixing Errors Thrown by E2E and Accesibility Pipeline]
 
 * **Date:** : November 3rd
@@ -522,3 +524,87 @@ The AI found a .env error and replaced the reference to the original hardcoded .
 I certify as Team Lead that all entries above accurately represent AI usage within this project phase, all prompts have been recorded, and all code has been validated by human review and automated testing.
 
 **Sydney Epke:** *[Testing Lead]* — **Date:** [11/03/26]
+
+---
+
+## Entry 15: Prototype 3 — Merge Celery Background Tasks into the BGG Refresh Branch
+
+* **Date:** November 3, 2026
+* **Team Member:** Brandon Nguyen (`@Meynok`)
+* **Tool Used:** Claude Code (Claude Opus 5.5)
+* **Associated Git Issue:** Closes `#175`
+* **Associated Feature Branch:** `feat/bgg-refresh` (draft PR #176)
+* **Commits:** `91dce56` (merge of `feature/celery`), `ba19fbf` (`fix: retry background play sync only for retryable bgg errors`)
+
+### Exact Prompt Submitted:
+
+> "we have conflicts in PR #163 and #169. please resolve these conflicts into this branch"
+
+### AI Output Summary & Code Generated:
+
+**`91dce56` — Merge `feature/celery` (#163) into `feat/bgg-refresh`**
+
+* Merged Jennifer's Celery branch (worker, beat, Flower, background BGG play import) into the branch that already contained the BGG client from `feat/bgg-catalog` (#169), so the catalog refresh work could build on both before either PR is merged.
+* Resolved the one conflict, in `tracking/utils.py`: kept the `import_bgg_plays` / `fetch_bgg_plays` split and message constants from `feature/celery`, and used the BGG client's `BoardGameGeekUnavailableError` and `BoardGameGeekMalformedResponseError` in place of the `requests` and `ElementTree` errors the BGG client replaced.
+* Updated the `import_bgg_plays` docstring to list the client errors it now raises.
+* Removed an unused `Profile` import left in `tracking/views.py` (also present on `feature/celery`, where it fails the backend lint).
+
+**`ba19fbf` — Retry background play sync only for retryable BGG errors**
+
+* Found a problem the merge did not show as a conflict: `sync_bgg_plays` in `tracking/tasks.py` caught `requests.RequestException` and read `exception.response.status_code` to decide whether to retry. After the merge the play import raises the BGG client's errors instead, so every BGG failure skipped those `except` blocks and the task was marked FAILED without retrying. The task tests did not catch this because they mock `import_bgg_plays` and raise `requests` errors themselves.
+* Added `is_retryable` and `status_code` to `BoardGameGeekUnavailableError` in `catalog/bgg_client.py`. Timeouts, connection failures, rate limiting (429) and server errors (5xx) are retryable; a request BGG rejects itself (for example, a 404 for an unknown username) is not.
+* Changed `sync_bgg_plays` to catch the two client errors and retry only when `is_retryable` is True, and removed `_is_retryable` and `RETRYABLE_HTTP_STATUSES`.
+* Updated the task tests in `tracking/test_tasks.py` to raise the client's errors, and added a test that unreadable BGG XML fails the sync without retrying.
+
+### Human Review, Refactoring & Modifications Made:
+
+* Reviewed the merge and changes made. Determined that they were the right direction to go in
+
+### Verification & Testing Method:
+
+* AI ran the full backend suite against a temporary `pgvector/pgvector:pg17` container: 299 tests passed, including Jennifer's Celery task tests and the new unreadable-XML test.
+* AI ran Ruff lint and format, mypy, `uv lock --check` (the merged lockfile resolves), `makemigrations --check` (no drift) and `lintmigrations` (no erroneous migrations). All passed.
+* No external APIs (BoardGameGeek) were called; the tests mock the BGG client.
+
+---
+
+## Entry 17: Prototype 3 — Resolve Library Updates Merge Conflicts in the BGG Refresh Branch
+
+* **Date:** November 5, 2026
+* **Team Member:** Brandon Nguyen (`@Meynok`)
+* **Tool Used:** Claude Code (Claude Opus 5.5)
+* **Associated Git Issue:** Closes `#`
+* **Associated Feature Branch:** `feat/bgg-refresh` (PR #176)
+* **Commits:** `26648d1` (`Merge branch 'main' into feat/bgg-refresh`, bringing in #173)
+
+### Exact Prompt Submitted:
+
+> "i just pulled from main. please take a look at the merge conflicts, then give me a list of conflicts, their impact, and your intended resolution"
+
+> "your resolution looks good, go ahead and resolve these conflicts"
+
+### AI Output Summary & Code Generated:
+
+**Conflict analysis (first prompt).** AI inspected the merge of `main` (#173, backend library updates and BGG collection import) into `feat/bgg-refresh` without changing any files, and reported:
+
+* One conflicted file, `backend/tracking/utils.py`, with two hunks, both where each side added different code in the same place:
+  * **Imports:** this branch added `UNKNOWN_GAME_NAME`, `CatalogSyncService` and `get_attribute` (batched game lookups during play imports); #173 added `get_existing_board_game`, `LibraryItem` and `LibraryItemAlreadyExistsError` (BGG collection import). Dropping either side would break that feature, and #173's tests patch `tracking.utils.get_existing_board_game`, so that import had to stay.
+  * **End of file:** this branch added `_game_names_by_id()`; #173 added the collection import section (`import_bgg_collection`, its result and error classes, helpers and message).
+* Files changed on both sides that merged automatically, checked for problems that would not appear as conflicts: `catalog/bgg_client.py` (#173 only adds `fetch_collection()`, built on the existing client), `config/settings.py` and `.env.example` (#173's `LIBRARY_ITEM_RETENTION_DAYS` and daily purge task alongside this branch's nightly game refresh), and the batched lookup in `_sync_plays_page`, which remained intact. The collection task already uses the BGG client's `is_retryable`.
+* A follow-up outside the merge: #173's collection import fetches each new game with its own BGG request (at least 2 seconds apart), so a large first import could approach the task's 15-minute limit; calling `CatalogSyncService.ensure_games()` before the loop would fetch games 20 per request.
+
+**Resolution (second prompt).**
+
+* Kept both sides' imports as one sorted list with no duplicates.
+* Kept `_game_names_by_id()` followed by #173's collection import section, both unchanged.
+* Left the collection import's per-game lookups unchanged, to be raised with Jennifer as a follow-up.
+
+### Human Review, Refactoring & Modifications Made:
+
+* AI suggested merge conflicts were simple enough to accept both changes. Went ahead and told it to do so and inspected the changes and manually tested endpoints/ran tests to verify nothing went wrong
+
+### Verification & Testing Method:
+
+* AI ran the full backend suite against a temporary `pgvector/pgvector:pg17` container with outbound network connections blocked: 406 tests passed. The collection import, library, play import batching and catalog refresh tests also passed when run on their own (67 tests).
+* AI ran Ruff lint and format, mypy, `uv lock --check`, `makemigrations --check` (no drift; #173's `tracking/0009` and this branch's `catalog/0004` coexist) and `lintmigrations` (0 erroneous migrations of 41). All passed.
+* No external APIs (BoardGameGeek) were called.
