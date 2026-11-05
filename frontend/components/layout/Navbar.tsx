@@ -117,12 +117,17 @@ export default function Navbar() {
           )}
 
           {!isLoading && isAuthenticated && (
-            <Link
-              href="/recommendations"
-              className="hover:text-gray-400 transition"
-            >
-              Recommendations
-            </Link>
+            <>
+              <Link href="/library" className="hover:text-gray-400 transition">
+                Library
+              </Link>
+              <Link
+                href="/recommendations"
+                className="hover:text-gray-400 transition"
+              >
+                Recommendations
+              </Link>
+            </>
           )}
 
           {/* Show Log Out only when authenticated */}
