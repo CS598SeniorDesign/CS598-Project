@@ -10,14 +10,27 @@ fetched from BGG and cached, since that creates a new record.
 
 from __future__ import annotations
 
-from rest_framework import mixins, viewsets
+import logging
+
+from rest_framework import mixins, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 
+from catalog import bgg_client
 from catalog.models import BoardGame
-from catalog.serializers import BoardGameDetailSerializer, BoardGameListSerializer
+from catalog.serializers import (
+    BoardGameDetailSerializer,
+    BoardGameListSerializer,
+    CatalogSearchQuerySerializer,
+    CatalogSearchResponseSerializer,
+)
+from catalog.services import CatalogSearchService
 from catalog.utils import get_existing_board_game
+from core.throttles import BggSearchRateThrottle
+
+logger = logging.getLogger(__name__)
 
 
 class BoardGameViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
@@ -25,9 +38,12 @@ class BoardGameViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewset
     Read-only access to the board game catalog.
 
     list:
-        Search board games already cached locally by name via `?search=`.
-        Note: this does not yet query BGG's own search endpoint, so a game that has never been looked
-        up by ID (see `retrieve`) will not appear here until it has been.
+        Search board games already cached locally by name via `?search=`. Only games someone has opened before
+        appear here; use `search` to find any game on BGG.
+    search:
+        Search every board game and expansion on BGG by name via `?query=` (2 to 100 characters), closest names
+        first. Requires authentication. Results for a query are cached, so repeating a search does not reach BGG.
+        Open a result with `retrieve` to fetch and store its full details.
     retrieve:
         Look up a single board game by its BoardGameGeek ID. For authenticated users, falls back to
         fetching it from the BGG XML API and caching it locally when it is not already present;
@@ -52,6 +68,37 @@ class BoardGameViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewset
             queryset = queryset.filter(primary_name__icontains=search_term)
 
         return queryset
+
+    @action(
+        detail=False,
+        methods=["get"],
+        permission_classes=[IsAuthenticated],
+        throttle_classes=[BggSearchRateThrottle],
+    )
+    def search(self, request):
+        """
+        Search BGG by game name, answering from the cache when the same query was searched recently.
+
+        :param request: The authenticated request, with the search text in ``?query=``.
+        :type request: rest_framework.request.Request
+        :returns: 200 with the matches, 400 when the query is missing or too short or long, or 502 when the query is
+            not cached and BGG cannot be searched.
+        :rtype: rest_framework.response.Response
+        """
+        query_serializer = CatalogSearchQuerySerializer(data=request.query_params)
+        query_serializer.is_valid(raise_exception=True)
+        query = query_serializer.validated_data["query"]
+
+        try:
+            search_response = CatalogSearchService.search(query)
+        except (bgg_client.BoardGameGeekUnavailableError, bgg_client.BoardGameGeekMalformedResponseError) as error:
+            logger.warning("BGG search failed for query %r: %s", query, error)
+            return Response(
+                {"detail": "BoardGameGeek search is unavailable right now. Please try again later."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        return Response(CatalogSearchResponseSerializer(search_response).data)
 
     def retrieve(self, request, *args, **kwargs):
         """

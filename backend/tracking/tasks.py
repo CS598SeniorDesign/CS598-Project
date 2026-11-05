@@ -15,13 +15,12 @@ import logging
 import uuid
 from typing import TYPE_CHECKING, Any
 
-import requests
 from celery import shared_task
 from celery.result import AsyncResult
-from defusedxml import ElementTree
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 
+from catalog import bgg_client
 from profiles.models import Profile
 from tracking.utils import (
     CONNECTION_FAILED_MESSAGE,
@@ -38,7 +37,6 @@ logger = logging.getLogger(__name__)
 # Retries for BGG outages and rate limiting: 1, 2 and 4 minutes apart.
 MAX_RETRIES = 3
 RETRY_BACKOFF_SECONDS = 60
-RETRYABLE_HTTP_STATUSES = frozenset({429, 500, 502, 503, 504})
 
 # Long enough for a large import plus every retry. The lock expires on its own if a worker dies without releasing it.
 SYNC_SOFT_TIME_LIMIT = 15 * 60
@@ -76,13 +74,13 @@ def sync_bgg_plays(self, user_id: str) -> dict[str, Any]:
 
     try:
         imported = import_bgg_plays(user, bgg_username)
-    except requests.RequestException as exception:
-        if _is_retryable(exception) and self.request.retries < MAX_RETRIES:
+    except bgg_client.BoardGameGeekUnavailableError as exception:
+        if exception.is_retryable and self.request.retries < MAX_RETRIES:
             logger.warning("BGG play sync failed; retrying: %s", exception, extra={"retry": self.request.retries + 1})
             raise self.retry(exc=exception, countdown=_retry_delay(self.request.retries)) from exception
         logger.warning("BGG play sync failed: %s", exception)
         return _finish(user_id, task_id, success=False, detail=CONNECTION_FAILED_MESSAGE)
-    except ElementTree.ParseError as exception:
+    except bgg_client.BoardGameGeekMalformedResponseError as exception:
         logger.error("Malformed BGG XML during play sync: %s", exception)
         return _finish(user_id, task_id, success=False, detail=INTERNAL_ERROR_MESSAGE)
     except Exception:
@@ -159,19 +157,6 @@ def _linked_bgg_username(user: User) -> str:
     :returns: The username, or an empty string if none is linked.
     """
     return (Profile.objects.filter(user=user).values_list("bgg_username", flat=True).first() or "").strip()
-
-
-def _is_retryable(exception: requests.RequestException) -> bool:
-    """
-    Whether a failed BGG request is worth retrying: connection problems, timeouts, rate limiting and server errors.
-
-    :param exception: The failure.
-    :returns: False for client errors such as an unknown username, which would fail again.
-    """
-    response = getattr(exception, "response", None)
-    if response is None:
-        return True
-    return response.status_code in RETRYABLE_HTTP_STATUSES
 
 
 def _retry_delay(retries: int) -> int:
