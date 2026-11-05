@@ -29,6 +29,9 @@ This document provides guidance on running the backend through Docker and locall
   - [Running tests](#running-tests)
   - [Health Endpoints](#health-endpoints)
   - [Logging \& Monitoring](#logging--monitoring)
+  - [Background Tasks (Celery)](#background-tasks-celery)
+  - [Library \& Wishlist API](#library--wishlist-api)
+  - [Community API](#community-api)
   - [Recommendation Engine](#recommendation-engine)
 
 ## Backend File Structure
@@ -36,6 +39,8 @@ This document provides guidance on running the backend through Docker and locall
 ```bash
 /catalog
 |- 'Django app for the board game library: game metadata, BGG XML API integration, search/filter, and wishlist models'
+/community
+|- 'Django app for community features: friend requests, game group and event (game night) APIs, the activity feed, and trending games'
 /config
 |- 'Django project configuration: settings, ASGI/WSGI entrypoint, root urls.py'
 /core
@@ -415,6 +420,96 @@ The production image runs gunicorn with `config/gunicorn.conf.py` and sets `PROM
 docker compose --profile monitoring up
 ```
 
+## Background Tasks (Celery)
+
+Slow and scheduled work runs in [Celery](https://docs.celeryq.dev/) workers instead of web requests, with Redis database 2 as the broker and result store. The app is defined in `config/celery.py`, and each Django app keeps its tasks in `tasks.py`.
+
+| Task | Runs | What it does |
+| :--- | :--- | :--- |
+| `tracking.tasks.sync_bgg_plays` | When a user calls `POST /api/v1/plays/sync/` | Imports the user's BGG plays. Retries up to 3 times (1, 2, 4 minutes apart) when BGG is down or rate limiting; client errors are not retried. |
+| `tracking.tasks.sync_bgg_collection` | When a user calls `POST /api/v1/library/sync/` | Imports the games the user owns or wishlists on BGG. Retries every 15–120 seconds (about 9 minutes in all) while BGG prepares the collection, and on outages. |
+| `tracking.tasks.purge_removed_library_items` | Daily, 02:30 UTC | Permanently deletes library and wishlist entries removed more than `LIBRARY_ITEM_RETENTION_DAYS` (default 90) ago |
+| `recommendations.tasks.refresh_recommender_caches` | Every 30 minutes | Rebuilds the cached content and collaborative models before they expire, so requests rarely build them |
+| `recommendations.tasks.train_recommender` | Daily, 03:00 UTC | `manage.py train_recommender`: models, pgvector embeddings, offline evaluation, experiment tracking |
+| `recommendations.tasks.recommendation_report` | Mondays, 04:00 UTC | `manage.py recommendation_report --days 7` |
+
+The schedule is `CELERY_BEAT_SCHEDULE` in `config/settings.py`. Scheduled tasks hold a lock while they run, so a slow run is skipped by the next one rather than overlapped.
+
+**Play sync API.** `POST /api/v1/plays/sync/` returns `202 Accepted` with a `task_id` and `status_url` (also in the `Location` header) instead of waiting for the import. Poll `GET /api/v1/plays/sync/<task_id>/` for its `status` (`queued`, `running`, `retrying`, `succeeded`, `failed`), `detail` message and number of plays `imported`. Each user has at most one import queued or running; syncing again returns the same task. Only the user who started an import can see its status, which is kept for 24 hours.
+
+**Running it.** `docker compose up` starts three extra containers from the backend image:
+
+- `celery-worker` runs tasks (2 processes). Celery does not reload on code changes, so run `docker compose restart celery-worker celery-beat` after editing tasks.
+- `celery-beat` queues the scheduled tasks. Run exactly one beat, or every scheduled task is queued twice.
+- `flower` is a web UI for workers, tasks, retries and failures at <http://localhost:5555> (bound to localhost only). Set `FLOWER_BASIC_AUTH=user:password` in `.env` to require a login. Flower also serves Prometheus metrics for tasks at `/metrics`.
+
+These containers set `RUN_MIGRATIONS=false` so only the web container runs migrations. In production, run the worker and beat from the production image the same way, overriding its command:
+
+```bash
+celery -A config worker --loglevel=INFO
+celery -A config beat --loglevel=INFO --schedule=/tmp/celerybeat-schedule
+```
+
+Without Docker, start a worker in another terminal: `uv run celery -A config worker --loglevel=INFO`. On macOS, add `--pool=solo`; Celery's default process pool fails there with `ValueError: not enough values to unpack`. Alternatively, set `CELERY_TASK_ALWAYS_EAGER=True` to run tasks inline in the web process, with no worker (development only: requests then wait for the task again).
+
+**Logs.** Workers write the same JSON log lines as the web app. A task queued during an API request keeps that request's `request_id` and `user_id` and adds `task_id` and `task_name`, so you can follow an import from the request that started it. The `questlog.tasks` logger records each task's start, finish (state and `duration_ms`) and failures with stack traces.
+
+**Tests** never need a worker or broker: tests mock `apply_async`, or run tasks in-process with `.apply()`.
+
+## Library & Wishlist API
+
+`/api/v1/library/` holds each user's owned games (`ownership=OWNED`) and wishlist (`WISHLISTED`), looked up by BGG ID. Every user only sees their own entries.
+
+| Endpoint | Purpose |
+| :--- | :--- |
+| `GET /library/` | List entries. Filters: `ownership`, `is_played`, `has_played`, `search`. Sort: `ordering=added_at\|name\|rating\|rank\|play_count\|last_played\|priority` (prefix `-` for descending; default `-added_at`; missing values sort last). |
+| `POST /library/` | Add a game (`game_id`, optional `ownership`, `is_played`, `wishlist_priority`, `house_rules`). The game must already be in the catalog (`GET /games/{bgg_id}/` caches it). 409 if already added. |
+| `GET/PATCH/DELETE /library/{bgg_id}/` | Read, change, or remove an entry. Removing soft-deletes it; re-adding within the retention period restores it. |
+| `GET /library/summary/` | `owned`, `wishlisted`, `owned_unplayed`, `wishlisted_unplayed`, `total`. |
+| `POST /library/sync/` → `GET /library/sync/{task_id}/` | Import the BGG collection in the background (202 + task ID, then poll), like `POST /plays/sync/`. |
+
+**Played status.** Each entry reports `is_played` (the user's own flag, e.g. for games played before using QuestLog), `play_count` and `last_played` (from the user's logged and imported plays), and `has_played` (either). Clients should display `has_played`, so a logged play counts even if the user never set `is_played` (the current frontend still shows `is_played`).
+
+**Wishlist priority.** `wishlist_priority` uses BoardGameGeek's scale: 1 must have, 2 love to have, 3 like to have, 4 thinking about it, 5 don't buy this. It can only be set on wishlisted entries and is cleared when a game moves to the library.
+
+**Pagination** is opt-in so the current frontend, which loads the whole library, keeps working: pass `?page=` and/or `?page_size=` (default 50, max 200) to get `{count, next, previous, results}`.
+
+**BGG collection import** only adds information. Games owned or wishlisted on BGG are added, owned wins over wishlisted, and BGG plays mark a game played. Existing entries can move from wishlist to library, become played, or gain a priority, but nothing is ever downgraded, and house rules are untouched. Games the user removed in QuestLog are not re-added. Games marked only as previously owned or for trade are skipped. Expansions are excluded. Games missing from the catalog are fetched from BGG one at a time, so a large first import takes a while. Play and collection syncs share the 3-per-minute BGG sync throttle.
+
+`house_rules` is limited to 5,000 characters.
+
+## Community API
+
+The `community` app powers the community page. Every endpoint requires sign-in, and users are always shown as `user_id` (a UUID string) and `display_name`, never with their email address. Groups, events and players a user may not see answer **404**, the same as ones that don't exist.
+
+| Endpoint | Purpose |
+| :--- | :--- |
+| `GET /api/v1/friends/` | The user's friends (from `profiles`; Private-profile friends are left out) |
+| `DELETE /api/v1/friends/{user_id}/` | End a friendship, for both users |
+| `GET /api/v1/friend-requests/` | Pending requests: `incoming` and `outgoing` |
+| `POST /api/v1/friend-requests/` | Send one (`user_id`). 201 when created, 200 if already pending, 200 `ACCEPTED` if that player had already asked you. Limited to 30 per hour |
+| `POST /api/v1/friend-requests/{id}/accept/`, `/decline/` | Answer a request sent to you |
+| `DELETE /api/v1/friend-requests/{id}/` | Withdraw a request you sent |
+| `GET/POST /api/v1/groups/` | Your game groups; create one (`name`, `description`, optional friends in `member_ids`) |
+| `GET/PATCH/DELETE /api/v1/groups/{id}/` | A group with its `members`; owner-only changes. Deleting a group also deletes its events and the plays logged for it |
+| `POST /api/v1/groups/{id}/members/`, `DELETE .../members/{user_id}/`, `POST .../leave/` | Owner adds a friend or removes a member; members leave (the owner deletes instead) |
+| `GET/POST /api/v1/events/` | Upcoming game nights (`?scope=past`, `?days=`, `?group_id=`); plan one (`title`, `starts_at` in the future, optional `description`, `location`, `game_id`, `group_id`) |
+| `GET/PATCH/DELETE /api/v1/events/{id}/` | An event with everyone's `rsvps`; host-only changes |
+| `POST /api/v1/events/{id}/rsvp/` | Answer `GOING`, `MAYBE` or `NOT_GOING` (replaces an earlier answer) |
+| `GET /api/v1/community/feed/` | Plays and library/wishlist additions by you and your friends, newest first (`?limit=`, max 50) |
+| `GET /api/v1/community/trending/` | Most played on QuestLog in the last `?days=` (default 7), topped up with BGG's top-ranked games |
+| `GET /api/v1/community/summary/` | For notifications: pending friend requests, events in the next 7 days, and the next event |
+
+**Who can see what.**
+- Friend requests can be sent to anyone the player search shows: Public profiles, and Friends profiles of existing friends. Private profiles can't be asked.
+- Groups are visible only to their members. Only the creator (owner) can change one, and members can only be added from the owner's friends. Friends with a Private profile can be added too: other members then see their display name.
+- An event in a group is visible to the group's members. An event without a group is visible to its host and the host's friends.
+- The feed leaves out friends with a Private profile.
+- Trending uses everyone's plays in aggregate, so it reveals nothing about individual players.
+- Inactive and deleted accounts are left out everywhere: group member lists and counts (a group whose owner left shows `owner: null`), RSVP lists and `going_count`, friend requests in both directions, and the events they host.
+
+`manage.py seed` gives the demo login a group, two upcoming game nights and a pending friend request. The `bruno/Community` folder exercises every endpoint.
+
 ## Recommendation Engine
 
 The `recommendations` app serves game recommendations at `GET /api/v1/recommendations/?strategy=<strategy>`. `GET /api/v1/recommendations/options/` lists every strategy with its parameters, plus the choices for the decision chart and onboarding form.
@@ -431,7 +526,7 @@ The database needs the pgvector extension. `docker-compose.yml` and CI use the `
 
 **Feedback.** `POST /api/v1/recommendations/feedback/` with `game_id` and `sentiment` (`LIKE`/`DISLIKE`). Disliked games are never recommended again, and both reactions feed the user's taste.
 
-**Caching.** Results are cached in Redis per user for 10 minutes. Saving a library item, rating, play, feedback, or setting clears that user's cache. The content model is cached for an hour, or until the catalog grows. The collaborative model is cached for an hour, or until a user opts in or out, so an opted-out user's data stops shaping other users' recommendations on the next request. Both are built on demand. This command rebuilds them and the stored game embeddings ahead of time, and should run on a schedule (`--skip-embeddings` rebuilds only the cached models). An opted-out user's activity stays in the stored embeddings until the next run:
+**Caching.** Results are cached in Redis per user for 10 minutes. Saving a library item, rating, play, feedback, or setting clears that user's cache. The content model is cached for an hour, or until the catalog grows. The collaborative model is cached for an hour, or until a user opts in or out, so an opted-out user's data stops shaping other users' recommendations on the next request. Both are built on demand. Celery beat refreshes both every 30 minutes and runs the full `train_recommender` (models and stored game embeddings) nightly; see [Background Tasks](#background-tasks-celery). An opted-out user's activity stays in the stored embeddings until the next nightly run. To rebuild by hand (`--skip-embeddings` rebuilds only the cached models):
 
 ```bash
 uv run python manage.py train_recommender

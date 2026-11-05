@@ -1,0 +1,23 @@
+meta {
+  name: Community Summary
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/community/summary/
+  body: none
+  auth: none
+}
+
+docs {
+  Counts for the community page's notification badge: pending friend requests sent to the user, game nights in the
+  next 7 days they have not declined, and the next one. The seeded demo login has one pending request and one event.
+}
+
+tests {
+  test("returns the notification counts", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.all.keys("pending_friend_requests", "upcoming_events", "next_event");
+  });
+}

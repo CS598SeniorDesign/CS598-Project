@@ -1,0 +1,60 @@
+meta {
+  name: Plan Event
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/api/v1/events/
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "title": "Bruno Game Night"
+  }
+}
+
+script:pre-request {
+  // The body is built here so the request never depends on variables another request may not have set.
+  // Events must start in the future: three days from now.
+  const body = {
+    title: "Bruno Game Night",
+    starts_at: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+    location: "Home",
+  };
+  // Plan it in the group from Create Game Group when that has run; otherwise it is an event for your friends.
+  const groupId = bru.getVar("groupId");
+  if (groupId) {
+    body.group_id = groupId;
+  }
+  req.setBody(body);
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    bru.setVar("eventId", res.getBody().id);
+    // Cancel Event only ever deletes the event planned here, never a seeded one.
+    bru.setVar("plannedEventId", res.getBody().id);
+  }
+}
+
+docs {
+  Plans a game night three days from now. If **Create Game Group** has run, the event is in that group (visible to its
+  members); otherwise it has no group and the user's friends can see it. The host is recorded as going.
+
+  To plan the night around a game, add `"game_id": <BGG ID>` to the body in the pre-request script. The game must
+  already be in the local catalog: open it once with **Catalog → Get Game** (which fetches it from BoardGameGeek), or
+  use a BGG ID from **Catalog → List Games**.
+
+  Sets `eventId` for **RSVP to Event** and `plannedEventId` for **Cancel Event**.
+}
+
+tests {
+  test("creates the event with the host going", function () {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().my_rsvp).to.equal("GOING");
+    expect(res.getBody().is_host).to.equal(true);
+  });
+}

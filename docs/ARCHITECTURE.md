@@ -57,13 +57,13 @@ flowchart LR
 | :---: | :--- |
 | `0` | Default cache: recommendation results, DRF throttle counters, allauth rate limits, readiness probe |
 | `1` | Session cache (`cached_db` engine — sessions are also persisted in Postgres) |
-| `2` | Reserved for a Celery broker (no worker yet) |
+| `2` | Celery broker and task results (`celery-worker`, `celery-beat`, `flower`) |
 
 ---
 
 ## 2. Container Runtime (Docker Compose)
 
-`docker compose up` starts four containers on the `questlog-net` bridge network. Health checks gate start-up order so
+`docker compose up` starts seven containers on the `questlog-net` bridge network. Health checks gate start-up order so
 the backend never starts before its dependencies are ready, and the frontend never starts before the backend.
 
 ```mermaid
@@ -76,6 +76,9 @@ flowchart TB
         be["<b>questlog-django</b><br/>target: dev · runserver<br/>entrypoint: wait for DB → migrate<br/>env: ./.env"]
         db[("<b>questlog-db</b><br/>pgvector/pgvector:pg17")]
         rd[("<b>questlog-redis</b><br/>redis · requirepass · AOF")]
+        wk["<b>questlog-celery-worker</b><br/>celery worker · BGG imports,<br/>recommender jobs"]
+        bt["<b>questlog-celery-beat</b><br/>schedules periodic tasks"]
+        fl["<b>questlog-flower</b><br/>task monitoring UI"]
         pr["<b>questlog-prometheus</b> (optional)<br/>profile: monitoring<br/>scrapes GET /metrics/"]
     end
 
@@ -90,6 +93,12 @@ flowchart TB
     fe -- "depends_on: backend healthy<br/>(GET /health/)" --> be
     be -- "depends_on: healthy<br/>(pg_isready)" --> db
     be -- "depends_on: healthy<br/>(redis-cli ping)" --> rd
+    be -- "queues tasks (Redis DB 2)" --> rd
+    wk -- "consumes tasks · writes results" --> rd
+    wk -- "plays · embeddings" --> db
+    bt -- "queues scheduled tasks" --> rd
+    fl -- "task events" --> rd
+    dev -- ":5555 (localhost)" --> fl
 
     dev -. ":9090" .-> pr
     pr -. "Bearer METRICS_TOKEN" .-> be
@@ -231,6 +240,7 @@ classDiagram
         +str ownership
         +bool is_played
         +str house_rules
+        +int wishlist_priority
         +datetime added_at
         +datetime deleted_at
         +add_for_user(user, game)$ LibraryItem
@@ -240,6 +250,7 @@ classDiagram
         +active() LibraryItemQuerySet
         +owned() LibraryItemQuerySet
         +wishlisted() LibraryItemQuerySet
+        +with_play_stats() LibraryItemQuerySet
     }
     class ActiveLibraryItemManager {
         +get_queryset() LibraryItemQuerySet

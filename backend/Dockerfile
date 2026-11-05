@@ -1,5 +1,9 @@
-FROM python:3.15-slim AS base
+FROM python:3.12-slim AS base
 
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+    
 RUN mkdir /app
 WORKDIR /app
 
@@ -7,6 +11,8 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV UV_COMPILE_BYTECODE=1
 ENV UV_LINK_MODE=copy
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 COPY pyproject.toml uv.lock /app/
@@ -19,7 +25,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN uv sync --locked --no-install-project
 
-ENV PATH="/app/.venv/bin:$PATH"
 ENV DJANGO_SETTINGS_MODULE=config.settings
 
 COPY . .
@@ -33,13 +38,12 @@ CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
 
 FROM base AS builder
 RUN uv sync --locked --no-install-project --no-default-groups --extra prod
-FROM python:3.15-slim AS production
+FROM python:3.12-slim AS production
 RUN useradd -m -r appuser && \
     mkdir /app && \
     chown -R appuser /app
 
-COPY --from=builder /app/.venv /app/.venv
-ENV PATH="/app/.venv/bin:$PATH"
+COPY --from=builder /opt/venv /opt/venv
 
 WORKDIR /app
 COPY --chown=appuser:appuser . .

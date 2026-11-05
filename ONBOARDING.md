@@ -123,7 +123,10 @@ Key variables (see `.env.example` for the full sanitized template):
 | --- | --- |
 | `DJANGO_SECRET_KEY` | Django |
 | `DATABASE_ENGINE`, `DATABASE_NAME`, `DATABASE_USERNAME`, `DATABASE_PASSWORD`, `DATABASE_HOST`, `DATABASE_PORT` | Django ORM |
-| `REDIS_CACHE_URL`, `REDIS_PASSWORD` | Django cache / Celery / Redis container |
+| `REDIS_CACHE_URL`, `REDIS_PASSWORD` | Django cache / Redis container |
+| `REDIS_CELERY_URL` | Celery broker and task results |
+| `CELERY_TASK_ALWAYS_EAGER` | `True` runs tasks inline without a worker (development only) |
+| `FLOWER_BASIC_AUTH` | `user:password` login for the Flower UI |
 | `ALLOWED_HOSTS`, `DEBUG`, `LOGLEVEL` | Django runtime |
 | `LOG_FORMAT` | `json` (default) or `text` log lines |
 | `METRICS_TOKEN` | Bearer token for `GET /metrics/` (Prometheus); unset disables the endpoint |

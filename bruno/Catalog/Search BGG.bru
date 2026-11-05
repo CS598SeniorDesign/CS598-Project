@@ -1,0 +1,34 @@
+meta {
+  name: Search BGG
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/games/search/?query=Catan
+  body: none
+  auth: none
+}
+
+docs {
+  Searches every board game and expansion on BoardGameGeek by name (2 to 100 characters), closest names first, and
+  returns at most 50 matches. Requires a signed-in user.
+
+  Results for a query are cached for a day, so running this again does not reach BGG. `is_in_catalog` and
+  `thumbnail_url` show whether the game's details are already stored locally; open a result with **Get Game** to
+  fetch and store them. Returns 400 for a missing, too short, or too long query, and 502 if BGG cannot be searched.
+}
+
+tests {
+  test("finds Catan first", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().total_matches).to.be.greaterThan(0);
+    expect(res.getBody().results[0].bgg_id).to.equal(13);
+    expect(res.getBody().results[0].name).to.equal("Catan");
+  });
+
+  test("labels expansions", function () {
+    const itemTypes = res.getBody().results.map((result) => result.item_type);
+    expect(itemTypes).to.include("boardgameexpansion");
+  });
+}

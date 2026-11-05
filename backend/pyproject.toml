@@ -20,6 +20,8 @@ dependencies = [
     "pgvector>=0.5.1",
     "certifi>=2026.10.18",
     "prometheus-client>=0.22",
+    "celery[redis]>=5.5",
+    "flower>=2.0",
 ]
 
 [dependency-groups]
@@ -76,7 +78,7 @@ max-complexity = 10
 "**/views.py" = ["RUF012"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["config", "catalog", "profiles", "tracking", "recommendations"]
+known-first-party = ["config", "catalog", "profiles", "tracking", "recommendations", "community"]
 
 [tool.mypy]
 python_version = "3.12"
@@ -100,7 +102,7 @@ django_settings_module = "config.settings"
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings"
 python_files = ["test_*.py", "*_test.py", "tests.py", "*_tests.py", "test_*.py"]
-testpaths = ["analytics", "catalog", "profiles", "tracking", "core", "users", "recommendations"]
+testpaths = ["analytics", "catalog", "profiles", "tracking", "core", "users", "recommendations", "community"]
 addopts = "--reuse-db --nomigrations"
 filterwarnings = [
     "ignore:No directory at:UserWarning",

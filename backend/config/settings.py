@@ -14,6 +14,7 @@ import os
 from pathlib import Path
 
 import environ
+from celery.schedules import crontab
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -35,7 +36,7 @@ env = environ.Env(
     REDIS_PASSWORD=(str),
     REDIS_CACHE_URL=(str, "redis://redis:6379/0"),
     REDIS_SESSION_URL=(str, "redis://redis:6379/1"),
-    REDIS_CELERY_URL=(list, ["redis://redis:6379/2"]),
+    REDIS_CELERY_URL=(str, "redis://redis:6379/2"),
     SECURE_SSL_REDIRECT=(bool, False),
 )
 
@@ -47,6 +48,14 @@ environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env.str("DJANGO_SECRET_KEY", default="")
 BGG_API_TOKEN = env.str("BGG_API_TOKEN", default="")
+# The shortest gap QuestLog leaves between any two requests to BGG, across every process (see catalog.bgg_client).
+BGG_MINIMUM_SECONDS_BETWEEN_REQUESTS = env.float("BGG_MINIMUM_SECONDS_BETWEEN_REQUESTS", default=2.0)
+# How long BGG search results are kept before BGG is asked again for the same query.
+BGG_SEARCH_CACHE_SECONDS = env.int("BGG_SEARCH_CACHE_SECONDS", default=60 * 60 * 24)
+# Stored games older than this are fetched from BGG again (ratings and ranks change over time).
+BGG_CATALOG_REFRESH_DAYS = env.int("BGG_CATALOG_REFRESH_DAYS", default=30)
+# How many placeholder or stale games the nightly refresh fetches, 20 per BGG request.
+BGG_CATALOG_REFRESH_BATCH_SIZE = env.int("BGG_CATALOG_REFRESH_BATCH_SIZE", default=200)
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env.bool("DEBUG", default=False)
@@ -88,6 +97,7 @@ INSTALLED_APPS = [
     "tracking",
     "users",
     "recommendations",
+    "community",
 ]
 
 SITE_ID = 1
@@ -163,8 +173,67 @@ CACHES["sessions"] = {
     "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
 }
 
+# Celery (config/celery.py): background and scheduled tasks, with Redis database 2 as broker and result store.
 CELERY_BROKER_URL = env("REDIS_CELERY_URL")
 CELERY_RESULT_BACKEND = env("REDIS_CELERY_URL")
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = "UTC"
+# Report STARTED while a task runs, so clients polling a task can tell queued from running.
+CELERY_TASK_TRACK_STARTED = True
+# Re-queue a task if its worker dies mid-run, instead of losing it. Tasks must be safe to run twice.
+CELERY_TASK_ACKS_LATE = True
+CELERY_TASK_REJECT_ON_WORKER_LOST = True
+# Tasks can run for minutes (BGG imports, model training), so each worker process takes one at a time.
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+# Default limits; long tasks set their own.
+CELERY_TASK_SOFT_TIME_LIMIT = 5 * 60
+CELERY_TASK_TIME_LIMIT = 6 * 60
+CELERY_RESULT_EXPIRES = 60 * 60 * 24
+# Keep Django's LOGGING (JSON lines) instead of Celery's own log format.
+CELERY_WORKER_HIJACK_ROOT_LOGGER = False
+CELERY_WORKER_SEND_TASK_EVENTS = True  # lets Flower show task progress
+CELERY_TASK_SEND_SENT_EVENT = True
+# Run tasks inline instead of queueing them, for working without a worker (e.g. running the backend outside Docker).
+CELERY_TASK_ALWAYS_EAGER = env.bool("CELERY_TASK_ALWAYS_EAGER", default=False)
+# In eager mode, still save results so status endpoints (e.g. GET /plays/sync/<task_id>/) work.
+CELERY_TASK_STORE_EAGER_RESULT = CELERY_TASK_ALWAYS_EAGER
+
+# Removed library and wishlist entries are kept this long (so re-adding a game restores its house rules, and BGG
+# collection imports do not re-add games the user removed), then deleted for good.
+LIBRARY_ITEM_RETENTION_DAYS = env.int("LIBRARY_ITEM_RETENTION_DAYS", default=90)
+
+# Periodic tasks queued by Celery beat. Times are UTC.
+CELERY_BEAT_SCHEDULE = {
+    # Keeps the cached recommendation models warm (they expire after an hour), so requests rarely have to build them.
+    "refresh-recommender-caches": {
+        "task": "recommendations.tasks.refresh_recommender_caches",
+        "schedule": crontab(minute="*/30"),
+    },
+    # Full rebuild: models, pgvector embeddings (dropping opted-out users' data), and offline evaluation.
+    "train-recommender-nightly": {
+        "task": "recommendations.tasks.train_recommender",
+        "schedule": crontab(hour=3, minute=0),
+    },
+    # Permanently deletes library/wishlist entries users removed more than LIBRARY_ITEM_RETENTION_DAYS ago.
+    "purge-removed-library-items-daily": {
+        "task": "tracking.tasks.purge_removed_library_items",
+        "schedule": crontab(hour=2, minute=30),
+    },
+    "recommendation-feedback-report-weekly": {
+        "task": "recommendations.tasks.recommendation_report",
+        "schedule": crontab(day_of_week="mon", hour=4, minute=0),
+        "kwargs": {"days": 7},
+    },
+    # Fetches placeholder games (BGG was unreachable when they were stored) and games not refreshed in
+    # BGG_CATALOG_REFRESH_DAYS, up to BGG_CATALOG_REFRESH_BATCH_SIZE per night.
+    "refresh-stale-board-games-nightly": {
+        "task": "catalog.tasks.refresh_stale_board_games",
+        "schedule": crontab(hour=5, minute=0),
+    },
+}
 
 CHANNEL_LAYERS = {
     "default": {"BACKEND": "channels_redis.core.RedisChannelLayer", "CONFIG": {"hosts": env.list("REDIS_CACHE_URL")}}
@@ -266,7 +335,7 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 # (Django, allauth) are outside our control. Migrations listed in "ignore_name" were flagged but reviewed.
 # Every entry must say why it is safe.
 MIGRATION_LINTER_OPTIONS = {
-    "include_apps": ["catalog", "core", "profiles", "recommendations", "tracking", "users"],
+    "include_apps": ["catalog", "community", "core", "profiles", "recommendations", "tracking", "users"],
     "ignore_name": [
         # tracking: drops and recreates the play session tables to replace the BGG-based primary key. The tables held
         # no data in any environment, and rolling back recreates them.
@@ -294,6 +363,8 @@ REST_FRAMEWORK = {
         "user": "300/min",
         "bgg-sync": "3/min",
         "player-search": "60/min",
+        "friend-requests": "30/hour",
+        "bgg-search": "30/min",
         "recommendations": "60/min",
     },
 }
