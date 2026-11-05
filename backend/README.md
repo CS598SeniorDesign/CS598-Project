@@ -30,6 +30,7 @@ This document provides guidance on running the backend through Docker and locall
   - [Health Endpoints](#health-endpoints)
   - [Logging \& Monitoring](#logging--monitoring)
   - [Background Tasks (Celery)](#background-tasks-celery)
+  - [Library \& Wishlist API](#library--wishlist-api)
   - [Recommendation Engine](#recommendation-engine)
 
 ## Backend File Structure
@@ -423,6 +424,8 @@ Slow and scheduled work runs in [Celery](https://docs.celeryq.dev/) workers inst
 | Task | Runs | What it does |
 | :--- | :--- | :--- |
 | `tracking.tasks.sync_bgg_plays` | When a user calls `POST /api/v1/plays/sync/` | Imports the user's BGG plays. Retries up to 3 times (1, 2, 4 minutes apart) when BGG is down or rate limiting; client errors are not retried. |
+| `tracking.tasks.sync_bgg_collection` | When a user calls `POST /api/v1/library/sync/` | Imports the games the user owns or wishlists on BGG. Retries every 15–120 seconds (about 9 minutes in all) while BGG prepares the collection, and on outages. |
+| `tracking.tasks.purge_removed_library_items` | Daily, 02:30 UTC | Permanently deletes library and wishlist entries removed more than `LIBRARY_ITEM_RETENTION_DAYS` (default 90) ago |
 | `recommendations.tasks.refresh_recommender_caches` | Every 30 minutes | Rebuilds the cached content and collaborative models before they expire, so requests rarely build them |
 | `recommendations.tasks.train_recommender` | Daily, 03:00 UTC | `manage.py train_recommender`: models, pgvector embeddings, offline evaluation, experiment tracking |
 | `recommendations.tasks.recommendation_report` | Mondays, 04:00 UTC | `manage.py recommendation_report --days 7` |
@@ -449,6 +452,28 @@ Without Docker, start a worker in another terminal: `uv run celery -A config wor
 **Logs.** Workers write the same JSON log lines as the web app. A task queued during an API request keeps that request's `request_id` and `user_id` and adds `task_id` and `task_name`, so you can follow an import from the request that started it. The `questlog.tasks` logger records each task's start, finish (state and `duration_ms`) and failures with stack traces.
 
 **Tests** never need a worker or broker: tests mock `apply_async`, or run tasks in-process with `.apply()`.
+
+## Library & Wishlist API
+
+`/api/v1/library/` holds each user's owned games (`ownership=OWNED`) and wishlist (`WISHLISTED`), looked up by BGG ID. Every user only sees their own entries.
+
+| Endpoint | Purpose |
+| :--- | :--- |
+| `GET /library/` | List entries. Filters: `ownership`, `is_played`, `has_played`, `search`. Sort: `ordering=added_at\|name\|rating\|rank\|play_count\|last_played\|priority` (prefix `-` for descending; default `-added_at`; missing values sort last). |
+| `POST /library/` | Add a game (`game_id`, optional `ownership`, `is_played`, `wishlist_priority`, `house_rules`). The game must already be in the catalog (`GET /games/{bgg_id}/` caches it). 409 if already added. |
+| `GET/PATCH/DELETE /library/{bgg_id}/` | Read, change, or remove an entry. Removing soft-deletes it; re-adding within the retention period restores it. |
+| `GET /library/summary/` | `owned`, `wishlisted`, `owned_unplayed`, `wishlisted_unplayed`, `total`. |
+| `POST /library/sync/` → `GET /library/sync/{task_id}/` | Import the BGG collection in the background (202 + task ID, then poll), like `POST /plays/sync/`. |
+
+**Played status.** Each entry reports `is_played` (the user's own flag, e.g. for games played before using QuestLog), `play_count` and `last_played` (from the user's logged and imported plays), and `has_played` (either). Clients should display `has_played`, so a logged play counts even if the user never set `is_played` (the current frontend still shows `is_played`).
+
+**Wishlist priority.** `wishlist_priority` uses BoardGameGeek's scale: 1 must have, 2 love to have, 3 like to have, 4 thinking about it, 5 don't buy this. It can only be set on wishlisted entries and is cleared when a game moves to the library.
+
+**Pagination** is opt-in so the current frontend, which loads the whole library, keeps working: pass `?page=` and/or `?page_size=` (default 50, max 200) to get `{count, next, previous, results}`.
+
+**BGG collection import** only adds information. Games owned or wishlisted on BGG are added, owned wins over wishlisted, and BGG plays mark a game played. Existing entries can move from wishlist to library, become played, or gain a priority, but nothing is ever downgraded, and house rules are untouched. Games the user removed in QuestLog are not re-added. Games marked only as previously owned or for trade are skipped. Expansions are excluded. Games missing from the catalog are fetched from BGG one at a time, so a large first import takes a while. Play and collection syncs share the 3-per-minute BGG sync throttle.
+
+`house_rules` is limited to 5,000 characters.
 
 ## Recommendation Engine
 

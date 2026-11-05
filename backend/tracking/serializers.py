@@ -26,6 +26,7 @@ SESSION_DETAIL_FIELD_NAMES = (
     "location",
     "notes",
 )
+HOUSE_RULES_MAX_LENGTH = 5000
 
 
 class LibraryItemSerializer(serializers.ModelSerializer):
@@ -33,9 +34,23 @@ class LibraryItemSerializer(serializers.ModelSerializer):
 
     Used for reads and updates. The game itself cannot be changed once an entry exists; remove the entry and add the
     other game instead.
+
+    ``play_count`` and ``last_played`` come from the user's logged and imported plays of the game (the queryset must
+    be annotated with ``LibraryItemQuerySet.with_play_stats``). ``has_played`` is true when the user has logged a play
+    or marked the game played themselves (``is_played``), so a game played before joining QuestLog still counts.
+
+    ``wishlist_priority`` (1 = must have ... 5 = don't buy, as on BoardGameGeek) only applies to wishlisted entries,
+    and is cleared when a game moves to the library.
     """
 
     game = BoardGameListSerializer(read_only=True)
+    house_rules = serializers.CharField(max_length=HOUSE_RULES_MAX_LENGTH, allow_blank=True, required=False)
+    wishlist_priority = serializers.ChoiceField(
+        choices=LibraryItem.WISHLIST_PRIORITY_CHOICES, allow_null=True, required=False
+    )
+    play_count = serializers.IntegerField(read_only=True)
+    last_played = serializers.DateField(read_only=True, allow_null=True)
+    has_played = serializers.SerializerMethodField()
 
     class Meta:
         model = LibraryItem
@@ -43,11 +58,45 @@ class LibraryItemSerializer(serializers.ModelSerializer):
             "game",
             "ownership",
             "is_played",
+            "has_played",
+            "play_count",
+            "last_played",
+            "wishlist_priority",
             "house_rules",
             "added_at",
             "updated_at",
         ]
         read_only_fields: ClassVar[list[str]] = ["added_at", "updated_at"]
+
+    def get_has_played(self, item: LibraryItem) -> bool:
+        """
+        Whether the user has played the game, by their own account or by their logged plays.
+
+        :param item: The library entry.
+        :type item: tracking.models.LibraryItem
+        :returns: True if ``is_played`` is set or there is at least one logged play.
+        :rtype: bool
+        """
+        return item.is_played or bool(getattr(item, "play_count", 0))
+
+    def validate(self, attrs):
+        """
+        Keep the wishlist priority consistent with ownership: it may only be set on wishlisted entries, and moving an
+        entry to the library clears it.
+
+        :param attrs: The validated fields.
+        :returns: The fields, with ``wishlist_priority`` cleared when the entry is (or becomes) owned.
+        :raises rest_framework.serializers.ValidationError: If a priority is given for an owned entry.
+        """
+        current_ownership = self.instance.ownership if self.instance is not None else LibraryItem.OWNED
+        ownership = attrs.get("ownership", current_ownership)
+        if ownership == LibraryItem.OWNED:
+            if attrs.get("wishlist_priority") is not None:
+                raise serializers.ValidationError(
+                    {"wishlist_priority": "Only wishlisted games can have a wishlist priority."}
+                )
+            attrs["wishlist_priority"] = None
+        return attrs
 
 
 class LibraryItemCreateSerializer(LibraryItemSerializer):

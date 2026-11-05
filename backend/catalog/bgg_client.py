@@ -191,6 +191,31 @@ def fetch_plays_page(bgg_username: str, page: int) -> Element:
     return _request_xml("plays", {"username": bgg_username, "page": page})
 
 
+def fetch_collection(bgg_username: str) -> Element:
+    """
+    Fetch the board games in a BGG user's collection, with their owned/wishlist status and play counts.
+
+    BGG answers HTTP 202 while it prepares a collection it has not built recently; _request_xml retries that a few
+    times, and raises BoardGameGeekUnavailableError with ``status_code=202`` if BGG is still preparing it. Expansions
+    are excluded (they would otherwise be listed under the boardgame subtype too).
+
+    An unknown username is answered with HTTP 200 and an ``<errors>`` document, which is returned as is for the caller
+    to check.
+
+    :param bgg_username: The BoardGameGeek username. Sent as a query parameter, so it is URL-encoded.
+    :type bgg_username: str
+    :returns: The ``<items>`` root element (or ``<errors>``).
+    :rtype: xml.etree.ElementTree.Element
+    :raises BoardGameGeekUnavailableError: If the request fails or BGG is still preparing the collection.
+    :raises BoardGameGeekMalformedResponseError: If the response cannot be parsed.
+    """
+
+    return _request_xml(
+        "collection",
+        {"username": bgg_username, "subtype": BOARD_GAME_ITEM_TYPE, "excludesubtype": EXPANSION_ITEM_TYPE},
+    )
+
+
 def _request_xml(endpoint: str, parameters: dict[str, str | int]) -> Element:
     """
     Send one GET request to a BGG XML API2 endpoint and parse the response, retrying when BGG asks for it.
