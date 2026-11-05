@@ -9,8 +9,11 @@ import LogPlayForm from "./LogPlayForm";
 
 const mockFetch = jest.fn();
 
+const ME_ID = "550e8400-e29b-41d4-a716-446655440000";
 const ALEX_ID = "550e8400-e29b-41d4-a716-446655440001";
 const SAM_ID = "550e8400-e29b-41d4-a716-446655440002";
+
+const currentUser = { user_id: ME_ID, display_name: "Jordan" };
 
 const friends = [
   { user_id: ALEX_ID, display_name: "Alex" },
@@ -23,55 +26,66 @@ const defaultProps = {
   onClose: jest.fn(),
 };
 
-function renderForm() {
-  return render(<LogPlayForm {...defaultProps} />);
+type MockResponse = { ok: boolean; status: number; json?: () => unknown };
+
+function respond(status: number, body?: unknown): Promise<MockResponse> {
+  return Promise.resolve({
+    ok: status >= 200 && status < 300,
+    status,
+    json: async () => body,
+  });
 }
 
-function addSecondPlayer() {
+/**
+ * Route the form's requests: the logged-in user's profile, their friends, the player search and the play POST.
+ * Pass a status to make one endpoint fail.
+ */
+function mockApi({
+  profileStatus = 200,
+  friendsStatus = 200,
+  playStatus = 201,
+}: {
+  profileStatus?: number;
+  friendsStatus?: number;
+  playStatus?: number;
+} = {}) {
+  mockFetch.mockImplementation((url: string) => {
+    if (url === "/api/v1/profile/") return respond(profileStatus, currentUser);
+    if (url === "/api/v1/friends/") return respond(friendsStatus, friends);
+    if (url.startsWith("/api/v1/players/")) return respond(200, friends);
+    return respond(playStatus);
+  });
+}
+
+/** Render the form and wait until it has loaded the logged-in user. */
+async function renderForm() {
+  const result = render(<LogPlayForm {...defaultProps} />);
+
+  await waitFor(() => {
+    expect(
+      screen.queryByText("Loading your QuestLog account..."),
+    ).not.toBeInTheDocument();
+  });
+
+  return result;
+}
+
+function addPlayer() {
   fireEvent.click(screen.getByRole("button", { name: /add another player/i }));
 }
 
-function fillPlayerNames(firstName: string, secondName: string) {
-  const nameInputs = screen.getAllByPlaceholderText("Enter player name");
-
-  fireEvent.change(nameInputs[0], {
-    target: { value: firstName },
-  });
-
-  fireEvent.change(nameInputs[1], {
-    target: { value: secondName },
+function setPlayerType(index: number, type: "guest" | "registered") {
+  fireEvent.change(screen.getAllByLabelText("Player Type")[index], {
+    target: { value: type },
   });
 }
 
-function mockSuccessfulRequests() {
-  mockFetch.mockImplementation((url: string) => {
-    if (url === "/api/v1/friends/") {
-      return Promise.resolve({
-        ok: true,
-        status: 200,
-        json: async () => friends,
-      });
-    }
-
-    if (url.startsWith("/api/v1/players/")) {
-      return Promise.resolve({
-        ok: true,
-        status: 200,
-        json: async () => friends,
-      });
-    }
-
-    return Promise.resolve({
-      ok: true,
-      status: 201,
-    });
-  });
+function playRequests() {
+  return mockFetch.mock.calls.filter(([url]) => url === "/api/v1/plays/");
 }
 
 function getPlayRequest() {
-  const request = mockFetch.mock.calls.find(
-    ([url]) => url === "/api/v1/plays/",
-  );
+  const request = playRequests()[0];
 
   if (!request) {
     throw new Error("Expected a play session POST request.");
@@ -84,26 +98,18 @@ function getPlayRequest() {
   };
 }
 
-function selectRegisteredPlayer(index: number) {
-  const typeSelectors = screen.getAllByLabelText("Player Type");
-
-  fireEvent.change(typeSelectors[index], {
-    target: { value: "registered" },
-  });
-}
-
 async function chooseFriend(index: number, userId: string) {
-  const selectors = await screen.findAllByLabelText("Select Registered User");
+  const name = userId === ALEX_ID ? "Alex" : "Sam";
 
   await waitFor(() => {
+    const selectors = screen.getAllByLabelText("Select Registered User");
+
     expect(
-      within(selectors[index] as HTMLElement).getByRole("option", {
-        name: userId === ALEX_ID ? "Alex" : "Sam",
-      }),
+      within(selectors[index] as HTMLElement).getByRole("option", { name }),
     ).toBeInTheDocument();
   });
 
-  fireEvent.change(selectors[index], {
+  fireEvent.change(screen.getAllByLabelText("Select Registered User")[index], {
     target: { value: userId },
   });
 }
@@ -118,16 +124,11 @@ describe("LogPlayForm", () => {
       value: mockFetch,
     });
 
-    mockFetch.mockResolvedValue({
-      ok: true,
-      status: 201,
-    });
+    mockApi();
   });
 
-  // Original tests
-
-  it("renders the form with the selected game name", () => {
-    renderForm();
+  it("renders the form with the selected game name", async () => {
+    await renderForm();
 
     expect(
       screen.getByRole("heading", { name: "Log a Play" }),
@@ -135,49 +136,75 @@ describe("LogPlayForm", () => {
 
     expect(screen.getByText("Catan")).toBeInTheDocument();
 
-    expect(
-      screen.getByRole("button", { name: "Save Play" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save Play" })).toBeEnabled();
   });
 
-  it("allows users to add another player", () => {
-    renderForm();
+  it("adds the logged-in user as the first player", async () => {
+    await renderForm();
 
+    expect(mockFetch).toHaveBeenCalledWith(
+      "/api/v1/profile/",
+      expect.objectContaining({ method: "GET" }),
+    );
+
+    expect(screen.getAllByLabelText("Player Type")[0]).toHaveValue(
+      "registered",
+    );
+
+    expect(screen.getByText("Selected: Jordan")).toBeInTheDocument();
+  });
+
+  it("disables saving when the user's profile cannot be loaded", async () => {
+    mockApi({ profileStatus: 401 });
+
+    await renderForm();
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Please log in to record your plays.",
+    );
+
+    expect(screen.getByRole("button", { name: "Save Play" })).toBeDisabled();
+  });
+
+  it("allows users to add another player", async () => {
+    await renderForm();
+
+    expect(screen.getAllByLabelText("Player Type")).toHaveLength(1);
+
+    addPlayer();
+
+    expect(screen.getAllByLabelText("Player Type")).toHaveLength(2);
     expect(screen.getAllByPlaceholderText("Enter player name")).toHaveLength(1);
-
-    addSecondPlayer();
-
-    expect(screen.getAllByPlaceholderText("Enter player name")).toHaveLength(2);
   });
 
-  it("allows users to remove a player", () => {
-    renderForm();
-    addSecondPlayer();
+  it("allows users to remove a player", async () => {
+    await renderForm();
+    addPlayer();
 
-    expect(screen.getAllByPlaceholderText("Enter player name")).toHaveLength(2);
+    expect(screen.getAllByLabelText("Player Type")).toHaveLength(2);
 
-    const removeButtons = screen.getAllByRole("button", {
-      name: "Remove",
-    });
+    fireEvent.click(screen.getAllByRole("button", { name: "Remove" })[1]);
 
-    fireEvent.click(removeButtons[1]);
-
-    expect(screen.getAllByPlaceholderText("Enter player name")).toHaveLength(1);
+    expect(screen.getAllByLabelText("Player Type")).toHaveLength(1);
   });
 
-  it("closes the form when the close button is clicked", () => {
-    renderForm();
+  it("closes the form when the close button is clicked", async () => {
+    await renderForm();
 
     fireEvent.click(screen.getByRole("button", { name: "Close Log Play" }));
 
     expect(defaultProps.onClose).toHaveBeenCalledTimes(1);
   });
 
-  it("rejects duplicate player names", () => {
-    renderForm();
+  it("rejects duplicate guest names", async () => {
+    await renderForm();
 
-    addSecondPlayer();
-    fillPlayerNames("Alex", "alex");
+    addPlayer();
+    addPlayer();
+
+    const nameInputs = screen.getAllByPlaceholderText("Enter player name");
+    fireEvent.change(nameInputs[0], { target: { value: "Alex" } });
+    fireEvent.change(nameInputs[1], { target: { value: "alex" } });
 
     fireEvent.click(screen.getByRole("button", { name: "Save Play" }));
 
@@ -185,27 +212,22 @@ describe("LogPlayForm", () => {
       "Each guest player must have a different name.",
     );
 
-    expect(mockFetch).not.toHaveBeenCalled();
+    expect(playRequests()).toHaveLength(0);
   });
 
   it("submits a play session with players and scores", async () => {
-    renderForm();
+    await renderForm();
 
-    addSecondPlayer();
-    fillPlayerNames("Alex", "Sam");
+    addPlayer();
+    fireEvent.change(screen.getByPlaceholderText("Enter player name"), {
+      target: { value: "Sam" },
+    });
 
     const scoreInputs = screen.getAllByPlaceholderText("Score");
+    fireEvent.change(scoreInputs[0], { target: { value: "10" } });
+    fireEvent.change(scoreInputs[1], { target: { value: "8" } });
 
-    fireEvent.change(scoreInputs[0], {
-      target: { value: "10" },
-    });
-
-    fireEvent.change(scoreInputs[1], {
-      target: { value: "8" },
-    });
-
-    const winnerCheckboxes = screen.getAllByRole("checkbox");
-    fireEvent.click(winnerCheckboxes[0]);
+    fireEvent.click(screen.getAllByRole("checkbox")[0]);
 
     fireEvent.change(screen.getByPlaceholderText("How was game night?"), {
       target: { value: "Testing QuestLog" },
@@ -213,13 +235,13 @@ describe("LogPlayForm", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Save Play" }));
 
-    await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledTimes(1);
-    });
+    expect(
+      await screen.findByText("Your play session was saved successfully!"),
+    ).toBeInTheDocument();
 
-    const { url, options, payload } = getPlayRequest();
+    const { options, payload } = getPlayRequest();
 
-    expect(url).toBe("/api/v1/plays/");
+    expect(playRequests()).toHaveLength(1);
     expect(options.method).toBe("POST");
     expect(options.credentials).toBe("same-origin");
 
@@ -229,34 +251,14 @@ describe("LogPlayForm", () => {
     expect(payload.notes).toBe("Testing QuestLog");
 
     expect(payload.players).toEqual([
-      {
-        guest_name: "Alex",
-        score: 10,
-        is_winner: true,
-      },
-      {
-        guest_name: "Sam",
-        score: 8,
-        is_winner: false,
-      },
+      { user_id: ME_ID, score: 10, is_winner: true },
+      { guest_name: "Sam", score: 8, is_winner: false },
     ]);
-
-    expect(
-      await screen.findByText("Your play session was saved successfully!"),
-    ).toBeInTheDocument();
   });
 
   it("displays an error when the API rejects the request", async () => {
-    mockFetch.mockResolvedValue({
-      ok: false,
-      status: 400,
-    });
-
-    renderForm();
-
-    fireEvent.change(screen.getByPlaceholderText("Enter player name"), {
-      target: { value: "Alex" },
-    });
+    mockApi({ playStatus: 400 });
+    await renderForm();
 
     fireEvent.click(screen.getByRole("button", { name: "Save Play" }));
 
@@ -266,16 +268,8 @@ describe("LogPlayForm", () => {
   });
 
   it("displays a login error for unauthorized requests", async () => {
-    mockFetch.mockResolvedValue({
-      ok: false,
-      status: 401,
-    });
-
-    renderForm();
-
-    fireEvent.change(screen.getByPlaceholderText("Enter player name"), {
-      target: { value: "Alex" },
-    });
+    mockApi({ playStatus: 401 });
+    await renderForm();
 
     fireEvent.click(screen.getByRole("button", { name: "Save Play" }));
 
@@ -284,59 +278,41 @@ describe("LogPlayForm", () => {
     );
   });
 
-  // New registered-player tests
-
-  it("loads friends when registered player is selected", async () => {
-    mockSuccessfulRequests();
-    renderForm();
-
-    selectRegisteredPlayer(0);
+  it("loads friends for registered players", async () => {
+    await renderForm();
 
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(
         "/api/v1/friends/",
-        expect.objectContaining({
-          credentials: "same-origin",
-        }),
+        expect.objectContaining({ credentials: "same-origin" }),
       );
     });
 
-    const selector = await screen.findByLabelText("Select Registered User");
+    const selector = screen.getByLabelText("Select Registered User");
 
     expect(
-      await within(selector).findByRole("option", {
-        name: "Alex",
-      }),
+      await within(selector).findByRole("option", { name: "Alex" }),
     ).toBeInTheDocument();
 
     expect(
-      within(selector).getByRole("option", {
-        name: "Sam",
-      }),
+      within(selector).getByRole("option", { name: "Sam" }),
     ).toBeInTheDocument();
   });
 
   it("searches registered users by display name", async () => {
-    mockSuccessfulRequests();
-    renderForm();
-
-    selectRegisteredPlayer(0);
+    await renderForm();
 
     fireEvent.click(screen.getByRole("button", { name: "Search Users" }));
 
     fireEvent.change(
       screen.getByPlaceholderText("Enter at least 2 characters"),
-      {
-        target: { value: "al" },
-      },
+      { target: { value: "al" } },
     );
 
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(
         "/api/v1/players/?search=al",
-        expect.objectContaining({
-          credentials: "same-origin",
-        }),
+        expect.objectContaining({ credentials: "same-origin" }),
       );
     });
 
@@ -345,66 +321,64 @@ describe("LogPlayForm", () => {
     ).toBeInTheDocument();
   });
 
-  it("submits a registered player using user_id", async () => {
-    mockSuccessfulRequests();
-    renderForm();
+  it("submits registered players using user_id", async () => {
+    await renderForm();
 
-    selectRegisteredPlayer(0);
-    await chooseFriend(0, ALEX_ID);
+    addPlayer();
+    setPlayerType(1, "registered");
+    await chooseFriend(1, ALEX_ID);
 
     fireEvent.click(screen.getByRole("button", { name: "Save Play" }));
 
     await waitFor(() => {
       expect(getPlayRequest().payload.players).toEqual([
-        {
-          user_id: ALEX_ID,
-          is_winner: false,
-        },
+        { user_id: ME_ID, is_winner: false },
+        { user_id: ALEX_ID, is_winner: false },
       ]);
     });
+
+    expect(
+      await screen.findByText("Your play session was saved successfully!"),
+    ).toBeInTheDocument();
   });
 
   it("supports guest and registered players in one session", async () => {
-    mockSuccessfulRequests();
-    renderForm();
+    await renderForm();
 
+    setPlayerType(0, "guest");
     fireEvent.change(screen.getByPlaceholderText("Enter player name"), {
       target: { value: "Guest Taylor" },
     });
 
-    addSecondPlayer();
-    selectRegisteredPlayer(1);
+    addPlayer();
+    setPlayerType(1, "registered");
     await chooseFriend(0, SAM_ID);
 
     fireEvent.click(screen.getByRole("button", { name: "Save Play" }));
 
     await waitFor(() => {
       expect(getPlayRequest().payload.players).toEqual([
-        {
-          guest_name: "Guest Taylor",
-          is_winner: false,
-        },
-        {
-          user_id: SAM_ID,
-          is_winner: false,
-        },
+        { guest_name: "Guest Taylor", is_winner: false },
+        { user_id: SAM_ID, is_winner: false },
       ]);
     });
+
+    expect(
+      await screen.findByText("Your play session was saved successfully!"),
+    ).toBeInTheDocument();
   });
 
   it("prevents adding the same registered user twice", async () => {
-    mockSuccessfulRequests();
-    renderForm();
+    await renderForm();
 
-    selectRegisteredPlayer(0);
     await chooseFriend(0, ALEX_ID);
 
-    addSecondPlayer();
-    selectRegisteredPlayer(1);
-
-    const selectors = await screen.findAllByLabelText("Select Registered User");
+    addPlayer();
+    setPlayerType(1, "registered");
 
     await waitFor(() => {
+      const selectors = screen.getAllByLabelText("Select Registered User");
+
       expect(
         within(selectors[1] as HTMLElement).getByRole("option", {
           name: "Sam",
@@ -412,21 +386,18 @@ describe("LogPlayForm", () => {
       ).toBeInTheDocument();
     });
 
+    const secondSelector = screen.getAllByLabelText(
+      "Select Registered User",
+    )[1] as HTMLElement;
+
     expect(
-      within(selectors[1] as HTMLElement).queryByRole("option", {
-        name: "Alex",
-      }),
+      within(secondSelector).queryByRole("option", { name: "Alex" }),
     ).not.toBeInTheDocument();
   });
 
   it("displays an error when friends cannot be loaded", async () => {
-    mockFetch.mockResolvedValue({
-      ok: false,
-      status: 500,
-    });
-
-    renderForm();
-    selectRegisteredPlayer(0);
+    mockApi({ friendsStatus: 500 });
+    await renderForm();
 
     expect(
       await screen.findByText(

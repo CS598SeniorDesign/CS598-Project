@@ -3,65 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import RecommendationStrip from "@/components/recommendations/RecommendationStrip";
-// import WinRateChart from "@/components/stats/WinRateChart";
-
-// avatars
-import brandonAvatar from "@/public/avatars/brandon.webp";
-import sydneyAvatar from "@/public/avatars/sydney.webp";
-import jenniferAvatar from "@/public/avatars/jennifer.webp";
-import supriyaAvatar from "@/public/avatars/supriya.webp";
-import { StaticImageData } from "next/image";
-
-// game images
-import terraformImg from "@/public/images/terraforming.webp";
-import catanImg from "@/public/images/catan.webp";
-import everdellImg from "@/public/images/everdell.webp";
-import botanyImg from "@/public/images/botany.webp";
-
-type BaseGame = {
-  gameName: string;
-  gameImg: string | StaticImageData;
-};
-
-type GameResult = BaseGame & {
-  gameResult: "Won" | "Lost";
-  //TODO: extend to include score or draw in future
-};
-
-type Game = BaseGame;
-
-type Play = GameResult & {
-  playerCount: number;
-  playDuration: string;
-  playDate: string;
-};
-
-type CommunityItem = GameResult & {
-  user: string;
-  timeAgo: string;
-  avatar?: string | StaticImageData;
-};
-
-const days: string[] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
-const subscribeToUserAvatar = () => {
-  return () => {};
-};
-
-const getUserAvatarSnapshot = () => {
-  return localStorage.getItem("userAvatar");
-};
-
-const getUserAvatarServerSnapshot = () => {
-  return null;
-};
-
-export default function Page() {
-  // const [openChart, setOpenChart] = useState<null | "winrate" | "donut">(null);
-
 import { useEffect, useMemo, useState } from "react";
+import RecommendationStrip from "@/components/recommendations/RecommendationStrip";
 
 type ApiGame = {
   bgg_id: number;
@@ -342,30 +285,6 @@ function UserMenu() {
   }
 
   return (
-    <div className=" min-h-screen bg-[#0F172A] text-[#F8FAFC]">
-      {/* NAVBAR */}
-      <div className="flex justify-between items-center px-8 py-4 bg-gradient-to-r from-[#1E293B] to-[#0F172A] shadow-xl">
-        <h1 className="text-xl font-bold">QuestLog</h1>
-
-        <div className="flex gap-10 text-gray-300">
-          <p className="border-b-2 border-[#4F46E5] pb-1 cursor-pointer">
-            Game Library
-          </p>
-          <Link href="/recommendations">
-            <p className="hover:text-white cursor-pointer transition">
-              Recommendations for you
-            </p>
-          </Link>
-          <p className="hover:text-white cursor-pointer transition">Weeple</p>
-          <Link href="/analytics">
-            <p className="hover:text-white cursor-pointer transition">
-              Your Analytics
-            </p>
-          </Link>
-        </div>
-
-        <div className="flex items-center gap-3">
-          {userAvatar ? (
     <div className="flex flex-col items-end gap-2">
       <div className="flex items-center gap-3">
         <Link
@@ -932,8 +851,7 @@ export default function Page() {
         <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
           <Members state={friends} />
 
-          {/* RECOMMENDED */}
-          <div className="bg-[#1E293B]/70 p-5 rounded-2xl shadow-lg transition duration-300 hover:shadow-xl hover:shadow-indigo-500/10">
+          <div className={cardClass}>
             <RecommendationStrip
               title="Recommended for you"
               query={{ strategy: "for_you", limit: 4 }}
