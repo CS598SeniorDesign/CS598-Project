@@ -7,9 +7,9 @@ from typing import TYPE_CHECKING
 from django.db import transaction
 
 from catalog import bgg_client
-from catalog.utils import get_existing_board_game
 from catalog.models import UNKNOWN_GAME_NAME
 from catalog.services import CatalogSyncService
+from catalog.utils import get_existing_board_game
 from core.utils import get_attribute, parse_optional_integer
 from tracking.models import LibraryItem, LibraryItemAlreadyExistsError, PlaySession
 

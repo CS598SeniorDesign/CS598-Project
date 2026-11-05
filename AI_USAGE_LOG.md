@@ -441,7 +441,7 @@ AI proved:
 * **Date:** November 1, 2026
 * **Team Member:** Jennifer Isobe (`@Jisobe`)
 * **Tool Used:** Claude Code (Claude Opus 5.5)
-* **Associated Git Issue:** Closes `#`
+* **Associated Git Issue:** Closes `#145`
 * **Associated Feature Branch:** `feature/add-logging-and-monitoring`
 
 ### Exact Prompt Submitted:
@@ -477,8 +477,9 @@ AI proved:
 
 ### Human Review, Refactoring & Modifications Made:
 
-*
-*
+* Review the ai produced code for backend logging and monitoring via prometheus
+* Tested the prometheus monitoring endpoint and identified and issue with .env file variable keeping monitoring from executing
+* Review the added monitoring for the recommender system
 
 ### Verification & Testing Method:
 
@@ -489,58 +490,39 @@ AI proved:
 * AI validated `docker-compose.yml` with the monitoring profile using `docker compose config`.
 * No external APIs (BoardGameGeek, MLflow servers, Weights & Biases) were called.
 
-## Entry 13: Prototype 3 — Recommendation Engine (Phase IV), Structured Logging & Monitoring
+## Entry 14: [Prototype 3] — [Fixing Errors Thrown by E2E and Accesibility Pipeline]
 
-* **Date:** November 1, 2026
-* **Team Member:** Jennifer Isobe (`@Jisobe`)
-* **Tool Used:** Claude Code (Claude Opus 5.5)
+* **Date:** : November 3rd
+* **Team Member:** Sydney Epke (`@vortex278`)
+* **Tool Used:** Github Copilot
 * **Associated Git Issue:** Closes `#`
-* **Associated Feature Branch:** `feature/add-logging-and-monitoring`
+* **Associated Feature Branch:** `chore/fix_e2e_and_accessibility_errors`
 
 ### Exact Prompt Submitted:
 
-> "Make updates for phase IV and to add Structured JSON logging (timestamp, log level, request ID, user ID) and monitoring across backend services"
+> "can you look at PR #170 and help me fix the failing checks?"
 
 ### AI Output Summary & Code Generated:
 
-**Structured JSON logging** (`core/structured_logging.py`, `core/middleware.py`)
-
-* Every backend log line is now a single JSON object with `timestamp` (UTC), `level`, `logger`, `message`, `request_id` and `user_id`, plus any fields passed with `extra=`.
-* New `RequestContextMiddleware` gives each request an ID. It reuses a well-formed incoming `X-Request-ID` header, otherwise generates one, and returns it in the response. The request ID and signed-in user's ID are attached to every log line written during the request. It also writes one access-log line per request (INFO / WARNING / ERROR by status) and skips health checks and metrics scrapes unless they fail.
-* Added a `LOGGING` configuration to `settings.py` and connected the `LOGLEVEL` variable, which was documented in `.env.example` but unused. `LOG_FORMAT=text` gives readable lines for local debugging. Django's own 4xx log lines were turned off because they duplicated the access log and had no request ID; unhandled 500 errors still keep their request ID and stack trace.
-* New `core/signals.py` logs security events (sign-in, failed sign-in, sign-out, sign-up, password change/reset, MFA authenticator added/removed/failed) by user ID only. Failed sign-ins never log the email that was tried. This addresses the A09 recommendation in `docs/SECURITY_AUDIT.md`.
-* Removed BGG usernames from the BGG play-sync error messages, since every log line now carries the user ID.
-
-**Monitoring across backend services** (`core/metrics.py`, `prometheus-client`)
-
-* New `GET /metrics/` endpoint serving Prometheus metrics to callers with a `METRICS_TOKEN` bearer token (404 when the token is unset).
-* Metrics for HTTP requests and latency (by URL pattern), PostgreSQL/Redis readiness, BoardGameGeek API calls by outcome, security events, recommendation requests (fallbacks and cache hits), recommendation compute time and model build times.
-* Production gunicorn now uses `config/gunicorn.conf.py` and `PROMETHEUS_MULTIPROC_DIR` so metrics are combined across workers. `entrypoint.sh` clears stale metric files on startup.
-* Optional Prometheus container in `docker-compose.yml` (`docker compose --profile monitoring up`) with `monitoring/prometheus.yml`.
-
-**Phase IV: recommender monitoring** (`recommendations/evaluation.py`, `recommendations/experiments.py`)
-
-* Offline evaluation: holds out 20% of opted-in users' interactions with a fixed split and reports RMSE, MAE, precision@10 and recall@10 for the collaborative model.
-* Online feedback: like and dislike counts and like rate per strategy, using the strategy recorded on each piece of feedback.
-* Experiment trackers selected with `RECOMMENDER_TRACKERS`: `log` (structured log line, the default), `mlflow` and `wandb`. W&B defaults to offline mode. A tracker that is missing or fails is logged and skipped so model rebuilds are never blocked.
-* `train_recommender` now times each build, runs the evaluation (`--skip-evaluation` to skip it), and reports the run with the model parameters. New `recommendation_report --days N` command prints and reports the feedback summary.
-* Added `prometheus-client` as a dependency, and `mlflow` and `wandb` as an optional `monitoring` extra so the Docker image stays small.
-
-**Docs and configuration:** updated `backend/README.md` (new Logging & Monitoring section and Phase IV), `docs/ARCHITECTURE.md`, `ONBOARDING.md`, `.env.example` and `.gitignore` (local MLflow and W&B output).
+The AI found a .env error and replaced the reference to the original hardcoded .env to an example .env file in docker.ts and docker-compose.yml
 
 ### Human Review, Refactoring & Modifications Made:
 
-*
-*
+* I checked to make sure this was a good change and that the example .env did not have any secrets in it
+* I ran the commands to run the checks locally
+* I pushed the code and ran the checks in GitHub
 
 ### Verification & Testing Method:
 
-* AI added 27 tests covering the JSON formatter, request ID generation and reuse (including rejecting malformed IDs), user ID on log records, request context being cleared after each request, 500 errors keeping their request ID, metrics endpoint token checks, external API and request counters, security event logging without email addresses, offline evaluation, feedback summaries, each tracker (MLflow and W&B replaced with fakes), tracker failure handling, both management commands, and recommendation serving metrics.
-* AI ran the full backend suite against temporary `pgvector/pgvector:pg17` and Redis containers: 200 tests passed. Ruff lint and format, mypy, the complexipy complexity check, `makemigrations --check` and `manage.py check` all passed. AI refactored one evaluation helper that exceeded the complexity limit.
-* AI ran `train_recommender` and `recommendation_report` with the real MLflow and W&B libraries, using a local SQLite MLflow store and W&B offline mode. All three trackers recorded both runs. This found that `mlflow-skinny` cannot use SQLite stores, so AI switched the optional dependency to full `mlflow`.
-* AI started the development server and confirmed the JSON access log lines, the `X-Request-ID` response header, and the `/metrics/` token check. This found Django's duplicate 4xx log lines without a request ID, which AI then turned off.
-* AI validated `docker-compose.yml` with the monitoring profile using `docker compose config`.
-* No external APIs (BoardGameGeek, MLflow servers, Weights & Biases) were called.
+* Just running the checks locally and then running it in GitHub after pushing again
+
+---
+
+## Audit Certification
+
+I certify as Team Lead that all entries above accurately represent AI usage within this project phase, all prompts have been recorded, and all code has been validated by human review and automated testing.
+
+**Sydney Epke:** *[Testing Lead]* — **Date:** [11/03/26]
 
 ---
 
