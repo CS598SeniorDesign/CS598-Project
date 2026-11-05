@@ -75,6 +75,7 @@ class Command(BaseCommand):
                 maximum_players=random.randint(4, 8),
                 playing_time=random.choice([15, 30, 45, 60, 90, 120, 180]),
                 average_weight=round(random.uniform(1.0, 4.5), 3),
+                last_synced_at=timezone.now(),
             )
             game.categories.set(random.sample(categories, random.randint(1, 2)))
             game.mechanics.set(random.sample(mechanics, random.randint(1, 3)))

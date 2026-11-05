@@ -211,20 +211,16 @@ def _run_import(task: Task, kind: ImportKind, user_id: str, run: ImportRun) -> d
         return _finish(kind, user_id, task_id, success=False, detail=kind.no_username_message)
 
     try:
-        counts, message = run(user, bgg_username)
-    except BggCollectionNotReadyError as exception:
-        return _retry_or_fail(task, kind, user_id, exception, _not_ready_delay(task.request.retries))
+        imported = import_bgg_plays(user, bgg_username)
     except bgg_client.BoardGameGeekUnavailableError as exception:
-        if not _is_retryable(exception):
-            logger.warning("BGG %s import failed: %s", kind.name, exception)
-            return _finish(kind, user_id, task_id, success=False, detail=CONNECTION_FAILED_MESSAGE)
-        return _retry_or_fail(task, kind, user_id, exception, _retry_delay(task.request.retries))
-    except BggCollectionError as exception:
-        logger.warning("BGG rejected the %s import: %s", kind.name, exception)
-        return _finish(kind, user_id, task_id, success=False, detail=COLLECTION_NOT_FOUND_MESSAGE)
+        if exception.is_retryable and self.request.retries < MAX_RETRIES:
+            logger.warning("BGG play sync failed; retrying: %s", exception, extra={"retry": self.request.retries + 1})
+            raise self.retry(exc=exception, countdown=_retry_delay(self.request.retries)) from exception
+        logger.warning("BGG play sync failed: %s", exception)
+        return _finish(user_id, task_id, success=False, detail=CONNECTION_FAILED_MESSAGE)
     except bgg_client.BoardGameGeekMalformedResponseError as exception:
-        logger.error("Malformed BGG XML during %s import: %s", kind.name, exception)
-        return _finish(kind, user_id, task_id, success=False, detail=INTERNAL_ERROR_MESSAGE)
+        logger.error("Malformed BGG XML during play sync: %s", exception)
+        return _finish(user_id, task_id, success=False, detail=INTERNAL_ERROR_MESSAGE)
     except Exception:
         _release_lock(kind, user_id, task_id)
         raise

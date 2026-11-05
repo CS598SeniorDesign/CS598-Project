@@ -1,13 +1,20 @@
 from __future__ import annotations
 
 import hashlib
+import logging
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 
 from django.conf import settings
 from django.core.cache import cache
+from django.db.models import F, Q
+from django.utils import timezone
 
 from catalog import bgg_client
-from catalog.models import BoardGame
+from catalog.models import UNKNOWN_GAME_NAME, BoardGame
+
+logger = logging.getLogger(__name__)
 
 MINIMUM_QUERY_LENGTH = 2
 MAXIMUM_QUERY_LENGTH = 100
@@ -178,3 +185,121 @@ class CatalogSearchService:
             return (name_rank, 0 if match.is_primary_name else 1)
 
         return sorted(matches, key=closeness)
+
+
+class CatalogSyncService:
+    """
+    Keeps stored games in step with BGG: fetches games the first time they are needed, and refreshes placeholders and
+    stale games later.
+
+    Every method sends at most one BGG request per 20 games (see ``bgg_client.fetch_things``).
+    """
+
+    @classmethod
+    def ensure_games(cls, backup_names_by_id: Mapping[int, str]) -> dict[int, BoardGame]:
+        """
+        Return the requested games, fetching the ones not stored yet from BGG.
+
+        A game BGG cannot provide right now (BGG is unreachable, or does not return the ID) is stored as a placeholder
+        under its backup name, so callers such as the play import can always link to it. Placeholders are fetched
+        again when someone opens them and by the nightly refresh.
+
+        :param backup_names_by_id: The BGG IDs needed, each with the name to store if BGG cannot provide the game.
+        :type backup_names_by_id: collections.abc.Mapping[int, str]
+        :returns: Every requested game, keyed by BGG ID.
+        :rtype: dict[int, catalog.models.BoardGame]
+        """
+
+        requested_ids = set(backup_names_by_id)
+        games_by_id: dict[int, BoardGame] = BoardGame.objects.in_bulk(requested_ids)
+        missing_ids = requested_ids - games_by_id.keys()
+
+        if not missing_ids:
+            return games_by_id
+
+        try:
+            items_by_id = bgg_client.fetch_things(missing_ids)
+        except (bgg_client.BoardGameGeekUnavailableError, bgg_client.BoardGameGeekMalformedResponseError) as error:
+            logger.warning("BGG lookup failed for %s new games; storing placeholders: %s", len(missing_ids), error)
+            items_by_id = {}
+
+        for bgg_id in missing_ids:
+            backup_name = backup_names_by_id[bgg_id] or UNKNOWN_GAME_NAME
+            item = items_by_id.get(bgg_id)
+
+            if item is not None:
+                games_by_id[bgg_id] = BoardGame.create_from_xml(item, backup_name)
+            else:
+                games_by_id[bgg_id], _ = BoardGame.objects.get_or_create(
+                    bgg_id=bgg_id, defaults={"primary_name": backup_name}
+                )
+
+        return games_by_id
+
+    @classmethod
+    def refresh_games(cls, bgg_ids: Iterable[int]) -> int:
+        """
+        Fetch stored games from BGG again and update them with the current details, ratings, and rank.
+
+        Games BGG does not return keep their stored details; placeholders among them stay placeholders.
+
+        :param bgg_ids: The BGG IDs of the games to refresh.
+        :type bgg_ids: collections.abc.Iterable[int]
+        :returns: How many games were updated.
+        :rtype: int
+        :raises catalog.bgg_client.BoardGameGeekUnavailableError: If BGG cannot be reached or refuses the request.
+        :raises catalog.bgg_client.BoardGameGeekMalformedResponseError: If BGG's response cannot be parsed.
+        """
+
+        requested_ids = set(bgg_ids)
+        items_by_id = bgg_client.fetch_things(requested_ids)
+        stored_names = dict(
+            BoardGame.objects.filter(bgg_id__in=items_by_id.keys()).values_list("bgg_id", "primary_name")
+        )
+
+        for bgg_id, item in items_by_id.items():
+            BoardGame.create_from_xml(item, stored_names.get(bgg_id))
+
+        return len(items_by_id)
+
+    @classmethod
+    def is_stale(cls, game: BoardGame) -> bool:
+        """
+        Whether a stored game should be fetched from BGG again: it is a placeholder, or it was last fetched more than
+        ``BGG_CATALOG_REFRESH_DAYS`` ago.
+
+        :param game: The stored game.
+        :type game: catalog.models.BoardGame
+        :returns: True if the game needs refreshing.
+        :rtype: bool
+        """
+
+        return game.last_synced_at is None or game.last_synced_at < cls._stale_cutoff()
+
+    @classmethod
+    def stale_game_ids(cls, limit: int) -> list[int]:
+        """
+        List the stored games that most need refreshing: placeholders first, then the games fetched longest ago.
+
+        :param limit: The most IDs to return.
+        :type limit: int
+        :returns: Up to ``limit`` BGG IDs, most in need of refreshing first.
+        :rtype: list[int]
+        """
+
+        stale_games = BoardGame.objects.filter(
+            Q(last_synced_at__isnull=True) | Q(last_synced_at__lt=cls._stale_cutoff())
+        ).order_by(F("last_synced_at").asc(nulls_first=True), "bgg_id")
+
+        return list(stale_games.values_list("bgg_id", flat=True)[:limit])
+
+    @staticmethod
+    def _stale_cutoff() -> datetime:
+        """
+        The moment before which a game's details count as stale.
+
+        :returns: Now, minus ``BGG_CATALOG_REFRESH_DAYS``.
+        :rtype: datetime.datetime
+        """
+
+        return timezone.now() - timedelta(days=settings.BGG_CATALOG_REFRESH_DAYS)

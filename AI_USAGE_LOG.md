@@ -489,31 +489,99 @@ AI proved:
 * AI validated `docker-compose.yml` with the monitoring profile using `docker compose config`.
 * No external APIs (BoardGameGeek, MLflow servers, Weights & Biases) were called.
 
-## Entry 14: [Prototype 3] — [Fixing Errors Thrown by E2E and Accesibility Pipeline]
+## Entry 13: Prototype 3 — Recommendation Engine (Phase IV), Structured Logging & Monitoring
 
-* **Date:** : November 3rd
-* **Team Member:** Sydney Epke (`@vortex278`)
-* **Tool Used:** Github Copilot
+* **Date:** November 1, 2026
+* **Team Member:** Jennifer Isobe (`@Jisobe`)
+* **Tool Used:** Claude Code (Claude Opus 5.5)
 * **Associated Git Issue:** Closes `#`
-* **Associated Feature Branch:** `chore/fix_e2e_and_accessibility_errors`
+* **Associated Feature Branch:** `feature/add-logging-and-monitoring`
 
 ### Exact Prompt Submitted:
 
-> "can you look at PR #170 and help me fix the failing checks?"
+> "Make updates for phase IV and to add Structured JSON logging (timestamp, log level, request ID, user ID) and monitoring across backend services"
 
 ### AI Output Summary & Code Generated:
 
-The AI found a .env error and replaced the reference to the original hardcoded .env to an example .env file in docker.ts and docker-compose.yml
+**Structured JSON logging** (`core/structured_logging.py`, `core/middleware.py`)
+
+* Every backend log line is now a single JSON object with `timestamp` (UTC), `level`, `logger`, `message`, `request_id` and `user_id`, plus any fields passed with `extra=`.
+* New `RequestContextMiddleware` gives each request an ID. It reuses a well-formed incoming `X-Request-ID` header, otherwise generates one, and returns it in the response. The request ID and signed-in user's ID are attached to every log line written during the request. It also writes one access-log line per request (INFO / WARNING / ERROR by status) and skips health checks and metrics scrapes unless they fail.
+* Added a `LOGGING` configuration to `settings.py` and connected the `LOGLEVEL` variable, which was documented in `.env.example` but unused. `LOG_FORMAT=text` gives readable lines for local debugging. Django's own 4xx log lines were turned off because they duplicated the access log and had no request ID; unhandled 500 errors still keep their request ID and stack trace.
+* New `core/signals.py` logs security events (sign-in, failed sign-in, sign-out, sign-up, password change/reset, MFA authenticator added/removed/failed) by user ID only. Failed sign-ins never log the email that was tried. This addresses the A09 recommendation in `docs/SECURITY_AUDIT.md`.
+* Removed BGG usernames from the BGG play-sync error messages, since every log line now carries the user ID.
+
+**Monitoring across backend services** (`core/metrics.py`, `prometheus-client`)
+
+* New `GET /metrics/` endpoint serving Prometheus metrics to callers with a `METRICS_TOKEN` bearer token (404 when the token is unset).
+* Metrics for HTTP requests and latency (by URL pattern), PostgreSQL/Redis readiness, BoardGameGeek API calls by outcome, security events, recommendation requests (fallbacks and cache hits), recommendation compute time and model build times.
+* Production gunicorn now uses `config/gunicorn.conf.py` and `PROMETHEUS_MULTIPROC_DIR` so metrics are combined across workers. `entrypoint.sh` clears stale metric files on startup.
+* Optional Prometheus container in `docker-compose.yml` (`docker compose --profile monitoring up`) with `monitoring/prometheus.yml`.
+
+**Phase IV: recommender monitoring** (`recommendations/evaluation.py`, `recommendations/experiments.py`)
+
+* Offline evaluation: holds out 20% of opted-in users' interactions with a fixed split and reports RMSE, MAE, precision@10 and recall@10 for the collaborative model.
+* Online feedback: like and dislike counts and like rate per strategy, using the strategy recorded on each piece of feedback.
+* Experiment trackers selected with `RECOMMENDER_TRACKERS`: `log` (structured log line, the default), `mlflow` and `wandb`. W&B defaults to offline mode. A tracker that is missing or fails is logged and skipped so model rebuilds are never blocked.
+* `train_recommender` now times each build, runs the evaluation (`--skip-evaluation` to skip it), and reports the run with the model parameters. New `recommendation_report --days N` command prints and reports the feedback summary.
+* Added `prometheus-client` as a dependency, and `mlflow` and `wandb` as an optional `monitoring` extra so the Docker image stays small.
+
+**Docs and configuration:** updated `backend/README.md` (new Logging & Monitoring section and Phase IV), `docs/ARCHITECTURE.md`, `ONBOARDING.md`, `.env.example` and `.gitignore` (local MLflow and W&B output).
 
 ### Human Review, Refactoring & Modifications Made:
 
-* I checked to make sure this was a good change and that the example .env did not have any secrets in it
-* I ran the commands to run the checks locally
-* I pushed the code and ran the checks in GitHub
+*
+*
 
 ### Verification & Testing Method:
 
-* Just running the checks locally and then running it in GitHub after pushing again
+* AI added 27 tests covering the JSON formatter, request ID generation and reuse (including rejecting malformed IDs), user ID on log records, request context being cleared after each request, 500 errors keeping their request ID, metrics endpoint token checks, external API and request counters, security event logging without email addresses, offline evaluation, feedback summaries, each tracker (MLflow and W&B replaced with fakes), tracker failure handling, both management commands, and recommendation serving metrics.
+* AI ran the full backend suite against temporary `pgvector/pgvector:pg17` and Redis containers: 200 tests passed. Ruff lint and format, mypy, the complexipy complexity check, `makemigrations --check` and `manage.py check` all passed. AI refactored one evaluation helper that exceeded the complexity limit.
+* AI ran `train_recommender` and `recommendation_report` with the real MLflow and W&B libraries, using a local SQLite MLflow store and W&B offline mode. All three trackers recorded both runs. This found that `mlflow-skinny` cannot use SQLite stores, so AI switched the optional dependency to full `mlflow`.
+* AI started the development server and confirmed the JSON access log lines, the `X-Request-ID` response header, and the `/metrics/` token check. This found Django's duplicate 4xx log lines without a request ID, which AI then turned off.
+* AI validated `docker-compose.yml` with the monitoring profile using `docker compose config`.
+* No external APIs (BoardGameGeek, MLflow servers, Weights & Biases) were called.
+
+---
+
+## Entry 15: Prototype 3 — Merge Celery Background Tasks into the BGG Refresh Branch
+
+* **Date:** November 3, 2026
+* **Team Member:** Brandon Nguyen (`@Meynok`)
+* **Tool Used:** Claude Code (Claude Opus 5.5)
+* **Associated Git Issue:** Closes `#175`
+* **Associated Feature Branch:** `feat/bgg-refresh` (draft PR #176)
+* **Commits:** `91dce56` (merge of `feature/celery`), `ba19fbf` (`fix: retry background play sync only for retryable bgg errors`)
+
+### Exact Prompt Submitted:
+
+> "we have conflicts in PR #163 and #169. please resolve these conflicts into this branch"
+
+### AI Output Summary & Code Generated:
+
+**`91dce56` — Merge `feature/celery` (#163) into `feat/bgg-refresh`**
+
+* Merged Jennifer's Celery branch (worker, beat, Flower, background BGG play import) into the branch that already contained the BGG client from `feat/bgg-catalog` (#169), so the catalog refresh work could build on both before either PR is merged.
+* Resolved the one conflict, in `tracking/utils.py`: kept the `import_bgg_plays` / `fetch_bgg_plays` split and message constants from `feature/celery`, and used the BGG client's `BoardGameGeekUnavailableError` and `BoardGameGeekMalformedResponseError` in place of the `requests` and `ElementTree` errors the BGG client replaced.
+* Updated the `import_bgg_plays` docstring to list the client errors it now raises.
+* Removed an unused `Profile` import left in `tracking/views.py` (also present on `feature/celery`, where it fails the backend lint).
+
+**`ba19fbf` — Retry background play sync only for retryable BGG errors**
+
+* Found a problem the merge did not show as a conflict: `sync_bgg_plays` in `tracking/tasks.py` caught `requests.RequestException` and read `exception.response.status_code` to decide whether to retry. After the merge the play import raises the BGG client's errors instead, so every BGG failure skipped those `except` blocks and the task was marked FAILED without retrying. The task tests did not catch this because they mock `import_bgg_plays` and raise `requests` errors themselves.
+* Added `is_retryable` and `status_code` to `BoardGameGeekUnavailableError` in `catalog/bgg_client.py`. Timeouts, connection failures, rate limiting (429) and server errors (5xx) are retryable; a request BGG rejects itself (for example, a 404 for an unknown username) is not.
+* Changed `sync_bgg_plays` to catch the two client errors and retry only when `is_retryable` is True, and removed `_is_retryable` and `RETRYABLE_HTTP_STATUSES`.
+* Updated the task tests in `tracking/test_tasks.py` to raise the client's errors, and added a test that unreadable BGG XML fails the sync without retrying.
+
+### Human Review, Refactoring & Modifications Made:
+
+* Reviewed the merge and changes made. Determined that they were the right direction to go in
+
+### Verification & Testing Method:
+
+* AI ran the full backend suite against a temporary `pgvector/pgvector:pg17` container: 299 tests passed, including Jennifer's Celery task tests and the new unreadable-XML test.
+* AI ran Ruff lint and format, mypy, `uv lock --check` (the merged lockfile resolves), `makemigrations --check` (no drift) and `lintmigrations` (no erroneous migrations). All passed.
+* No external APIs (BoardGameGeek) were called; the tests mock the BGG client.
 
 ---
 
