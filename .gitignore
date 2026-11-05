@@ -4,6 +4,7 @@
 !.env.example
 !backend/.env.example
 !frontend/.env.example
+!deploy/.env.production.example
 
 #Backend
 __pycache__/
@@ -153,6 +154,7 @@ yarn-error.log*
 .env*
 !.env.example
 !.env.local.example
+!deploy/.env.production.example
 
 # vercel
 .vercel

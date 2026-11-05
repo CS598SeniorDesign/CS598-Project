@@ -1,0 +1,238 @@
+name: Deploy
+
+# Builds the backend and frontend images, pushes them to GitHub Container Registry, and deploys them over SSH.
+#
+#   main        -> staging     (automatic once CI passes; skipped until the staging environment is configured)
+#   production  -> production  (once CI passes and a reviewer approves the "production" environment)
+#
+# Run it by hand (Actions > Deploy > Run workflow) to redeploy, or to roll back by entering an earlier image tag.
+# Setup (servers, secrets, variables, approvals) is described in docs/DEPLOYMENT.md.
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main, production]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to deploy to
+        type: choice
+        options: [staging, production]
+        required: true
+      image_tag:
+        description: Existing image tag to deploy, e.g. sha-1a2b3c4 (leave empty to build the selected branch)
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    name: Plan
+    # Only deploy commits whose CI run passed.
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.plan.outputs.environment }}
+      sha: ${{ steps.plan.outputs.sha }}
+      tag: ${{ steps.plan.outputs.tag }}
+      build: ${{ steps.plan.outputs.build }}
+      backend_image: ${{ steps.plan.outputs.backend_image }}
+      frontend_image: ${{ steps.plan.outputs.frontend_image }}
+    steps:
+      - name: Work out what to deploy where
+        id: plan
+        env:
+          EVENT: ${{ github.event_name }}
+          RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+          RUN_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          INPUT_ENVIRONMENT: ${{ inputs.environment }}
+          INPUT_TAG: ${{ inputs.image_tag }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          if [ "$EVENT" = "workflow_run" ]; then
+            sha="$RUN_SHA"
+            if [ "$RUN_BRANCH" = "production" ]; then environment=production; else environment=staging; fi
+            tag="sha-$(echo "$sha" | cut -c1-12)"
+            build=true
+          else
+            sha="$GITHUB_SHA"
+            environment="$INPUT_ENVIRONMENT"
+            if [ -n "$INPUT_TAG" ]; then
+              tag="$INPUT_TAG"
+              build=false
+            else
+              tag="sha-$(echo "$sha" | cut -c1-12)"
+              build=true
+            fi
+          fi
+          owner=$(echo "$OWNER" | tr '[:upper:]' '[:lower:]')
+          {
+            echo "environment=$environment"
+            echo "sha=$sha"
+            echo "tag=$tag"
+            echo "build=$build"
+            echo "backend_image=ghcr.io/$owner/questlog-backend"
+            echo "frontend_image=ghcr.io/$owner/questlog-frontend"
+          } >> "$GITHUB_OUTPUT"
+          echo "Deploying $tag to $environment (build: $build)" >> "$GITHUB_STEP_SUMMARY"
+
+  build:
+    name: Build and push images
+    needs: plan
+    if: needs.plan.outputs.build == 'true'
+    # The free Oracle Cloud servers are ARM (linux/arm64). On a standard runner the arm64 image is built with QEMU
+    # emulation, which is slow but free. If the repository is public, set the repository variable BUILD_RUNNER to
+    # ubuntu-24.04-arm to build natively. IMAGE_PLATFORMS can add linux/amd64 for x86 servers.
+    runs-on: ${{ vars.BUILD_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.plan.outputs.sha }}
+
+      - uses: docker/setup-qemu-action@v3
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push backend
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          target: production
+          platforms: ${{ vars.IMAGE_PLATFORMS || 'linux/arm64' }}
+          build-args: |
+            GIT_SHA=${{ needs.plan.outputs.sha }}
+          tags: ${{ needs.plan.outputs.backend_image }}:${{ needs.plan.outputs.tag }}
+          labels: org.opencontainers.image.revision=${{ needs.plan.outputs.sha }}
+          push: true
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,scope=backend,mode=max
+
+      - name: Build and push frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: frontend
+          target: runner
+          platforms: ${{ vars.IMAGE_PLATFORMS || 'linux/arm64' }}
+          build-args: |
+            INTERNAL_API_URL=http://backend:8000
+          tags: ${{ needs.plan.outputs.frontend_image }}:${{ needs.plan.outputs.tag }}
+          labels: org.opencontainers.image.revision=${{ needs.plan.outputs.sha }}
+          push: true
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,scope=frontend,mode=max
+
+  deploy:
+    name: Deploy to ${{ needs.plan.outputs.environment }}
+    needs: [plan, build]
+    if: >-
+      always() && needs.plan.result == 'success' &&
+      (needs.build.result == 'success' || needs.build.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Required reviewers on the "production" environment pause the run here until someone approves.
+    environment:
+      name: ${{ needs.plan.outputs.environment }}
+      url: https://${{ vars.APP_DOMAIN }}
+    concurrency:
+      group: deploy-${{ needs.plan.outputs.environment }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      packages: read
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/opt/questlog' }}
+      APP_DOMAIN: ${{ vars.APP_DOMAIN }}
+      TAG: ${{ needs.plan.outputs.tag }}
+      # Optional; the Sentry release step is skipped without it.
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+    steps:
+      - name: Check the environment is configured
+        id: configured
+        run: |
+          if [ -z "$DEPLOY_HOST" ] || [ -z "$DEPLOY_USER" ] || [ -z "$APP_DOMAIN" ]; then
+            echo "::notice::${{ needs.plan.outputs.environment }} is not configured (DEPLOY_HOST, DEPLOY_USER, APP_DOMAIN); skipping deploy."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v7
+        if: steps.configured.outputs.ready == 'true'
+        with:
+          ref: ${{ needs.plan.outputs.sha }}
+          sparse-checkout: deploy
+
+      - name: Set up SSH
+        if: steps.configured.outputs.ready == 'true'
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          # Pinned host key: the connection fails rather than trusting an unknown server.
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          printf 'Host deploy-target\n  HostName %s\n  User %s\n  IdentityFile ~/.ssh/deploy_key\n  IdentitiesOnly yes\n' \
+            "$DEPLOY_HOST" "$DEPLOY_USER" > ~/.ssh/config
+
+      - name: Copy deployment files
+        if: steps.configured.outputs.ready == 'true'
+        run: |
+          ssh deploy-target "mkdir -p '$DEPLOY_PATH/scripts'"
+          scp deploy/docker-compose.prod.yml deploy/Caddyfile deploy/.env.production.example "deploy-target:$DEPLOY_PATH/"
+          scp deploy/scripts/*.sh "deploy-target:$DEPLOY_PATH/scripts/"
+          ssh deploy-target "chmod +x '$DEPLOY_PATH'/scripts/*.sh"
+
+      - name: Deploy on the server
+        if: steps.configured.outputs.ready == 'true'
+        env:
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REGISTRY_USER: ${{ github.actor }}
+        run: |
+          # Log the server in with this run's short-lived token so it can pull private images, then log out again.
+          printf '%s' "$REGISTRY_TOKEN" | ssh deploy-target "docker login ghcr.io -u '$REGISTRY_USER' --password-stdin"
+          status=0
+          ssh deploy-target "'$DEPLOY_PATH/scripts/deploy.sh' '$TAG'" || status=$?
+          ssh deploy-target "docker logout ghcr.io" || true
+          exit $status
+
+      - name: Check the site from outside
+        if: steps.configured.outputs.ready == 'true'
+        run: |
+          for attempt in $(seq 1 20); do
+            if curl -fsS --max-time 10 "https://$APP_DOMAIN/health/" > /dev/null; then
+              echo "https://$APP_DOMAIN is up." >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            sleep 6
+          done
+          echo "https://$APP_DOMAIN/health/ did not respond." >&2
+          exit 1
+
+      - name: Tell Sentry about the release
+        if: steps.configured.outputs.ready == 'true' && env.SENTRY_AUTH_TOKEN != ''
+        uses: getsentry/action-release@v3
+        env:
+          SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
+        with:
+          environment: ${{ needs.plan.outputs.environment }}
+          release: ${{ needs.plan.outputs.sha }}
+          set_commits: skip

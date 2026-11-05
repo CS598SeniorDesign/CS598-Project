@@ -1,0 +1,39 @@
+# Caddy: HTTPS (free Let's Encrypt certificates, renewed automatically) and routing for QuestLog.
+# APP_DOMAIN and ACME_EMAIL come from .env (see docker-compose.prod.yml).
+#
+# Everything is served from one origin, so the session cookie and CSRF work exactly as in development:
+#   /api/*, /_allauth/*, /health/, /static/*  -> Django
+#   everything else                           -> Next.js
+# Plain HTTP is redirected to HTTPS automatically.
+
+{
+	email {$ACME_EMAIL}
+}
+
+{$APP_DOMAIN} {
+	encode zstd gzip
+
+	# Operational and admin endpoints stay private: /ready/ reveals whether the database and Redis are up, /metrics/
+	# is for an internal Prometheus, and the Django admin is reached through an SSH tunnel if enabled at all.
+	@private path /ready/ /ready /metrics/ /metrics /metrics/* /admin /admin/*
+	respond @private 404
+
+	@backend path /api/* /_allauth/* /health/ /static/*
+	handle @backend {
+		reverse_proxy backend:8000
+	}
+
+	handle {
+		reverse_proxy frontend:3000
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+
+	log {
+		output stdout
+		format json
+	}
+}

@@ -677,6 +677,36 @@ jobs:
         if: always()
         run: docker compose down -v
 
+  production-images:
+    name: Production images build
+    # The Compose smoke test only builds the development images, so a broken production image (the one actually
+    # deployed) would otherwise go unnoticed until deploy time.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build backend production image
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          target: production
+          push: false
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,scope=backend-ci,mode=max
+
+      - name: Build frontend production image
+        uses: docker/build-push-action@v6
+        with:
+          context: frontend
+          target: runner
+          build-args: |
+            INTERNAL_API_URL=http://backend:8000
+          push: false
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,scope=frontend-ci,mode=max
+
   dependency-review:
     name: Dependency vulnerability review
     runs-on: ubuntu-latest
@@ -820,6 +850,7 @@ jobs:
       - qa-validation
       - production-gate
       - prototype-2-issue-report
+      - production-images
     if: always()
     runs-on: ubuntu-latest
 
@@ -835,6 +866,7 @@ jobs:
           echo "- Dependency audit: ${{ needs.dependency-audit.result || 'skipped' }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- Backend tests: ${{ needs.backend-tests.result }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- Frontend tests: ${{ needs.frontend-tests.result }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Production images: ${{ needs.production-images.result }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- Frontend E2E browser/mobile tests: ${{ needs.frontend-e2e.result }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- QA validation: ${{ needs.qa-validation.result || 'skipped' }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- Production gate: ${{ needs.production-gate.result || 'skipped' }}" >> "$GITHUB_STEP_SUMMARY"

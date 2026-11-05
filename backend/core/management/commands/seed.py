@@ -3,8 +3,9 @@ from datetime import timedelta
 
 import environ
 from allauth.account.models import EmailAddress
+from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 from faker import Faker
 
@@ -38,6 +39,9 @@ class Command(BaseCommand):
 
     Clears all existing User and BoardGame records to prevent collisions, then generates realistic mock records using
     the Faker library.
+
+    Because it deletes every user, it refuses to run unless DEBUG is on, so it cannot wipe a staging or production
+    database by accident.
     """
 
     help = "Seeds the database with synthetic test data for Prototype 1"
@@ -49,7 +53,11 @@ class Command(BaseCommand):
         :param args: Additional positional arguments.
         :param kwargs: Additional keyword arguments.
         :returns: None
+        :raises CommandError: If DEBUG is off.
         """
+        if not settings.DEBUG:
+            raise CommandError("seed deletes every user and game, so it only runs with DEBUG=True (development).")
+
         fake = Faker()
 
         self.stdout.write("Clearing existing records...")

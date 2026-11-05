@@ -10,6 +10,7 @@ import uuid
 from collections.abc import Callable
 from time import perf_counter
 
+import sentry_sdk
 from django.http import HttpRequest, HttpResponse
 
 from core.metrics import HTTP_REQUEST_DURATION, HTTP_REQUESTS
@@ -41,7 +42,11 @@ class RequestContextMiddleware:
     def __call__(self, request: HttpRequest) -> HttpResponse:
         request_id = _incoming_request_id(request) or uuid.uuid4().hex
         request.request_id = request_id  # type: ignore[attr-defined]
-        tokens = bind_request_context(request_id, _user_id(request))
+        user_id = _user_id(request)
+        tokens = bind_request_context(request_id, user_id)
+        # Lets a Sentry error be matched to the request's log lines. Both calls do nothing when Sentry is not set up.
+        sentry_sdk.set_tag("request_id", request_id)
+        sentry_sdk.set_user({"id": user_id} if user_id else None)
         start = perf_counter()
         try:
             response = self.get_response(request)

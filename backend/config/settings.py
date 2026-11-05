@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import importlib.util
 import os
 from pathlib import Path
 
@@ -72,7 +73,6 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.postgres",
-    "django_migration_linter",
     "django.contrib.sites",
     "rest_framework",
     # django-allauth (Authentication extension and MFA)
@@ -90,6 +90,11 @@ INSTALLED_APPS = [
     "users",
     "recommendations",
 ]
+
+# django-migration-linter is a development tool (`manage.py lintmigrations` in CI), so the production image does not
+# include it. Register it only where it is installed.
+if importlib.util.find_spec("django_migration_linter") is not None:
+    INSTALLED_APPS.append("django_migration_linter")
 
 SITE_ID = 1
 
@@ -408,6 +413,32 @@ LOGGING = {
         "django.server": {"handlers": ["console"], "level": "ERROR", "propagate": False},
     },
 }
+
+# Error tracking: when SENTRY_DSN is set, unhandled exceptions, ERROR log lines, failed Celery tasks and missed Celery
+# beat runs are sent to Sentry. Events carry the request_id (see core.middleware) and only the user's ID: no emails, IP
+# addresses, cookies or request bodies (send_default_pii=False).
+SENTRY_DSN = env.str("SENTRY_DSN", default="")
+if SENTRY_DSN:
+    import logging
+
+    import sentry_sdk
+    from sentry_sdk.integrations.celery import CeleryIntegration
+    from sentry_sdk.integrations.django import DjangoIntegration
+    from sentry_sdk.integrations.logging import LoggingIntegration
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        environment=env.str("SENTRY_ENVIRONMENT", default="production"),
+        release=env.str("SENTRY_RELEASE", default="") or None,
+        integrations=[
+            DjangoIntegration(),
+            # Reports each Celery beat schedule to Sentry Crons, which alerts when a scheduled task does not run.
+            CeleryIntegration(monitor_beat_tasks=True),
+            LoggingIntegration(level=logging.INFO, event_level=logging.ERROR),
+        ],
+        traces_sample_rate=env.float("SENTRY_TRACES_SAMPLE_RATE", default=0.1),
+        send_default_pii=False,
+    )
 
 # Monitoring: GET /metrics/ serves Prometheus metrics to callers sending "Authorization: Bearer <METRICS_TOKEN>".
 # Leave unset to disable the endpoint.

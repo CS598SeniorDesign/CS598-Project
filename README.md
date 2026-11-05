@@ -230,4 +230,5 @@ The same `--target production` pattern applies to `./backend`.
 - [`frontend/README.md`](frontend/README.md) — frontend setup, dependency management, app structure, and test commands
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — architecture, UML class diagrams, ERDs, sequence diagrams, and CI/CD pipeline
 - [`docs/SECURITY_AUDIT.md`](docs/SECURITY_AUDIT.md) — OWASP Top 10 audit, dependency scanning policy, and open security items
+- [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — production deployment on free services: server, domain, HTTPS, CI/CD deploys, backups, Sentry and uptime checklists
 - `AI_USAGE_LOG.md` — required log of all generative AI usage across this project

@@ -220,7 +220,7 @@ This project intentionally uses **two different PostgreSQL drivers** depending o
 - **`psycopg2-binary`** (in the `dev` group) - a prebuilt wheel, fast and convenient for local development.
 - **`psycopg2`** (in the `prod` optional-dependency group) - compiled from source at install time, used in the production Docker image.
 
-The production Docker build installs with `--no-default-groups --extra prod`, which pulls in `psycopg2` and excludes `psycopg2-binary` entirely. Local `uv sync` pulls in the `dev` group, which includes `psycopg2-binary`. Do not add `psycopg2-binary` to base `dependencies`, it will conflict with `psycopg2` in any environment that installs both.
+The production Docker build installs with `--no-default-groups --extra prod`, which pulls in `psycopg2` and excludes `psycopg2-binary` entirely. The Dockerfile's `builder` stage installs the compiler and PostgreSQL headers this needs; the final image only gets the runtime library (`libpq5`). Because the `dev` group is not installed in production, any package Django needs at runtime (such as `whitenoise`) must be in the main `dependencies`, not in `dev`. Local `uv sync` pulls in the `dev` group, which includes `psycopg2-binary`. Do not add `psycopg2-binary` to base `dependencies`, it will conflict with `psycopg2` in any environment that installs both.
 
 ### Updating the `uv.lock` File
 

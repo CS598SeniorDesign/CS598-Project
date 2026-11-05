@@ -16,6 +16,10 @@ CMD ["npm", "run", "dev"]
 
 FROM base AS builder
 ENV NODE_ENV=production
+# next.config.ts reads this to proxy /api and /_allauth to Django, and `next build` fixes the rewrites into the build
+# output, so it must be set here rather than when the container starts. The default is the backend service in Compose.
+ARG INTERNAL_API_URL=http://backend:8000
+ENV INTERNAL_API_URL=$INTERNAL_API_URL
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .

@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser, Group
 from django.core.cache import cache
 from django.core.exceptions import ImproperlyConfigured
+from django.core.management import CommandError, call_command
 from django.db import connection
 from django.test import TestCase, override_settings
 from rest_framework.permissions import IsAuthenticated
@@ -204,3 +205,14 @@ class OwnedQuerysetMixinTest(TestCase):
     def test_moderator_bypass_can_be_disabled(self):
         self.assertEqual(list(self.queryset_for(self.moderator)), [self.item])
         self.assertFalse(self.queryset_for(self.moderator, moderators_see_all=False).exists())
+
+
+class SeedCommandSafetyTest(TestCase):
+    @override_settings(DEBUG=False)
+    def test_refuses_to_run_without_debug(self):
+        BoardGame.objects.create(bgg_id=1, primary_name="Keep me")
+
+        with pytest.raises(CommandError, match="DEBUG=True"):
+            call_command("seed")
+
+        assert BoardGame.objects.filter(bgg_id=1).exists()
