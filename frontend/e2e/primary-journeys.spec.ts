@@ -90,9 +90,9 @@ test.describe("primary user journeys", () => {
     await dialog.getByRole("button", { name: "Save Play" }).click();
 
     await expect(
-      dialog.getByRole("status").getByText(
-        "Your play session was saved successfully!",
-      ),
+      dialog
+        .getByRole("status")
+        .getByText("Your play session was saved successfully!"),
     ).toBeVisible();
     await dialog.getByRole("button", { name: "Done" }).click();
     await expect(dialog).toBeHidden();
