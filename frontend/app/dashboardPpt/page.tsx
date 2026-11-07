@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import RecommendationStrip from "@/components/recommendations/RecommendationStrip";
 
 type ApiGame = {
@@ -247,79 +247,114 @@ function UserMenu() {
   const router = useRouter();
   const profile = useProfileName();
   const avatar = useAvatar();
-
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState("");
 
+  useEffect(() => {
+    function onPointerDown(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setMenuOpen(false);
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, []);
+
   async function handleLogout() {
     if (loggingOut) return;
-
     setLoggingOut(true);
     setLogoutError("");
-
     try {
       const csrfToken = getCsrfToken();
-
-      if (!csrfToken) {
+      if (!csrfToken)
         throw new Error("Missing CSRF token. Refresh and try again.");
-      }
-
       const response = await fetch("/_allauth/browser/v1/auth/session", {
         method: "DELETE",
         credentials: "same-origin",
-        headers: {
-          "X-CSRFToken": csrfToken,
-        },
+        headers: { "X-CSRFToken": csrfToken },
       });
-
       if (!response.ok && response.status !== 401) {
         throw new Error("Unable to log out.");
       }
-
+      setMenuOpen(false);
       router.replace("/login");
       router.refresh();
     } catch (caught) {
       setLogoutError(getErrorMessage(caught));
+    } finally {
       setLoggingOut(false);
     }
   }
 
   return (
-    <div className="flex flex-col items-end gap-2">
-      <div className="flex items-center gap-3">
-        <Link
-          href="/profile"
-          className="flex items-center gap-3 rounded-lg p-1 hover:bg-white/10"
-        >
-          {avatar ? (
-            <Image
-              src={avatar}
-              alt="User avatar"
-              width={32}
-              height={32}
-              className="h-8 w-8 rounded-full object-cover"
-            />
-          ) : (
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-sm font-bold">
-              {profile.data.charAt(0).toUpperCase() || "?"}
-            </div>
-          )}
-
-          <span className="max-w-36 truncate text-sm font-medium">
-            {profile.loading ? "Loading..." : profile.data || "My Profile"}
+    <div ref={menuRef} className="relative flex flex-col items-end gap-2">
+      <button
+        type="button"
+        aria-label="Account menu"
+        aria-expanded={menuOpen}
+        aria-controls="dashboard-account-menu"
+        onClick={() => setMenuOpen((open) => !open)}
+        className="flex items-center gap-3 rounded-lg p-2 hover:bg-white/10"
+      >
+        {avatar?.startsWith("/avatars/") ? (
+          <Image
+            src={avatar}
+            alt=""
+            width={32}
+            height={32}
+            className="h-8 w-8 rounded-full object-cover"
+          />
+        ) : (
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-sm font-bold">
+            {profile.data.charAt(0).toUpperCase() || "?"}
           </span>
-        </Link>
-
-        <button
-          type="button"
-          onClick={() => void handleLogout()}
-          disabled={loggingOut}
-          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium transition hover:bg-indigo-500 disabled:opacity-50"
+        )}
+        <span className="max-w-36 truncate text-sm font-medium">
+          {profile.loading ? "Loading..." : profile.data || "My Profile"}
+        </span>
+        <span aria-hidden="true" className="text-xs">
+          {menuOpen ? "▲" : "▼"}
+        </span>
+      </button>
+      {menuOpen && (
+        <div
+          id="dashboard-account-menu"
+          className="absolute right-0 top-full z-50 mt-2 w-48 rounded-xl border border-slate-700 bg-[#1E293B] p-2 shadow-xl"
         >
-          {loggingOut ? "Logging Out..." : "Log Out"}
-        </button>
-      </div>
-
+          <Link
+            href="/profile"
+            onClick={() => setMenuOpen(false)}
+            className="block rounded-lg px-3 py-2 text-sm hover:bg-white/10"
+          >
+            My Profile
+          </Link>
+          <Link
+            href="/settings"
+            onClick={() => setMenuOpen(false)}
+            className="block rounded-lg px-3 py-2 text-sm hover:bg-white/10"
+          >
+            Settings
+          </Link>
+          <div className="my-2 border-t border-slate-700" />
+          <button
+            type="button"
+            onClick={() => void handleLogout()}
+            disabled={loggingOut}
+            className="w-full rounded-lg px-3 py-2 text-left text-sm text-red-300 hover:bg-white/10 disabled:opacity-50"
+          >
+            {loggingOut ? "Logging Out..." : "Log Out"}
+          </button>
+        </div>
+      )}
       {logoutError && (
         <p role="alert" className="text-xs text-red-400">
           {logoutError}
@@ -332,7 +367,7 @@ function UserMenu() {
 function DashboardNavbar() {
   return (
     <header className="flex flex-wrap items-center justify-between gap-4 bg-gradient-to-r from-[#1E293B] to-[#0F172A] px-4 py-4 shadow-xl sm:px-8">
-      <Link href="/dashboardPpt" className="text-xl font-bold">
+      <Link href="/" className="text-xl font-bold">
         QuestLog
       </Link>
 
