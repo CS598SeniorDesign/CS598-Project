@@ -1,7 +1,9 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useState } from "react";
+import ShowMoreButton from "./ShowMoreButton";
 
 interface Player {
   user_id: string;
@@ -22,6 +24,7 @@ interface FriendRequests {
 }
 
 const DEFAULT_AVATAR = "/avatars/avatar1.webp";
+const INITIAL_VISIBLE = 5;
 
 const ALLOWED_AVATARS = new Set([
   "/avatars/brandon.webp",
@@ -211,6 +214,7 @@ interface RequestRowProps {
     label: string;
     onClick: () => void;
     destructive?: boolean;
+    disabled?: boolean;
   }[];
 }
 
@@ -224,7 +228,7 @@ function RequestRow({ name, busy, actions }: RequestRowProps) {
           <button
             key={action.label}
             type="button"
-            disabled={busy}
+            disabled={busy || action.disabled}
             onClick={action.onClick}
             className={`rounded-lg px-3 py-2 text-sm font-semibold disabled:opacity-50 ${
               action.destructive
@@ -256,7 +260,11 @@ export default function FriendsList() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [searchError, setSearchError] = useState("");
+  const [searchedQuery, setSearchedQuery] = useState("");
+  const [friendToRemove, setFriendToRemove] = useState<Player | null>(null);
   const [message, setMessage] = useState("");
+
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -310,6 +318,7 @@ export default function FriendsList() {
 
         if (!controller.signal.aborted) {
           setResults(players);
+          setSearchedQuery(search);
         }
       } catch (caughtError) {
         if (!controller.signal.aborted) {
@@ -380,6 +389,9 @@ export default function FriendsList() {
     requests.incoming.map((request) => request.from_user.user_id),
   );
 
+  // Only display five friends until Show More is clicked.
+  const visibleFriends = expanded ? friends : friends.slice(0, INITIAL_VISIBLE);
+
   return (
     <section className="border-t border-gray-500 pt-6">
       <h2 className="mb-6 text-3xl font-bold tracking-wide">YOUR FRIENDS</h2>
@@ -412,6 +424,7 @@ export default function FriendsList() {
             onChange={(event) => {
               setQuery(event.target.value);
               setResults([]);
+              setSearchedQuery("");
               setSearchError("");
               setSearchLoading(false);
             }}
@@ -439,6 +452,7 @@ export default function FriendsList() {
         )}
 
         {query.trim().length >= 2 &&
+          query.trim() === searchedQuery &&
           !searchLoading &&
           !searchError &&
           results.length === 0 && (
@@ -463,6 +477,7 @@ export default function FriendsList() {
                       : incoming
                         ? "Request Received"
                         : "Add Friend",
+                    disabled: pending || incoming,
                     onClick: () => {
                       if (pending || incoming) return;
 
@@ -480,6 +495,7 @@ export default function FriendsList() {
           })}
       </div>
 
+      {/* Friends list */}
       <div className="space-y-4">
         {loading && <p className="text-gray-400">Loading your friends...</p>}
 
@@ -494,34 +510,40 @@ export default function FriendsList() {
 
         {!loading && friends.length > 0 && (
           <ul className="space-y-4">
-            {friends.map((friend) => (
+            {visibleFriends.map((friend) => (
               <li
                 key={friend.user_id}
                 className="flex items-center justify-between gap-3"
               >
-                <div className="flex min-w-0 items-center gap-3">
+                {/* Clickable friend profile */}
+                <Link
+                  href={`/profile/${encodeURIComponent(friend.user_id)}`}
+                  aria-label={`View ${friend.display_name}'s profile`}
+                  className="group flex min-w-0 items-center gap-3 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-indigo-400"
+                >
                   <Image
                     src={getPlayerAvatar(friend.avatar)}
                     alt=""
                     width={48}
                     height={48}
-                    className="h-12 w-12 rounded-full border border-gray-500 object-cover"
+                    className="h-12 w-12 rounded-full border border-gray-500 object-cover transition group-hover:border-indigo-400"
                   />
-                  <span className="truncate font-medium">
-                    {friend.display_name}
-                  </span>
-                </div>
+
+                  <div className="min-w-0">
+                    <span className="block truncate font-medium text-white transition group-hover:text-indigo-400">
+                      {friend.display_name}
+                    </span>
+
+                    <span className="text-xs text-gray-400 group-hover:text-indigo-300">
+                      View Profile
+                    </span>
+                  </div>
+                </Link>
 
                 <button
                   type="button"
                   disabled={busy}
-                  onClick={() =>
-                    void performAction(
-                      `/api/v1/friends/${friend.user_id}/`,
-                      "DELETE",
-                      `${friend.display_name} was removed from your friends.`,
-                    )
-                  }
+                  onClick={() => setFriendToRemove(friend)}
                   className="rounded-lg border border-slate-600 px-3 py-2 text-xs text-red-300 hover:bg-slate-800 disabled:opacity-50"
                 >
                   Remove
@@ -531,6 +553,15 @@ export default function FriendsList() {
           </ul>
         )}
       </div>
+
+      {!loading && (
+        <ShowMoreButton
+          expanded={expanded}
+          total={friends.length}
+          initialVisible={INITIAL_VISIBLE}
+          onToggle={() => setExpanded((previous) => !previous)}
+        />
+      )}
 
       <div className="mt-8 space-y-4 border-t border-slate-700 pt-6">
         <h3 className="text-xl font-semibold">Friend Requests</h3>
@@ -600,6 +631,68 @@ export default function FriendsList() {
           ))}
         </div>
       </div>
+
+      {/* Remove friend confirmation */}
+      {friendToRemove && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !busy) {
+              setFriendToRemove(null);
+            }
+          }}
+        >
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="remove-friend-title"
+            aria-describedby="remove-friend-description"
+            className="w-full max-w-md rounded-2xl border border-slate-600 bg-slate-900 p-6 shadow-2xl"
+          >
+            <h3 id="remove-friend-title" className="text-xl font-bold">
+              Remove friend?
+            </h3>
+
+            <p
+              id="remove-friend-description"
+              className="mt-3 text-sm text-slate-300"
+            >
+              Remove {friendToRemove.display_name} from your friends list?
+            </p>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                autoFocus
+                disabled={busy}
+                onClick={() => setFriendToRemove(null)}
+                className="rounded-lg border border-slate-600 px-4 py-2 text-sm hover:bg-slate-800 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => {
+                  const friend = friendToRemove;
+                  setFriendToRemove(null);
+
+                  void performAction(
+                    `/api/v1/friends/${friend.user_id}/`,
+                    "DELETE",
+                    `${friend.display_name} was removed from your friends.`,
+                  );
+                }}
+                className="rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white hover:bg-red-600 disabled:opacity-50"
+              >
+                Remove friend
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
