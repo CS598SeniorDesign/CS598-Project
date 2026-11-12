@@ -27,15 +27,18 @@ const DEFAULT_AVATAR = "/avatars/avatar1.webp";
 const INITIAL_VISIBLE = 5;
 
 const ALLOWED_AVATARS = new Set([
-  "/avatars/brandon.webp",
-  "/avatars/sydney.webp",
-  "/avatars/jennifer.webp",
-  "/avatars/supriya.webp",
   "/avatars/avatar1.webp",
   "/avatars/avatar2.webp",
   "/avatars/avatar3.webp",
   "/avatars/avatar4.webp",
   "/avatars/avatar5.webp",
+  "/avatars/avatar6.webp",
+  "/avatars/avatar7.webp",
+  "/avatars/avatar8.webp",
+  "/avatars/avatar9.webp",
+  "/avatars/avatar10.webp",
+  "/avatars/avatar11.webp",
+  "/avatars/avatar12.webp",
 ]);
 
 function getPlayerAvatar(avatar?: string | null): string {

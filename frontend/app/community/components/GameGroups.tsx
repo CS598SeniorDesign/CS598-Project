@@ -323,19 +323,20 @@ function Avatar({ name }: { name: string }) {
 }
 
 const GROUP_COVERS = [
-  { id: "aot", label: "Attack on Titan" },
-  { id: "cute", label: "Cute" },
-  { id: "deerface", label: "Deer Face" },
-  { id: "demslay", label: "Demon Slayer" },
-  { id: "eren", label: "Eren" },
-  { id: "merry", label: "Merry" },
-  { id: "noface", label: "No Face" },
-  { id: "onepiece", label: "One Piece" },
-  { id: "spirited", label: "Spirited Away" },
-  { id: "studio", label: "Studio" },
+  { id: "Friends", label: "Friends Together" },
+  { id: "Campfire", label: "Campfire" },
+  { id: "Meeples", label: "Meeples" },
+  { id: "Treasure", label: "Treasure Hunt" },
+  { id: "Cosmic", label: "Cosmic Adventure" },
+  { id: "Moonlit", label: "Moonlit Garden" },
+  { id: "GameNight", label: "Game Night" },
+  { id: "Enchanted", label: "Enchanted Forest" },
+  { id: "Sunset", label: "Sunset" },
+  { id: "FantasyBoard", label: "Fantasy Board" },
+  { id: "Glowing", label: "Glowing World" },
 ] as const;
 
-const DEFAULT_GROUP_COVER = "studio";
+const DEFAULT_GROUP_COVER = "Campfire";
 
 // Change to true after the Django API accepts and returns cover_theme.
 const GROUP_COVER_API_ENABLED = false;
