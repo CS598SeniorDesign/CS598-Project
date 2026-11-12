@@ -12,10 +12,13 @@ const AVATARS = [
   "/avatars/avatar3.webp",
   "/avatars/avatar4.webp",
   "/avatars/avatar5.webp",
-  "/avatars/brandon.webp",
-  "/avatars/sydney.webp",
-  "/avatars/jennifer.webp",
-  "/avatars/supriya.webp",
+  "/avatars/avatar6.webp",
+  "/avatars/avatar7.webp",
+  "/avatars/avatar8.webp",
+  "/avatars/avatar9.webp",
+  "/avatars/avatar10.webp",
+  "/avatars/avatar11.webp",
+  "/avatars/avatar12.webp",
 ];
 
 export default function AvatarPicker({
@@ -23,7 +26,7 @@ export default function AvatarPicker({
   selected,
 }: AvatarPickerProps) {
   return (
-    <div className="flex gap-4">
+    <div className="grid grid-cols-3 sm:grid-cols-4 gap-4">
       {AVATARS.map((av) => (
         <div
           key={av}

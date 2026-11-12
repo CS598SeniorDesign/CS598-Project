@@ -13,15 +13,18 @@ LINKED_ELSEWHERE_MESSAGE = "This BoardGameGeek account is already linked to anot
 
 # Built-in QuestLog avatars that users can select.
 ALLOWED_AVATARS = {
-    "/avatars/brandon.webp",
-    "/avatars/sydney.webp",
-    "/avatars/jennifer.webp",
-    "/avatars/supriya.webp",
     "/avatars/avatar1.webp",
     "/avatars/avatar2.webp",
     "/avatars/avatar3.webp",
     "/avatars/avatar4.webp",
     "/avatars/avatar5.webp",
+    "/avatars/avatar6.webp",
+    "/avatars/avatar7.webp",
+    "/avatars/avatar8.webp",
+    "/avatars/avatar9.webp",
+    "/avatars/avatar10.webp",
+    "/avatars/avatar11.webp",
+    "/avatars/avatar12.webp",
 }
 
 

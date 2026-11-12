@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Camera, Save } from "lucide-react";
+import { ArrowLeft, Camera, Save, X } from "lucide-react";
+import Image from "next/image";
 import { motion } from "framer-motion";
 
 type UserProfile = {
@@ -11,7 +12,13 @@ type UserProfile = {
   bio: string;
   privacy_level: "PUBLIC" | "FRIENDS" | "PRIVATE";
   bgg_username: string;
+  avatar: string;
 };
+
+const AVATARS = Array.from(
+  { length: 12 },
+  (_, index) => `/avatars/avatar${index + 1}.webp`,
+);
 
 type ProfileAppearance = {
   avatar: string;
@@ -97,7 +104,13 @@ function extractSaveError(details: unknown): string {
 
   const fields = details as Record<string, unknown>;
 
-  for (const field of ["display_name", "bio", "bgg_username", "detail"]) {
+  for (const field of [
+    "avatar",
+    "display_name",
+    "bio",
+    "bgg_username",
+    "detail",
+  ]) {
     const message = fields[field];
 
     if (typeof message === "string") {
@@ -116,6 +129,7 @@ async function updateOwnProfile(
   displayName: string,
   bio: string,
   bggUsername: string,
+  avatar: string,
 ): Promise<UserProfile> {
   const csrfToken = getCsrfToken();
 
@@ -131,6 +145,7 @@ async function updateOwnProfile(
       display_name: displayName,
       bio,
       bgg_username: bggUsername,
+      avatar,
     }),
   });
 
@@ -247,17 +262,20 @@ function AvatarEditor({
 }: {
   avatar: string;
   displayName: string;
-  onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onChange: (avatar: string) => void;
 }) {
+  const [pickerOpen, setPickerOpen] = useState(false);
+
   return (
     <div className="relative -mt-16 flex flex-wrap items-end gap-5">
       <div className="relative flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-full border-4 border-[#1E293B] bg-indigo-600 text-4xl font-bold shadow-lg sm:h-32 sm:w-32">
         {avatar ? (
-          // Uploaded images are stored as local data URLs.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={avatar}
             alt="Profile avatar preview"
+            width={128}
+            height={128}
+            unoptimized
             className="h-full w-full object-cover"
           />
         ) : (
@@ -265,16 +283,83 @@ function AvatarEditor({
         )}
       </div>
 
-      <label className="mb-2 flex cursor-pointer items-center gap-2 rounded-lg bg-gray-700 px-4 py-2 text-sm font-semibold transition hover:bg-gray-600">
+      <button
+        type="button"
+        onClick={() => setPickerOpen(true)}
+        className="mb-2 inline-flex items-center gap-2 rounded-lg bg-gray-700 px-4 py-2 text-sm font-semibold transition hover:bg-gray-600"
+      >
         <Camera className="h-4 w-4" />
         Change Avatar
-        <input
-          type="file"
-          accept="image/*"
-          className="sr-only"
-          onChange={onChange}
-        />
-      </label>
+      </button>
+
+      {pickerOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setPickerOpen(false);
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="avatar-picker-title"
+            className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-gray-600 bg-[#1E293B] p-5 shadow-2xl sm:p-7"
+          >
+            <div className="mb-2 flex items-center justify-between gap-4">
+              <h2
+                id="avatar-picker-title"
+                className="text-xl font-bold text-white"
+              >
+                Choose Your Avatar
+              </h2>
+              <button
+                type="button"
+                onClick={() => setPickerOpen(false)}
+                aria-label="Close avatar picker"
+                className="rounded-lg p-2 text-gray-300 hover:bg-gray-700 hover:text-white"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <p className="mb-5 text-sm text-gray-400">
+              Pick one of the 12 QuestLog avatars. Save your profile to keep
+              your selection.
+            </p>
+            <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
+              {AVATARS.map((option, index) => (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => {
+                    onChange(option);
+                    setPickerOpen(false);
+                  }}
+                  aria-label={`Choose avatar ${index + 1}`}
+                  aria-pressed={avatar === option}
+                  className={`rounded-xl border-2 p-2 transition hover:bg-gray-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400 ${avatar === option ? "border-indigo-400 bg-indigo-500/20" : "border-gray-700"}`}
+                >
+                  <Image
+                    src={option}
+                    alt={`Avatar ${index + 1}`}
+                    width={110}
+                    height={110}
+                    unoptimized
+                    className="aspect-square w-full rounded-full object-cover"
+                  />
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => setPickerOpen(false)}
+              className="mt-5 w-full rounded-lg bg-gray-700 px-4 py-2 font-semibold hover:bg-gray-600"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -307,7 +392,10 @@ export default function EditProfilePage() {
         setDisplayName(profile.display_name || "");
         setBio(profile.bio || "");
         setBggUsername(profile.bgg_username || "");
-        setAppearance(savedAppearance);
+        setAppearance({
+          ...savedAppearance,
+          avatar: profile.avatar || savedAppearance.avatar,
+        });
       } catch (err) {
         if (controller.signal.aborted) return;
 
@@ -327,10 +415,7 @@ export default function EditProfilePage() {
     return () => controller.abort();
   }, []);
 
-  async function handleImageChange(
-    event: React.ChangeEvent<HTMLInputElement>,
-    type: "avatar" | "cover",
-  ) {
+  async function handleImageChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
 
     if (!file) return;
@@ -345,7 +430,7 @@ export default function EditProfilePage() {
 
       setAppearance((previous) => ({
         ...previous,
-        [type]: image,
+        cover: image,
       }));
 
       setError("");
@@ -363,9 +448,14 @@ export default function EditProfilePage() {
     setError("");
 
     try {
-      await updateOwnProfile(displayName.trim(), bio, bggUsername.trim());
+      const updatedProfile = await updateOwnProfile(
+        displayName.trim(),
+        bio,
+        bggUsername.trim(),
+        appearance.avatar,
+      );
 
-      saveAppearance(appearance);
+      saveAppearance({ ...appearance, avatar: updatedProfile.avatar });
 
       window.location.replace("/profile");
     } catch (err) {
@@ -434,14 +524,16 @@ export default function EditProfilePage() {
         >
           <CoverEditor
             cover={appearance.cover}
-            onChange={(event) => void handleImageChange(event, "cover")}
+            onChange={(event) => void handleImageChange(event)}
           />
 
           <div className="space-y-8 px-6 pb-8 sm:px-10">
             <AvatarEditor
               avatar={appearance.avatar}
               displayName={displayName}
-              onChange={(event) => void handleImageChange(event, "avatar")}
+              onChange={(avatar) =>
+                setAppearance((previous) => ({ ...previous, avatar }))
+              }
             />
 
             <div className="space-y-6">
