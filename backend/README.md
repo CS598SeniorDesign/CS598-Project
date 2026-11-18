@@ -370,7 +370,7 @@ uv run pytest              # Unit testing
 The backend enforces a maximum cyclomatic complexity of 10 with Ruff and a maximum cognitive complexity of 10 with Complexipy. These same caps run in the `backend-lint` CI job.
 
 Pull requests run `uv audit` against the locked backend environment and fail when known dependency vulnerabilities are found.
-Minimum coverage threshold is enforced at 60% (`--cov-fail-under=60` via `[tool.coverage.report]` in `pyproject.toml`).
+Minimum backend coverage is enforced at 85% (`--cov-fail-under=85` via `[tool.coverage.report]` in `pyproject.toml`).
 
 CI publishes complete backend and frontend test logs plus their coverage reports as workflow artifacts. The
 workflow finds issues referenced by the associated pull request's closing keywords (`Closes`, `Fixes`, or
