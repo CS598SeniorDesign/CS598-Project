@@ -344,7 +344,7 @@ function PlayerSelect({
     !availablePlayers.some((candidate) => candidate.user_id === player.userId);
 
   return (
-    <label className="block text-sm text-slate-200">
+    <label className="block text-sm text-subtle">
       Select Registered User
       <select
         value={player.userId}
@@ -355,7 +355,7 @@ function PlayerSelect({
 
           if (selected) onSelect(selected);
         }}
-        className="mt-2 w-full rounded-lg border border-slate-600 bg-slate-900 p-3 text-white"
+        className="mt-2 w-full rounded-lg border border-border bg-input p-3 text-foreground"
       >
         <option value="">Choose a player</option>
 
@@ -396,7 +396,7 @@ function PlayerPickerResults({
 
   if (loading) {
     return (
-      <p role="status" className="text-sm text-slate-400">
+      <p role="status" className="text-sm text-muted">
         Loading players...
       </p>
     );
@@ -404,7 +404,10 @@ function PlayerPickerResults({
 
   if (error) {
     return (
-      <p role="alert" className="text-sm text-red-400">
+      <p
+        role="alert"
+        className="text-sm text-red-400 [html[data-theme=light]_&]:text-red-700"
+      >
         {error}
       </p>
     );
@@ -420,7 +423,7 @@ function PlayerPickerResults({
       />
 
       {candidates.length === 0 && (
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-muted">
           {player.source === "friends"
             ? "No addable friends found. Try searching for a user."
             : "No matching registered users found."}
@@ -465,7 +468,7 @@ function RegisteredPlayerPicker({
           className={`rounded-lg px-4 py-2 text-sm font-medium ${
             player.source === "friends"
               ? "bg-indigo-600 text-white"
-              : "bg-slate-700 text-slate-200 hover:bg-slate-600"
+              : "bg-surface-hover text-subtle hover:bg-surface"
           }`}
         >
           My Friends
@@ -478,7 +481,7 @@ function RegisteredPlayerPicker({
           className={`rounded-lg px-4 py-2 text-sm font-medium ${
             player.source === "search"
               ? "bg-indigo-600 text-white"
-              : "bg-slate-700 text-slate-200 hover:bg-slate-600"
+              : "bg-surface-hover text-subtle hover:bg-surface"
           }`}
         >
           Search Users
@@ -486,7 +489,7 @@ function RegisteredPlayerPicker({
       </div>
 
       {player.source === "search" && (
-        <label className="block text-sm text-slate-200">
+        <label className="block text-sm text-subtle">
           Search by Display Name
           <input
             type="text"
@@ -494,13 +497,13 @@ function RegisteredPlayerPicker({
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Enter at least 2 characters"
-            className="mt-2 w-full rounded-lg border border-slate-600 bg-slate-900 p-3 text-white"
+            className="mt-2 w-full rounded-lg border border-border bg-input p-3 text-foreground"
           />
         </label>
       )}
 
       {player.source === "search" && query.trim().length < 2 && (
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-muted">
           Enter at least 2 characters to find registered users.
         </p>
       )}
@@ -516,7 +519,7 @@ function RegisteredPlayerPicker({
       />
 
       {player.userId && (
-        <p className="text-sm text-emerald-300">
+        <p className="text-sm text-emerald-300 [html[data-theme=light]_&]:text-emerald-700">
           Selected: {player.displayName}
         </p>
       )}
@@ -546,7 +549,7 @@ function PlayerCard({
   onSourceChange,
 }: PlayerCardProps) {
   return (
-    <div className="space-y-3 rounded-xl border border-slate-700 bg-slate-800 p-4">
+    <div className="space-y-3 rounded-xl border border-border bg-surface p-4">
       <div className="flex items-center justify-between">
         <span className="font-medium">Player {index + 1}</span>
 
@@ -554,19 +557,19 @@ function PlayerCard({
           <button
             type="button"
             onClick={onRemove}
-            className="text-sm text-red-400 hover:text-red-300"
+            className="text-sm text-red-400 [html[data-theme=light]_&]:text-red-700 hover:underline"
           >
             Remove
           </button>
         )}
       </div>
 
-      <label className="block text-sm text-slate-200">
+      <label className="block text-sm text-subtle">
         Player Type
         <select
           value={player.type}
           onChange={(event) => onTypeChange(event.target.value as PlayerType)}
-          className="mt-2 w-full rounded-lg border border-slate-600 bg-slate-900 p-3 text-white"
+          className="mt-2 w-full rounded-lg border border-border bg-input p-3 text-foreground"
         >
           <option value="guest">Guest Player</option>
           <option value="registered">Registered QuestLog User</option>
@@ -574,7 +577,7 @@ function PlayerCard({
       </label>
 
       {player.type === "guest" ? (
-        <label className="block text-sm text-slate-200">
+        <label className="block text-sm text-subtle">
           Guest Name
           <input
             type="text"
@@ -582,7 +585,7 @@ function PlayerCard({
             value={player.guestName}
             onChange={(event) => onUpdate({ guestName: event.target.value })}
             placeholder="Enter player name"
-            className="mt-2 w-full rounded-lg border border-slate-600 bg-slate-900 p-3 text-white"
+            className="mt-2 w-full rounded-lg border border-border bg-input p-3 text-foreground"
           />
         </label>
       ) : (
@@ -600,7 +603,7 @@ function PlayerCard({
       )}
 
       <div className="flex items-end gap-4">
-        <label className="block flex-1 text-sm text-slate-200">
+        <label className="block flex-1 text-sm text-subtle">
           Score (optional)
           <input
             type="number"
@@ -608,11 +611,11 @@ function PlayerCard({
             value={player.score}
             onChange={(event) => onUpdate({ score: event.target.value })}
             placeholder="Score"
-            className="mt-2 w-full rounded-lg border border-slate-600 bg-slate-900 p-3 text-white"
+            className="mt-2 w-full rounded-lg border border-border bg-input p-3 text-foreground"
           />
         </label>
 
-        <label className="flex items-center gap-2 pb-3 text-sm text-slate-200">
+        <label className="flex items-center gap-2 pb-3 text-sm text-subtle">
           <input
             type="checkbox"
             checked={player.isWinner}
@@ -790,14 +793,14 @@ export default function LogPlayForm({
         role="dialog"
         aria-modal="true"
         aria-labelledby="log-play-title"
-        className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-slate-700 bg-slate-900 p-6 text-white shadow-2xl"
+        className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-border bg-surface p-6 text-foreground shadow-2xl"
       >
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
             <h2 id="log-play-title" className="text-2xl font-bold">
               Log a Play
             </h2>
-            <p className="mt-1 text-sm text-slate-400">{gameName}</p>
+            <p className="mt-1 text-sm text-muted">{gameName}</p>
           </div>
 
           <button
@@ -805,7 +808,7 @@ export default function LogPlayForm({
             onClick={onClose}
             disabled={isSubmitting}
             aria-label="Close Log Play"
-            className="rounded-lg px-2 py-1 text-xl text-slate-400 hover:bg-slate-800 hover:text-white disabled:opacity-50"
+            className="rounded-lg px-2 py-1 text-xl text-muted hover:bg-surface-hover hover:text-foreground disabled:opacity-50"
           >
             ×
           </button>
@@ -813,13 +816,13 @@ export default function LogPlayForm({
 
         {success ? (
           <div role="status" className="space-y-5">
-            <p className="rounded-lg border border-emerald-700 bg-emerald-950 p-4 text-emerald-300">
+            <p className="rounded-lg border border-emerald-700 bg-emerald-950 [html[data-theme=light]_&]:bg-emerald-50 p-4 text-emerald-300 [html[data-theme=light]_&]:text-emerald-700">
               Your play session was saved successfully!
             </p>
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl bg-indigo-600 px-6 py-3 font-semibold hover:bg-indigo-500"
+              className="rounded-xl bg-indigo-600 px-6 py-3 font-semibold text-white hover:bg-indigo-500"
             >
               Done
             </button>
@@ -827,7 +830,7 @@ export default function LogPlayForm({
         ) : (
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="grid gap-4 sm:grid-cols-2">
-              <label className="block text-sm font-medium text-slate-200">
+              <label className="block text-sm font-medium text-subtle">
                 Play Date
                 <input
                   type="date"
@@ -835,11 +838,11 @@ export default function LogPlayForm({
                   max={getLocalDate()}
                   value={playDate}
                   onChange={(event) => setPlayDate(event.target.value)}
-                  className="mt-2 w-full rounded-lg border border-slate-600 bg-slate-800 p-3 text-white"
+                  className="mt-2 w-full rounded-lg border border-border bg-input p-3 text-foreground"
                 />
               </label>
 
-              <label className="block text-sm font-medium text-slate-200">
+              <label className="block text-sm font-medium text-subtle">
                 Duration (minutes)
                 <input
                   type="number"
@@ -848,13 +851,13 @@ export default function LogPlayForm({
                   value={duration}
                   onChange={(event) => setDuration(event.target.value)}
                   placeholder="Optional"
-                  className="mt-2 w-full rounded-lg border border-slate-600 bg-slate-800 p-3 text-white"
+                  className="mt-2 w-full rounded-lg border border-border bg-input p-3 text-foreground"
                 />
               </label>
             </div>
 
             {profileLoading && (
-              <p role="status" className="text-sm text-indigo-300">
+              <p role="status" className="text-sm text-link">
                 Loading your QuestLog account...
               </p>
             )}
@@ -862,7 +865,7 @@ export default function LogPlayForm({
             {profileError && (
               <p
                 role="alert"
-                className="rounded-lg border border-red-700 bg-red-950 p-3 text-sm text-red-300"
+                className="rounded-lg border border-red-700 bg-red-950 [html[data-theme=light]_&]:bg-red-50 p-3 text-sm text-red-300 [html[data-theme=light]_&]:text-red-700"
               >
                 {profileError}
               </p>
@@ -890,27 +893,27 @@ export default function LogPlayForm({
               <button
                 type="button"
                 onClick={addPlayer}
-                className="text-sm font-semibold text-indigo-300 hover:text-indigo-200"
+                className="text-sm font-semibold text-link hover:underline"
               >
                 + Add Another Player
               </button>
             </div>
 
-            <label className="block text-sm font-medium text-slate-200">
+            <label className="block text-sm font-medium text-subtle">
               Notes (optional)
               <textarea
                 rows={3}
                 value={notes}
                 onChange={(event) => setNotes(event.target.value)}
                 placeholder="How was game night?"
-                className="mt-2 w-full rounded-lg border border-slate-600 bg-slate-800 p-3 text-white"
+                className="mt-2 w-full rounded-lg border border-border bg-input p-3 text-foreground"
               />
             </label>
 
             {error && (
               <p
                 role="alert"
-                className="rounded-lg border border-red-700 bg-red-950 p-3 text-sm text-red-300"
+                className="rounded-lg border border-red-700 bg-red-950 [html[data-theme=light]_&]:bg-red-50 p-3 text-sm text-red-300 [html[data-theme=light]_&]:text-red-700"
               >
                 {error}
               </p>
@@ -921,7 +924,7 @@ export default function LogPlayForm({
                 type="button"
                 onClick={onClose}
                 disabled={isSubmitting}
-                className="rounded-xl border border-slate-600 px-5 py-3 font-semibold hover:bg-slate-800 disabled:opacity-50"
+                className="rounded-xl border border-border px-5 py-3 font-semibold hover:bg-surface-hover disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -931,7 +934,7 @@ export default function LogPlayForm({
                 disabled={
                   isSubmitting || profileLoading || Boolean(profileError)
                 }
-                className="rounded-xl bg-indigo-600 px-6 py-3 font-semibold hover:bg-indigo-500 disabled:opacity-50"
+                className="rounded-xl bg-indigo-600 px-6 py-3 font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
               >
                 {isSubmitting ? "Saving..." : "Save Play"}
               </button>

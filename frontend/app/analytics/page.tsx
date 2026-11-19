@@ -49,7 +49,8 @@ interface AnalyticsSummary {
   monthly_activity: MonthlyActivity[];
 }
 
-const cardClass = "rounded-2xl bg-[#1E293B] p-6 shadow-lg";
+const cardClass =
+  "rounded-2xl border border-border bg-surface p-6 text-foreground shadow-sm";
 
 function formatDuration(minutes: number): string {
   const hours = Math.floor(minutes / 60);
@@ -88,12 +89,12 @@ function StatCard({
   detail?: string;
 }) {
   return (
-    <div className="rounded-xl bg-[#0F172A] p-5 text-center">
-      <p className="mb-2 text-sm text-gray-400">{label}</p>
+    <div className="rounded-xl border border-border bg-background p-5 text-center">
+      <p className="mb-2 text-sm text-muted">{label}</p>
 
-      <p className="text-2xl font-bold text-indigo-400">{value}</p>
+      <p className="text-2xl font-bold text-link">{value}</p>
 
-      {detail && <p className="mt-2 text-xs text-gray-400">{detail}</p>}
+      {detail && <p className="mt-2 text-xs text-muted">{detail}</p>}
     </div>
   );
 }
@@ -158,14 +159,17 @@ function WinRateSection({ data }: { data: AnalyticsSummary }) {
       <h2 className="mb-4 text-xl font-semibold">Win Rate</h2>
 
       {completedSessions === 0 ? (
-        <p className="py-16 text-center text-gray-400">
+        <p className="py-16 text-center text-muted">
           Complete a game session to see your win rate.
         </p>
       ) : (
         <div className="flex flex-col items-center">
-          <WinRateChart className="flex justify-center" data={chartData} />
+          <WinRateChart
+            className="flex w-full justify-center"
+            data={chartData}
+          />
 
-          <p className="text-sm text-gray-400">
+          <p className="text-sm text-muted">
             {data.wins} wins · {data.losses} losses
           </p>
         </div>
@@ -185,7 +189,7 @@ function CategorySection({ categories }: { categories: CategorySummary[] }) {
       <section className={cardClass}>
         <h2 className="mb-4 text-xl font-semibold">Favorite Game Categories</h2>
 
-        <p className="py-16 text-center text-gray-400">
+        <p className="py-16 text-center text-muted">
           Log some plays to discover your favorite categories.
         </p>
       </section>
@@ -200,14 +204,12 @@ function CategorySection({ categories }: { categories: CategorySummary[] }) {
         {categories.map((category) => (
           <div key={category.name}>
             <div className="mb-2 flex justify-between gap-3 text-sm">
-              <span>{category.name}</span>
+              <span className="text-foreground">{category.name}</span>
 
-              <span className="text-gray-400">
-                {category.sessions} sessions
-              </span>
+              <span className="text-muted">{category.sessions} sessions</span>
             </div>
 
-            <div className="h-3 overflow-hidden rounded-full bg-slate-700">
+            <div className="h-3 overflow-hidden rounded-full bg-surface-hover">
               <div
                 className="h-full rounded-full bg-indigo-500"
                 style={{
@@ -218,7 +220,7 @@ function CategorySection({ categories }: { categories: CategorySummary[] }) {
           </div>
         ))}
 
-        <p className="text-xs text-gray-400">
+        <p className="text-xs text-muted">
           Games can belong to multiple categories.
         </p>
       </div>
@@ -236,7 +238,7 @@ function MonthlyActivitySection({ activity }: { activity: MonthlyActivity[] }) {
     <section className={`mt-6 ${cardClass}`}>
       <h2 className="mb-2 text-xl font-semibold">Gameplay Activity</h2>
 
-      <p className="mb-6 text-sm text-gray-400">
+      <p className="mb-6 text-sm text-muted">
         Your recorded plays over the last 12 months
       </p>
 
@@ -245,24 +247,39 @@ function MonthlyActivitySection({ activity }: { activity: MonthlyActivity[] }) {
           <BarChart data={chartData}>
             <CartesianGrid
               strokeDasharray="3 3"
-              stroke="#334155"
+              stroke="var(--border)"
               vertical={false}
             />
 
             <XAxis
               dataKey="label"
-              stroke="#94A3B8"
-              tick={{ fontSize: 11 }}
+              stroke="var(--muted)"
+              tick={{
+                fontSize: 11,
+                fill: "var(--muted)",
+              }}
               tickFormatter={(value: string) => value.slice(5)}
             />
 
-            <YAxis stroke="#94A3B8" allowDecimals={false} />
+            <YAxis
+              stroke="var(--muted)"
+              tick={{ fill: "var(--muted)" }}
+              allowDecimals={false}
+            />
 
             <Tooltip
+              cursor={{ fill: "var(--surface-hover)" }}
               contentStyle={{
-                backgroundColor: "#0F172A",
-                border: "1px solid #334155",
+                backgroundColor: "var(--surface)",
+                border: "1px solid var(--border)",
                 borderRadius: 12,
+                color: "var(--foreground)",
+              }}
+              labelStyle={{
+                color: "var(--foreground)",
+              }}
+              itemStyle={{
+                color: "var(--foreground)",
               }}
             />
 
@@ -285,7 +302,7 @@ function MostPlayedGamesSection({ games }: { games: GameSummary[] }) {
       <h2 className="mb-5 text-xl font-semibold">Most Played Games</h2>
 
       {games.length === 0 ? (
-        <p className="text-gray-400">
+        <p className="text-muted">
           No games played yet. Start logging your sessions!
         </p>
       ) : (
@@ -294,23 +311,23 @@ function MostPlayedGamesSection({ games }: { games: GameSummary[] }) {
             <Link
               key={game.bgg_id}
               href={`/games/${game.bgg_id}`}
-              className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-[#0F172A] p-4 transition hover:bg-slate-800"
+              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-background p-4 text-foreground transition hover:bg-surface-hover"
             >
               <div className="flex items-center gap-4">
-                <span className="text-lg font-bold text-indigo-400">
+                <span className="text-lg font-bold text-link">
                   #{index + 1}
                 </span>
 
                 <div>
-                  <p className="font-semibold">{game.name}</p>
+                  <p className="font-semibold text-foreground">{game.name}</p>
 
-                  <p className="text-sm text-gray-400">
+                  <p className="text-sm text-muted">
                     {game.sessions} sessions · {game.plays} plays
                   </p>
                 </div>
               </div>
 
-              <span className="text-sm text-emerald-400">
+              <span className="text-sm text-emerald-400 [html[data-theme=light]_&]:text-emerald-700">
                 {formatPercent(game.win_rate)} win rate
               </span>
             </Link>
@@ -349,14 +366,18 @@ function AnalyticsResult({
   summary: AnalyticsSummary | null;
 }) {
   if (loading) {
-    return <p className="text-gray-400">Loading your analytics...</p>;
+    return (
+      <p role="status" className="text-muted">
+        Loading your analytics...
+      </p>
+    );
   }
 
   if (error) {
     return (
       <div
         role="alert"
-        className="rounded-xl border border-red-500/30 bg-red-950/30 p-5 text-red-300"
+        className="rounded-xl border border-red-500/30 bg-red-500/10 p-5 text-red-300 [html[data-theme=light]_&]:text-red-700"
       >
         {error}
       </div>
@@ -364,7 +385,7 @@ function AnalyticsResult({
   }
 
   if (!summary) {
-    return <p className="text-gray-400">No analytics available.</p>;
+    return <p className="text-muted">No analytics available.</p>;
   }
 
   return <AnalyticsContent data={summary} />;
@@ -422,10 +443,10 @@ export default function AnalyticsPage() {
   const { summary, loading, error } = useAnalytics();
 
   return (
-    <main className="min-h-screen bg-[#0F172A] p-8 text-[#F8FAFC]">
+    <main className="min-h-screen bg-background p-4 text-foreground sm:p-8">
       <h1 className="mb-2 text-4xl font-bold">Your Analytics</h1>
 
-      <p className="mb-8 text-gray-400">
+      <p className="mb-8 text-muted">
         Explore your real gameplay statistics, win rates, and activity.
       </p>
 

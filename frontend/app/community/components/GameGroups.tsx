@@ -240,21 +240,19 @@ function Modal({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="w-full max-w-lg rounded-2xl border border-slate-700 bg-slate-900 p-6 text-slate-100 shadow-2xl"
+        className="w-full max-w-lg rounded-2xl border border-border bg-surface p-6 text-foreground shadow-2xl"
       >
         <div className="mb-5 flex items-start justify-between gap-3">
           <div>
             <h3 className="text-xl font-bold">{title}</h3>
-            {subtitle && (
-              <p className="mt-1 text-sm text-slate-400">{subtitle}</p>
-            )}
+            {subtitle && <p className="mt-1 text-sm text-muted">{subtitle}</p>}
           </div>
 
           <button
             type="button"
             aria-label="Close"
             onClick={onClose}
-            className="rounded-lg p-2 text-slate-400 hover:bg-slate-800 hover:text-white"
+            className="rounded-lg p-2 text-muted hover:bg-surface-hover hover:text-foreground"
           >
             <X className="h-5 w-5" />
           </button>
@@ -277,21 +275,21 @@ function FriendPicker({
 }) {
   if (friends.length === 0) {
     return (
-      <p className="rounded-lg border border-slate-700 bg-slate-800/50 p-4 text-sm text-slate-400">
+      <p className="rounded-lg border border-border bg-surface p-4 text-sm text-muted">
         No eligible friends to add.
       </p>
     );
   }
 
   return (
-    <div className="max-h-48 space-y-1 overflow-y-auto rounded-xl border border-slate-700 bg-slate-800/40 p-2">
+    <div className="max-h-48 space-y-1 overflow-y-auto rounded-xl border border-border bg-surface p-2">
       {friends.map((friend) => {
         const checked = selected.includes(friend.user_id);
 
         return (
           <label
             key={friend.user_id}
-            className="flex cursor-pointer items-center gap-3 rounded-lg p-2 hover:bg-slate-700/50"
+            className="flex cursor-pointer items-center gap-3 rounded-lg p-2 hover:bg-surface-hover"
           >
             <input
               type="checkbox"
@@ -306,7 +304,9 @@ function FriendPicker({
               {friend.display_name}
             </span>
 
-            {checked && <Check className="h-4 w-4 text-emerald-400" />}
+            {checked && (
+              <Check className="h-4 w-4 text-emerald-400 [html[data-theme=light]_&]:text-emerald-700" />
+            )}
           </label>
         );
       })}
@@ -316,7 +316,7 @@ function FriendPicker({
 
 function Avatar({ name }: { name: string }) {
   return (
-    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-500/20 text-xs font-bold text-indigo-200">
+    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-500/20 text-xs font-bold text-link">
       {getInitials(name)}
     </span>
   );
@@ -356,7 +356,7 @@ function GroupCoverPicker({
   return (
     <fieldset>
       <legend className="mb-2 text-sm font-semibold">Choose a Cover</legend>
-      <p className="mb-3 text-xs text-slate-400">
+      <p className="mb-3 text-xs text-muted">
         Pick a look for your group. Cover saving will be available once the
         backend is updated.
       </p>
@@ -371,7 +371,7 @@ function GroupCoverPicker({
               className={`relative cursor-pointer overflow-hidden rounded-xl border-2 transition-colors ${
                 active
                   ? "border-indigo-400 ring-2 ring-indigo-500/30"
-                  : "border-slate-700 hover:border-indigo-400/60"
+                  : "border-border hover:border-indigo-400/60"
               }`}
             >
               <input
@@ -433,7 +433,7 @@ function FormFields({
           maxLength={150}
           value={form.name}
           onChange={(event) => onChange({ ...form, name: event.target.value })}
-          className="w-full rounded-lg border border-slate-600 bg-slate-800 px-4 py-3 text-sm outline-none focus:border-indigo-400"
+          className="w-full rounded-lg border border-border bg-input px-4 py-3 text-sm outline-none focus:border-indigo-400"
           placeholder="e.g. Dungeon Dwellers"
         />
       </div>
@@ -453,7 +453,7 @@ function FormFields({
           onChange={(event) =>
             onChange({ ...form, description: event.target.value })
           }
-          className="w-full resize-none rounded-lg border border-slate-600 bg-slate-800 px-4 py-3 text-sm outline-none focus:border-indigo-400"
+          className="w-full resize-none rounded-lg border border-border bg-input px-4 py-3 text-sm outline-none focus:border-indigo-400"
           placeholder="What's your group all about?"
         />
       </div>
@@ -470,7 +470,10 @@ function ActionError({ message }: { message: string }) {
   if (!message) return null;
 
   return (
-    <p role="alert" className="mt-3 text-sm text-red-400">
+    <p
+      role="alert"
+      className="mt-3 text-sm text-red-400 [html[data-theme=light]_&]:text-red-700"
+    >
       {message}
     </p>
   );
@@ -532,13 +535,11 @@ function CreateGroupModal({
         <div className="mb-3 mt-5 flex items-center justify-between">
           <h4 className="text-sm font-semibold">Add Friends (optional)</h4>
 
-          <span className="text-xs text-indigo-300">
-            {selected.length} selected
-          </span>
+          <span className="text-xs text-link">{selected.length} selected</span>
         </div>
 
         {loading ? (
-          <p className="text-sm text-slate-400">Loading friends...</p>
+          <p className="text-sm text-muted">Loading friends...</p>
         ) : (
           <FriendPicker
             friends={friends}
@@ -548,7 +549,7 @@ function CreateGroupModal({
         )}
 
         {friendsError && (
-          <p className="mt-2 text-xs text-amber-300">
+          <p className="mt-2 text-xs text-amber-300 [html[data-theme=light]_&]:text-amber-700">
             Could not load friends: {friendsError}
           </p>
         )}
@@ -560,7 +561,7 @@ function CreateGroupModal({
             type="button"
             disabled={saving}
             onClick={onClose}
-            className="rounded-lg border border-slate-600 px-4 py-2 text-sm disabled:opacity-50"
+            className="rounded-lg border border-border px-4 py-2 text-sm disabled:opacity-50"
           >
             Cancel
           </button>
@@ -568,7 +569,7 @@ function CreateGroupModal({
           <button
             type="submit"
             disabled={saving || !form.name.trim()}
-            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold hover:bg-indigo-500 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 text-white px-4 py-2 text-sm font-semibold hover:bg-indigo-500 disabled:opacity-50"
           >
             {saving && <LoaderCircle className="h-4 w-4 animate-spin" />}
             Create Group
@@ -638,7 +639,7 @@ function EditGroupModal({
             type="button"
             disabled={saving}
             onClick={onClose}
-            className="rounded-lg border border-slate-600 px-4 py-2 text-sm disabled:opacity-50"
+            className="rounded-lg border border-border px-4 py-2 text-sm disabled:opacity-50"
           >
             Cancel
           </button>
@@ -646,7 +647,7 @@ function EditGroupModal({
           <button
             type="submit"
             disabled={saving || !form.name.trim()}
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold hover:bg-indigo-500 disabled:opacity-50"
+            className="rounded-lg bg-indigo-600 text-white px-4 py-2 text-sm font-semibold hover:bg-indigo-500 disabled:opacity-50"
           >
             {saving ? "Saving..." : "Save Changes"}
           </button>
@@ -672,9 +673,11 @@ function ConfirmAction({
 
   return (
     <div className="mt-5 rounded-xl border border-red-500/30 bg-red-500/5 p-4">
-      <h4 className="font-semibold text-red-300">{label}?</h4>
+      <h4 className="font-semibold text-red-300 [html[data-theme=light]_&]:text-red-700">
+        {label}?
+      </h4>
 
-      <p className="mt-2 text-sm text-slate-300">
+      <p className="mt-2 text-sm text-subtle">
         {removing
           ? `Remove ${action.member.display_name} from this group?`
           : "Are you sure you want to leave this group?"}
@@ -685,7 +688,7 @@ function ConfirmAction({
           type="button"
           disabled={busy}
           onClick={onCancel}
-          className="rounded-lg border border-slate-600 px-3 py-2 text-xs disabled:opacity-50"
+          className="rounded-lg border border-border px-3 py-2 text-xs disabled:opacity-50"
         >
           Cancel
         </button>
@@ -694,7 +697,7 @@ function ConfirmAction({
           type="button"
           disabled={busy}
           onClick={onConfirm}
-          className="rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white hover:bg-red-500 disabled:opacity-50"
+          className="rounded-lg bg-red-600 text-white px-3 py-2 text-xs font-semibold  hover:bg-red-500 disabled:opacity-50"
         >
           {busy ? "Please wait..." : label}
         </button>
@@ -715,9 +718,7 @@ function MemberList({
   onRemove: (member: Player) => void;
 }) {
   if (members.length === 0) {
-    return (
-      <p className="text-sm text-slate-400">No member details available.</p>
-    );
+    return <p className="text-sm text-muted">No member details available.</p>;
   }
 
   return (
@@ -728,7 +729,7 @@ function MemberList({
         return (
           <div
             key={member.user_id}
-            className="flex items-center gap-3 rounded-lg border border-slate-700 bg-slate-800/50 p-3"
+            className="flex items-center gap-3 rounded-lg border border-border bg-surface p-3"
           >
             <Avatar name={member.display_name} />
 
@@ -737,7 +738,7 @@ function MemberList({
             </span>
 
             {isOwner && (
-              <span className="inline-flex items-center gap-1 text-xs text-amber-300">
+              <span className="inline-flex items-center gap-1 text-xs text-amber-300 [html[data-theme=light]_&]:text-amber-700">
                 <Crown className="h-3 w-3" />
                 Owner
               </span>
@@ -748,7 +749,7 @@ function MemberList({
                 type="button"
                 onClick={() => onRemove(member)}
                 aria-label={`Remove ${member.display_name}`}
-                className="rounded-lg p-2 text-slate-400 hover:bg-red-500/10 hover:text-red-300"
+                className="rounded-lg p-2 text-muted hover:bg-red-500/10 hover:text-red-500"
                 title="Remove member"
               >
                 <UserRoundMinus className="h-4 w-4" />
@@ -779,24 +780,26 @@ function AddFriendsPanel({
   onAdd: () => void;
 }) {
   return (
-    <div className="mt-5 border-t border-slate-700 pt-4">
+    <div className="mt-5 border-t border-border pt-4">
       <h4 className="mb-3 text-sm font-semibold">Select friends to add</h4>
 
       {friendsLoading ? (
-        <p className="text-sm text-slate-400">Loading friends...</p>
+        <p className="text-sm text-muted">Loading friends...</p>
       ) : (
         <FriendPicker friends={friends} selected={selected} onToggle={toggle} />
       )}
 
       {friendsError && (
-        <p className="mt-2 text-xs text-amber-300">{friendsError}</p>
+        <p className="mt-2 text-xs text-amber-300 [html[data-theme=light]_&]:text-amber-700">
+          {friendsError}
+        </p>
       )}
 
       <button
         type="button"
         disabled={busy || friendsLoading || selected.length === 0}
         onClick={onAdd}
-        className="mt-4 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold hover:bg-indigo-500 disabled:opacity-50"
+        className="mt-4 rounded-lg bg-indigo-600 text-white px-4 py-2 text-sm font-semibold hover:bg-indigo-500 disabled:opacity-50"
       >
         {busy ? "Adding..." : "Add Selected Friends"}
       </button>
@@ -856,7 +859,7 @@ function MembersPanel({
   return (
     <>
       <div className="mb-4 flex items-center justify-between gap-3">
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-muted">
           {detail.member_count}{" "}
           {detail.member_count === 1 ? "member" : "members"}
         </p>
@@ -866,7 +869,7 @@ function MembersPanel({
             type="button"
             disabled={busy}
             onClick={handleToggleAdd}
-            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold hover:bg-indigo-500 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 text-white px-3 py-2 text-xs font-semibold hover:bg-indigo-500 disabled:opacity-50"
           >
             <UserRoundPlus className="h-4 w-4" />
             Add Friends
@@ -896,12 +899,12 @@ function MembersPanel({
       )}
 
       {!group.is_owner && (
-        <div className="mt-5 border-t border-slate-700 pt-4">
+        <div className="mt-5 border-t border-border pt-4">
           <button
             type="button"
             disabled={busy}
             onClick={handleLeave}
-            className="inline-flex items-center gap-2 rounded-lg border border-red-500/30 px-3 py-2 text-sm text-red-300 hover:bg-red-500/10 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg border border-red-500/30 px-3 py-2 text-sm text-red-300 [html[data-theme=light]_&]:text-red-700 hover:bg-red-500/10 disabled:opacity-50"
           >
             <LogOut className="h-4 w-4" />
             Leave Group
@@ -1037,7 +1040,7 @@ function GroupMembersModal({
         if (!busy) onClose();
       }}
     >
-      {loading && <p className="text-sm text-slate-400">Loading members...</p>}
+      {loading && <p className="text-sm text-muted">Loading members...</p>}
 
       {detail && (
         <MembersPanel
@@ -1072,7 +1075,7 @@ function GroupMembersModal({
           type="button"
           disabled={busy}
           onClick={onClose}
-          className="rounded-lg border border-slate-600 px-4 py-2 text-sm hover:bg-slate-800 disabled:opacity-50"
+          className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-surface-hover disabled:opacity-50"
         >
           Close
         </button>
@@ -1093,11 +1096,11 @@ function GroupCard({
   const artwork = getGroupArtwork(group.cover_theme);
 
   return (
-    <article className="group relative isolate overflow-hidden rounded-2xl border border-slate-700 bg-slate-900 transition-all duration-300 hover:border-indigo-400/50 hover:shadow-xl hover:shadow-indigo-500/10">
+    <article className="group relative isolate overflow-hidden rounded-2xl border border-border bg-surface transition-all duration-300 hover:border-indigo-400/50 hover:shadow-xl hover:shadow-indigo-500/10">
       {/* Full-card background */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 z-0 bg-cover bg-center opacity-70 transition-transform duration-500 group-hover:scale-105"
+        className="pointer-events-none absolute inset-0 z-0 bg-cover bg-center opacity-70 [html[data-theme=light]_&]:opacity-100 transition-transform duration-500 group-hover:scale-105"
         style={{
           backgroundImage: `url("${artwork}")`,
         }}
@@ -1106,28 +1109,28 @@ function GroupCard({
       {/* Gradient for readability */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-r from-slate-950/95 via-slate-950/80 to-slate-950/45"
+        className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-r from-slate-950/95 [html[data-theme=light]_&]:from-white/100 via-slate-950/80 [html[data-theme=light]_&]:via-white/95 to-slate-950/45 [html[data-theme=light]_&]:to-white/35"
       />
 
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-t from-slate-950/85 via-transparent to-slate-950/20"
+        className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-t from-slate-950/85 [html[data-theme=light]_&]:from-white/80 via-transparent to-slate-950/20 [html[data-theme=light]_&]:to-transparent"
       />
 
       {/* Group information */}
       <div className="relative z-10 flex min-h-52 items-start gap-3 p-5">
         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-indigo-400/30 bg-indigo-500/25 backdrop-blur-sm">
-          <Users className="h-6 w-6 text-indigo-200" />
+          <Users className="h-6 w-6 text-indigo-200 [html[data-theme=light]_&]:text-indigo-800" />
         </div>
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="break-words text-xl font-bold text-white drop-shadow-md">
+            <h3 className="break-words text-xl font-bold text-foreground drop-shadow-md [html[data-theme=light]_&]:drop-shadow-none">
               {group.name}
             </h3>
 
             {group.is_owner && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/30 bg-amber-500/20 px-2.5 py-1 text-xs font-semibold text-amber-200 backdrop-blur-sm">
+              <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/30 bg-amber-500/20 px-2.5 py-1 text-xs font-semibold text-amber-200 [html[data-theme=light]_&]:text-amber-900 backdrop-blur-sm">
                 <Crown className="h-3 w-3" />
                 Owner
               </span>
@@ -1135,12 +1138,12 @@ function GroupCard({
           </div>
 
           {group.description && (
-            <p className="mt-3 text-sm leading-relaxed text-slate-200">
+            <p className="mt-3 text-sm leading-relaxed text-slate-200 [html[data-theme=light]_&]:text-slate-900">
               {group.description}
             </p>
           )}
 
-          <p className="mt-3 inline-flex items-center gap-2 text-xs font-medium text-slate-200">
+          <p className="mt-3 inline-flex items-center gap-2 text-xs font-medium text-slate-200 [html[data-theme=light]_&]:text-slate-900">
             <Users className="h-4 w-4" />
             {group.member_count}{" "}
             {group.member_count === 1 ? "member" : "members"}
@@ -1150,7 +1153,7 @@ function GroupCard({
             <button
               type="button"
               onClick={() => onMembers(group)}
-              className="inline-flex items-center gap-2 rounded-lg border border-white/20 bg-slate-900/70 px-3 py-2 text-xs font-semibold text-white backdrop-blur-sm transition-colors hover:border-indigo-400 hover:bg-slate-800"
+              className="inline-flex items-center gap-2 rounded-lg border border-white/20 [html[data-theme=light]_&]:border-slate-300 bg-slate-900/70 [html[data-theme=light]_&]:bg-white/90 px-3 py-2 text-xs font-semibold text-foreground backdrop-blur-sm transition-colors hover:border-indigo-400 hover:bg-slate-800 [html[data-theme=light]_&]:hover:bg-slate-100"
             >
               <Users className="h-3.5 w-3.5" />
               View Members
@@ -1170,7 +1173,7 @@ function GroupCard({
                 <button
                   type="button"
                   onClick={() => onEdit(group)}
-                  className="inline-flex items-center gap-2 rounded-lg border border-white/20 bg-slate-900/70 px-3 py-2 text-xs font-semibold text-white backdrop-blur-sm transition-colors hover:border-indigo-400 hover:bg-slate-800"
+                  className="inline-flex items-center gap-2 rounded-lg border border-white/20 [html[data-theme=light]_&]:border-slate-300 bg-slate-900/70 [html[data-theme=light]_&]:bg-white/90 px-3 py-2 text-xs font-semibold text-foreground backdrop-blur-sm transition-colors hover:border-indigo-400 hover:bg-slate-800 [html[data-theme=light]_&]:hover:bg-slate-100"
                 >
                   <Pencil className="h-3.5 w-3.5" />
                   Edit
@@ -1202,7 +1205,7 @@ function GroupsContent({
   onEdit: (group: GameGroup) => void;
 }) {
   if (loading) {
-    return <p className="text-sm text-slate-400">Loading game groups...</p>;
+    return <p className="text-sm text-muted">Loading game groups...</p>;
   }
 
   if (error && groups.length === 0) {
@@ -1211,19 +1214,19 @@ function GroupsContent({
 
   if (groups.length === 0) {
     return (
-      <div className="rounded-xl border border-slate-700 bg-slate-800/40 p-7 text-center">
-        <Users className="mx-auto h-9 w-9 text-indigo-300" />
+      <div className="rounded-xl border border-border bg-surface p-7 text-center">
+        <Users className="mx-auto h-9 w-9 text-link" />
 
         <h3 className="mt-3 text-lg font-semibold">No game groups yet</h3>
 
-        <p className="mt-2 text-sm text-slate-400">
+        <p className="mt-2 text-sm text-muted">
           Create a group and bring your friends together.
         </p>
 
         <button
           type="button"
           onClick={onCreate}
-          className="mt-5 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold hover:bg-indigo-500"
+          className="mt-5 rounded-lg bg-indigo-600 text-white px-4 py-2 text-sm font-semibold hover:bg-indigo-500"
         >
           Create Your First Group
         </button>
@@ -1295,7 +1298,7 @@ export default function GameGroups() {
         <button
           type="button"
           onClick={() => setCreateOpen(true)}
-          className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+          className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 text-white px-3 py-2 text-sm font-semibold  hover:bg-indigo-500"
         >
           <Plus className="h-4 w-4" />
           Create Group

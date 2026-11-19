@@ -26,7 +26,7 @@ export default function ShowMoreButton({
       type="button"
       aria-expanded={expanded}
       onClick={onToggle}
-      className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800/40 px-4 py-3 text-sm font-semibold text-indigo-300 transition-colors hover:border-indigo-500/40 hover:bg-slate-800"
+      className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-surface px-4 py-3 text-sm font-semibold text-link transition-colors hover:border-indigo-500/40 hover:bg-surface-hover"
     >
       {expanded ? (
         <>

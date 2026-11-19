@@ -208,7 +208,7 @@ function ProfileInput({
 }) {
   return (
     <label className="block space-y-2">
-      <span className="block text-sm font-semibold text-gray-200">{label}</span>
+      <span className="block text-sm font-semibold text-subtle">{label}</span>
 
       <input
         type="text"
@@ -216,7 +216,7 @@ function ProfileInput({
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         maxLength={maxLength}
-        className="w-full rounded-xl border border-gray-600 bg-[#0F172A] px-4 py-3 text-white outline-none transition focus:border-indigo-400"
+        className="w-full rounded-xl border border-border bg-input px-4 py-3 text-foreground outline-none transition focus:border-indigo-400"
       />
     </label>
   );
@@ -241,7 +241,7 @@ function CoverEditor({
         />
       )}
 
-      <label className="absolute bottom-4 right-4 flex cursor-pointer items-center gap-2 rounded-lg bg-black/70 px-4 py-2 text-sm font-semibold transition hover:bg-black/90">
+      <label className="absolute bottom-4 right-4 flex cursor-pointer items-center gap-2 rounded-lg bg-black/70 text-white px-4 py-2 text-sm font-semibold transition hover:bg-black/90">
         <Camera className="h-4 w-4" />
         Change Cover
         <input
@@ -268,7 +268,7 @@ function AvatarEditor({
 
   return (
     <div className="relative -mt-16 flex flex-wrap items-end gap-5">
-      <div className="relative flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-full border-4 border-[#1E293B] bg-indigo-600 text-4xl font-bold shadow-lg sm:h-32 sm:w-32">
+      <div className="relative flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-full border-4 border-surface bg-indigo-600 text-white text-4xl font-bold shadow-lg sm:h-32 sm:w-32">
         {avatar ? (
           <Image
             src={avatar}
@@ -286,7 +286,7 @@ function AvatarEditor({
       <button
         type="button"
         onClick={() => setPickerOpen(true)}
-        className="mb-2 inline-flex items-center gap-2 rounded-lg bg-gray-700 px-4 py-2 text-sm font-semibold transition hover:bg-gray-600"
+        className="mb-2 inline-flex items-center gap-2 rounded-lg bg-surface-hover px-4 py-2 text-sm font-semibold transition hover:bg-surface-hover"
       >
         <Camera className="h-4 w-4" />
         Change Avatar
@@ -304,12 +304,12 @@ function AvatarEditor({
             role="dialog"
             aria-modal="true"
             aria-labelledby="avatar-picker-title"
-            className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-gray-600 bg-[#1E293B] p-5 shadow-2xl sm:p-7"
+            className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-border bg-surface p-5 shadow-2xl sm:p-7"
           >
             <div className="mb-2 flex items-center justify-between gap-4">
               <h2
                 id="avatar-picker-title"
-                className="text-xl font-bold text-white"
+                className="text-xl font-bold text-foreground"
               >
                 Choose Your Avatar
               </h2>
@@ -317,12 +317,12 @@ function AvatarEditor({
                 type="button"
                 onClick={() => setPickerOpen(false)}
                 aria-label="Close avatar picker"
-                className="rounded-lg p-2 text-gray-300 hover:bg-gray-700 hover:text-white"
+                className="rounded-lg p-2 text-subtle hover:bg-surface-hover hover:text-foreground"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <p className="mb-5 text-sm text-gray-400">
+            <p className="mb-5 text-sm text-muted">
               Pick one of the 12 QuestLog avatars. Save your profile to keep
               your selection.
             </p>
@@ -337,7 +337,7 @@ function AvatarEditor({
                   }}
                   aria-label={`Choose avatar ${index + 1}`}
                   aria-pressed={avatar === option}
-                  className={`rounded-xl border-2 p-2 transition hover:bg-gray-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400 ${avatar === option ? "border-indigo-400 bg-indigo-500/20" : "border-gray-700"}`}
+                  className={`rounded-xl border-2 p-2 transition hover:bg-surface-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400 ${avatar === option ? "border-indigo-400 bg-indigo-500/20" : "border-border"}`}
                 >
                   <Image
                     src={option}
@@ -353,7 +353,7 @@ function AvatarEditor({
             <button
               type="button"
               onClick={() => setPickerOpen(false)}
-              className="mt-5 w-full rounded-lg bg-gray-700 px-4 py-2 font-semibold hover:bg-gray-600"
+              className="mt-5 w-full rounded-lg bg-surface-hover px-4 py-2 font-semibold hover:bg-surface-hover"
             >
               Cancel
             </button>
@@ -469,24 +469,27 @@ export default function EditProfilePage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-[#0F172A] p-8 text-white">
-        <p className="text-gray-300">Loading your profile...</p>
+      <main className="min-h-screen bg-background p-8 text-foreground">
+        <p className="text-subtle">Loading your profile...</p>
       </main>
     );
   }
 
   if (loadFailed) {
     return (
-      <main className="min-h-screen bg-[#0F172A] p-8 text-white">
+      <main className="min-h-screen bg-background p-8 text-foreground">
         <h1 className="mb-4 text-3xl font-bold">Edit Profile</h1>
 
-        <p role="alert" className="mb-6 text-red-400">
+        <p
+          role="alert"
+          className="mb-6 text-red-400 [html[data-theme=light]_&]:text-red-700"
+        >
           {error}
         </p>
 
         <Link
           href="/login"
-          className="rounded-xl bg-indigo-600 px-5 py-3 font-semibold hover:bg-indigo-500"
+          className="rounded-xl bg-indigo-600 text-white px-5 py-3 font-semibold hover:bg-indigo-500"
         >
           Go to Login
         </Link>
@@ -495,7 +498,7 @@ export default function EditProfilePage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#0F172A] px-4 py-8 text-[#F8FAFC] sm:px-8">
+    <main className="min-h-screen bg-background px-4 py-8 text-foreground sm:px-8">
       <motion.div
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
@@ -504,7 +507,7 @@ export default function EditProfilePage() {
       >
         <Link
           href="/profile"
-          className="mb-7 inline-flex items-center gap-2 text-gray-300 transition hover:text-white"
+          className="mb-7 inline-flex items-center gap-2 text-subtle transition hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to Profile
@@ -513,14 +516,14 @@ export default function EditProfilePage() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold">Edit Profile</h1>
 
-          <p className="mt-2 text-sm text-gray-400">
+          <p className="mt-2 text-sm text-muted">
             Customize your QuestLog identity and appearance.
           </p>
         </div>
 
         <form
           onSubmit={(event) => void handleSave(event)}
-          className="overflow-hidden rounded-2xl border border-gray-700 bg-[#1E293B] shadow-xl"
+          className="overflow-hidden rounded-2xl border border-border bg-surface shadow-xl"
         >
           <CoverEditor
             cover={appearance.cover}
@@ -545,7 +548,7 @@ export default function EditProfilePage() {
               />
 
               <label className="block space-y-2">
-                <span className="block text-sm font-semibold text-gray-200">
+                <span className="block text-sm font-semibold text-subtle">
                   About Me
                 </span>
 
@@ -554,7 +557,7 @@ export default function EditProfilePage() {
                   onChange={(event) => setBio(event.target.value)}
                   rows={5}
                   placeholder="Tell the QuestLog community about yourself..."
-                  className="w-full resize-y rounded-xl border border-gray-600 bg-[#0F172A] px-4 py-3 text-white outline-none transition focus:border-indigo-400"
+                  className="w-full resize-y rounded-xl border border-border bg-input px-4 py-3 text-foreground outline-none transition focus:border-indigo-400"
                 />
               </label>
 
@@ -570,16 +573,16 @@ export default function EditProfilePage() {
             {error && (
               <p
                 role="alert"
-                className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-300"
+                className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-300 [html[data-theme=light]_&]:text-red-700"
               >
                 {error}
               </p>
             )}
 
-            <div className="flex flex-wrap justify-end gap-4 border-t border-gray-700 pt-6">
+            <div className="flex flex-wrap justify-end gap-4 border-t border-border pt-6">
               <Link
                 href="/profile"
-                className="rounded-xl bg-gray-700 px-6 py-3 font-semibold transition hover:bg-gray-600"
+                className="rounded-xl bg-surface-hover px-6 py-3 font-semibold transition hover:bg-surface-hover"
               >
                 Cancel
               </Link>
@@ -587,7 +590,7 @@ export default function EditProfilePage() {
               <button
                 type="submit"
                 disabled={saving}
-                className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 font-semibold transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 text-white px-6 py-3 font-semibold transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Save className="h-5 w-5" />
                 {saving ? "Saving..." : "Save Changes"}

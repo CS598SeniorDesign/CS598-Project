@@ -50,17 +50,19 @@ const FILTERS: { label: string; value: Filter }[] = [
 const ACTIVITY_STYLES = {
   play: {
     Icon: Gamepad2,
-    color: "text-emerald-300 bg-emerald-500/15",
+    color:
+      "text-emerald-300 [html[data-theme=light]_&]:text-emerald-700 bg-emerald-500/15",
     label: "Play session",
   },
   library: {
     Icon: BookOpen,
-    color: "text-indigo-300 bg-indigo-500/15",
+    color: "text-link bg-indigo-500/15",
     label: "Library",
   },
   wishlist: {
     Icon: Heart,
-    color: "text-pink-300 bg-pink-500/15",
+    color:
+      "text-pink-300 [html[data-theme=light]_&]:text-pink-700 bg-pink-500/15",
     label: "Wishlist",
   },
 };
@@ -273,18 +275,18 @@ function FeedHeader({ count }: { count: number | null }) {
           </h2>
 
           {count !== null && (
-            <span className="rounded-full border border-indigo-400/20 bg-indigo-500/15 px-2.5 py-1 text-xs font-semibold text-indigo-300">
+            <span className="rounded-full border border-indigo-400/20 bg-indigo-500/15 px-2.5 py-1 text-xs font-semibold text-link">
               {count}
             </span>
           )}
         </div>
 
-        <p className="mt-2 text-sm text-slate-400">
+        <p className="mt-2 text-sm text-muted">
           See what&apos;s happening in your circle.
         </p>
       </div>
 
-      <div className="rounded-lg bg-indigo-500/10 p-2.5 text-indigo-300">
+      <div className="rounded-lg bg-indigo-500/10 p-2.5 text-link">
         <Users className="h-5 w-5" />
       </div>
     </div>
@@ -311,8 +313,8 @@ function FeedFilters({
             onClick={() => onChange(option.value)}
             className={`rounded-full border px-4 py-2 text-xs font-semibold transition-colors ${
               active
-                ? "border-indigo-500 bg-indigo-600 text-white"
-                : "border-slate-700 bg-slate-800/60 text-slate-300 hover:border-indigo-400/50 hover:text-white"
+                ? "border-indigo-500 bg-indigo-600 text-white "
+                : "border-border bg-surface text-subtle hover:border-indigo-400/50 hover:text-foreground"
             }`}
           >
             {option.label}
@@ -329,7 +331,7 @@ function FeedLoading() {
       {[1, 2, 3].map((item) => (
         <div
           key={item}
-          className="h-20 animate-pulse rounded-xl border border-slate-700/60 bg-slate-800/50"
+          className="h-20 animate-pulse rounded-xl border border-border bg-surface"
         />
       ))}
 
@@ -340,9 +342,9 @@ function FeedLoading() {
 
 function FeedEmpty({ hasActivity }: { hasActivity: boolean }) {
   return (
-    <div className="rounded-xl border border-slate-700 bg-slate-800/40 px-5 py-9 text-center">
+    <div className="rounded-xl border border-border bg-surface px-5 py-9 text-center">
       <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-indigo-500/15">
-        <Gamepad2 className="h-6 w-6 text-indigo-300" />
+        <Gamepad2 className="h-6 w-6 text-link" />
       </div>
 
       <h3 className="font-semibold">
@@ -351,7 +353,7 @@ function FeedEmpty({ hasActivity }: { hasActivity: boolean }) {
           : "No community activity yet"}
       </h3>
 
-      <p className="mx-auto mt-2 max-w-sm text-sm text-slate-400">
+      <p className="mx-auto mt-2 max-w-sm text-sm text-muted">
         {hasActivity
           ? "Try another filter to explore recent activity."
           : "Log a game, grow your collection, or connect with friends to get things started."}
@@ -372,32 +374,32 @@ function ActivityCard({ activity }: { activity: Activity }) {
     : date.toLocaleString();
 
   return (
-    <article className="group rounded-xl border border-slate-700/70 bg-slate-800/45 p-4 transition-colors hover:border-indigo-500/40 hover:bg-slate-800/75">
+    <article className="group rounded-xl border border-border bg-surface p-4 transition-colors hover:border-indigo-500/40 hover:bg-surface-hover">
       <div className="flex items-start gap-3">
         <div className="relative shrink-0">
-          <div className="flex h-11 w-11 items-center justify-center rounded-full border border-indigo-400/25 bg-indigo-500/20 text-sm font-bold text-indigo-200">
+          <div className="flex h-11 w-11 items-center justify-center rounded-full border border-indigo-400/25 bg-indigo-500/20 text-sm font-bold text-link">
             {getInitials(actorName)}
           </div>
 
           <div
-            className={`absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-slate-800 ${style.color}`}
+            className={`absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-border ${style.color}`}
           >
             <Icon className="h-3 w-3" />
           </div>
         </div>
 
         <div className="min-w-0 flex-1">
-          <p className="break-words text-sm leading-relaxed text-slate-200">
-            <span className="font-bold text-white">{message.name}</span>{" "}
+          <p className="break-words text-sm leading-relaxed text-subtle">
+            <span className="font-bold text-foreground">{message.name}</span>{" "}
             {message.action}{" "}
-            <span className="font-semibold text-indigo-300">
+            <span className="font-semibold text-link">
               {activity.game?.primary_name ?? "a game"}
             </span>
             {message.suffix ? ` ${message.suffix}` : ""}
           </p>
 
           <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span className="inline-flex items-center gap-1 text-xs text-slate-400">
+            <span className="inline-flex items-center gap-1 text-xs text-muted">
               <Clock3 className="h-3 w-3" />
 
               <time
@@ -409,7 +411,7 @@ function ActivityCard({ activity }: { activity: Activity }) {
               </time>
             </span>
 
-            <span className="text-xs text-slate-500">{style.label}</span>
+            <span className="text-xs text-muted">{style.label}</span>
           </div>
         </div>
       </div>
@@ -440,7 +442,7 @@ function ShowMoreButton({
     <button
       type="button"
       onClick={onClick}
-      className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800/40 px-4 py-3 text-sm font-semibold text-indigo-300 transition-colors hover:border-indigo-500/40 hover:bg-slate-800"
+      className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-surface px-4 py-3 text-sm font-semibold text-link transition-colors hover:border-indigo-500/40 hover:bg-surface-hover"
     >
       {expanded ? (
         <>
@@ -475,7 +477,7 @@ function FeedContent({
     return (
       <div
         role="alert"
-        className="rounded-xl border border-red-500/30 bg-red-500/10 p-5 text-sm text-red-300"
+        className="rounded-xl border border-red-500/30 bg-red-500/10 p-5 text-sm text-red-300 [html[data-theme=light]_&]:text-red-700"
       >
         {error}
       </div>
@@ -526,7 +528,7 @@ export default function UpdatesFeed() {
   const count = feed.loading || feed.error ? null : feed.activities.length;
 
   return (
-    <section className="min-w-0 text-slate-100">
+    <section className="min-w-0 text-foreground">
       <FeedHeader count={count} />
 
       <FeedFilters selected={filter} onChange={handleFilterChange} />

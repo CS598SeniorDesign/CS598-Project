@@ -13,10 +13,12 @@ import {
 
 const PRIMARY =
   "rounded-xl bg-indigo-600 px-6 py-3 font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50";
+
 const SECONDARY =
-  "rounded-xl border border-indigo-500 px-6 py-3 font-semibold text-indigo-300 transition hover:bg-indigo-500/10 disabled:cursor-not-allowed disabled:opacity-50";
+  "rounded-xl border border-indigo-500 px-6 py-3 font-semibold text-link transition hover:bg-indigo-500/10 disabled:cursor-not-allowed disabled:opacity-50";
+
 const DANGER =
-  "rounded-xl px-4 py-3 font-semibold text-red-300 transition hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-50";
+  "rounded-xl px-4 py-3 font-semibold text-red-300 transition hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-50 [html[data-theme=light]_&]:text-red-700";
 
 const MESSAGES: Record<Ownership, string> = {
   OWNED: "Game successfully added to your Owned library!",
@@ -35,10 +37,13 @@ function useLibraryEntry(gameId: number) {
 
     fetchLibraryItem(gameId, controller.signal)
       .then((item) => {
-        if (!controller.signal.aborted) setLoaded({ gameId, item, error: "" });
+        if (!controller.signal.aborted) {
+          setLoaded({ gameId, item, error: "" });
+        }
       })
       .catch((err: unknown) => {
         if (controller.signal.aborted) return;
+
         setLoaded({
           gameId,
           item: null,
@@ -77,8 +82,8 @@ function EntryActions({
   const owned = item.ownership === "OWNED";
 
   return (
-    <div className="rounded-xl border border-green-700 bg-green-950/30 p-4">
-      <p className="font-medium text-green-400">
+    <div className="rounded-xl border border-green-700 bg-green-950/30 p-4 [html[data-theme=light]_&]:border-green-300 [html[data-theme=light]_&]:bg-green-50">
+      <p className="font-medium text-green-400 [html[data-theme=light]_&]:text-green-700">
         {owned ? "In your Owned library" : "On your Wishlist"}
       </p>
 
@@ -91,6 +96,7 @@ function EntryActions({
         >
           {owned ? "Move to Wishlist" : "Got it! Move to Owned"}
         </button>
+
         <button
           type="button"
           disabled={saving}
@@ -99,7 +105,8 @@ function EntryActions({
         >
           Remove
         </button>
-        <Link href="/library" className="text-indigo-300 underline">
+
+        <Link href="/library" className="text-link underline">
           View My Library
         </Link>
       </div>
@@ -113,6 +120,7 @@ function EntryActions({
  */
 export default function LibraryStatus({ gameId }: { gameId: number }) {
   const { checking, item, loadError, setItem } = useLibraryEntry(gameId);
+
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -121,6 +129,7 @@ export default function LibraryStatus({ gameId }: { gameId: number }) {
     setSaving(true);
     setError("");
     setMessage("");
+
     try {
       setItem(await action());
       setMessage(done);
@@ -134,11 +143,11 @@ export default function LibraryStatus({ gameId }: { gameId: number }) {
   }
 
   if (checking) {
-    return <p className="mt-8 text-gray-400">Checking your library...</p>;
+    return <p className="mt-8 text-muted">Checking your library...</p>;
   }
 
   return (
-    <section className="mt-8">
+    <section className="mt-8 text-foreground">
       <h2 className="mb-3 text-xl font-semibold">My Library</h2>
 
       {item ? (
@@ -172,6 +181,7 @@ export default function LibraryStatus({ gameId }: { gameId: number }) {
           >
             {saving ? "Saving..." : "Add to Owned"}
           </button>
+
           <button
             type="button"
             disabled={saving}
@@ -189,12 +199,19 @@ export default function LibraryStatus({ gameId }: { gameId: number }) {
       )}
 
       {message && (
-        <p role="status" className="mt-3 text-green-400">
+        <p
+          role="status"
+          className="mt-3 text-green-400 [html[data-theme=light]_&]:text-green-700"
+        >
           {message}
         </p>
       )}
+
       {(error || loadError) && (
-        <p role="alert" className="mt-3 text-red-400">
+        <p
+          role="alert"
+          className="mt-3 text-red-400 [html[data-theme=light]_&]:text-red-700"
+        >
           {error || loadError}
         </p>
       )}

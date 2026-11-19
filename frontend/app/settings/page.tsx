@@ -14,13 +14,16 @@ import {
   EyeOff,
 } from "lucide-react";
 
-type SettingsTab = "account" | "security" | "privacy";
+import { useTheme } from "@/components/theme/ThemeProvider";
+
+type SettingsTab = "account" | "appearance" | "security" | "privacy";
 type PrivacyLevel = "PUBLIC" | "FRIENDS" | "PRIVATE";
 
 type UserProfile = {
   user_id: string;
   display_name: string;
   bio: string;
+  avatar: string;
   privacy_level: PrivacyLevel;
   bgg_username: string;
 };
@@ -52,21 +55,6 @@ const privacyOptions: {
     description: "Use the private profile visibility setting.",
   },
 ];
-
-function getSavedAvatar(): string {
-  try {
-    const avatar = localStorage.getItem("userAvatar");
-    if (avatar) return avatar;
-
-    const saved = localStorage.getItem("userProfile");
-    if (!saved) return "";
-
-    const parsed = JSON.parse(saved) as { avatar?: string };
-    return parsed.avatar || "";
-  } catch {
-    return "";
-  }
-}
 
 function getCsrfToken(): string {
   const cookie = document.cookie
@@ -278,7 +266,7 @@ function SidebarButton({
       className={`w-full rounded-full px-5 py-4 text-left text-base font-bold tracking-wide transition lg:text-center ${
         active
           ? "bg-indigo-600 text-white shadow-lg shadow-indigo-950/40"
-          : "bg-gray-700 text-gray-200 hover:bg-gray-600"
+          : "bg-surface-hover text-subtle hover:bg-surface"
       }`}
     >
       {label}
@@ -288,10 +276,10 @@ function SidebarButton({
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex flex-wrap items-start gap-3 border-b border-gray-700 pb-5">
-      <span className="min-w-36 font-bold text-white">{label}</span>
+    <div className="flex flex-wrap items-start gap-3 border-b border-border pb-5">
+      <span className="min-w-36 font-bold text-foreground">{label}</span>
 
-      <span className="break-words text-gray-300">{value}</span>
+      <span className="break-words text-subtle">{value}</span>
     </div>
   );
 }
@@ -317,14 +305,14 @@ function AvatarPreview({
           className="h-20 w-20 rounded-full border-2 border-indigo-400 object-cover"
         />
       ) : (
-        <div className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-indigo-400 bg-gray-700">
-          <UserRound className="h-9 w-9 text-gray-300" />
+        <div className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-indigo-400 bg-surface-hover">
+          <UserRound className="h-9 w-9 text-subtle" />
         </div>
       )}
 
       <Link
-        href="/avatar-selection"
-        className="inline-flex items-center gap-2 rounded-xl border border-indigo-500 px-4 py-2 text-sm font-semibold text-indigo-200 transition hover:bg-indigo-500/20"
+        href="/profile/edit"
+        className="inline-flex items-center gap-2 rounded-xl border border-indigo-500 px-4 py-2 text-sm font-semibold text-link transition hover:bg-indigo-500/20"
       >
         <Camera className="h-4 w-4" />
         Change Avatar
@@ -359,13 +347,13 @@ function AccountDetails({
 
         <Link
           href="/profile/edit"
-          className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold transition hover:bg-indigo-500"
+          className="rounded-xl bg-indigo-600 text-white px-5 py-2.5 text-sm font-semibold transition hover:bg-indigo-500"
         >
           Edit Profile
         </Link>
       </div>
 
-      <div className="rounded-2xl border border-gray-700 bg-[#1E293B] p-6 sm:p-8">
+      <div className="rounded-2xl border border-border bg-surface p-6 sm:p-8">
         <div className="space-y-6 text-lg">
           <DetailRow label="DISPLAY NAME:" value={displayName} />
 
@@ -378,31 +366,31 @@ function AccountDetails({
 
           <DetailRow label="BIO:" value={profile.bio || "No bio added"} />
 
-          <div className="border-b border-gray-700 pb-5">
+          <div className="border-b border-border pb-5">
             <div className="flex flex-wrap items-center gap-3">
               <span className="min-w-36 font-bold">EMAIL:</span>
 
               <div>
                 {emailLoading ? (
-                  <span className="text-gray-400">Loading email...</span>
+                  <span className="text-muted">Loading email...</span>
                 ) : primaryEmail ? (
                   <div className="space-y-1">
-                    <p className="break-all text-gray-300">
+                    <p className="break-all text-subtle">
                       {primaryEmail.email}
                     </p>
 
                     <p
                       className={`text-sm ${
                         primaryEmail.verified
-                          ? "text-emerald-400"
-                          : "text-amber-400"
+                          ? "text-emerald-400 [html[data-theme=light]_&]:text-emerald-700"
+                          : "text-amber-400 [html[data-theme=light]_&]:text-amber-700"
                       }`}
                     >
                       {primaryEmail.verified ? "Verified" : "Not verified"}
                     </p>
                   </div>
                 ) : (
-                  <span className="text-sm text-gray-400">
+                  <span className="text-sm text-muted">
                     {emailError || "No email available"}
                   </span>
                 )}
@@ -473,14 +461,14 @@ function ChangePasswordForm() {
   }
 
   return (
-    <div className="rounded-2xl border border-gray-700 bg-[#1E293B] p-6">
+    <div className="rounded-2xl border border-border bg-surface p-6">
       <div className="mb-5 flex items-center gap-3">
-        <LockKeyhole className="h-7 w-7 text-indigo-400" />
+        <LockKeyhole className="h-7 w-7 text-link" />
 
         <h3 className="text-xl font-bold">Change Password</h3>
       </div>
 
-      <p className="mb-6 text-sm text-gray-400">
+      <p className="mb-6 text-sm text-muted">
         Update the password used to sign in to QuestLog.
       </p>
 
@@ -519,7 +507,7 @@ function ChangePasswordForm() {
               onChange={(event) => field.onChange(event.target.value)}
               autoComplete={field.autocomplete}
               required
-              className="w-full rounded-xl border border-gray-600 bg-[#0F172A] px-4 py-3 text-white outline-none transition focus:border-indigo-500"
+              className="w-full rounded-xl border border-border bg-input px-4 py-3 text-foreground outline-none transition focus:border-indigo-500"
             />
           </div>
         ))}
@@ -527,7 +515,7 @@ function ChangePasswordForm() {
         <button
           type="button"
           onClick={() => setShowPasswords((value) => !value)}
-          className="inline-flex items-center gap-2 text-sm text-indigo-300 hover:text-indigo-200"
+          className="inline-flex items-center gap-2 text-sm text-link hover:text-link"
         >
           {showPasswords ? (
             <EyeOff className="h-4 w-4" />
@@ -542,20 +530,26 @@ function ChangePasswordForm() {
           <button
             type="submit"
             disabled={saving}
-            className="rounded-xl bg-indigo-600 px-6 py-3 font-semibold transition hover:bg-indigo-500 disabled:opacity-50"
+            className="rounded-xl bg-indigo-600 text-white px-6 py-3 font-semibold transition hover:bg-indigo-500 disabled:opacity-50"
           >
             {saving ? "Updating..." : "Update Password"}
           </button>
         </div>
 
         {error && (
-          <p role="alert" className="text-sm text-red-400">
+          <p
+            role="alert"
+            className="text-sm text-red-400 [html[data-theme=light]_&]:text-red-700"
+          >
             {error}
           </p>
         )}
 
         {message && (
-          <p role="status" className="text-sm text-emerald-400">
+          <p
+            role="status"
+            className="text-sm text-emerald-400 [html[data-theme=light]_&]:text-emerald-700"
+          >
             {message}
           </p>
         )}
@@ -580,17 +574,15 @@ function SecuritySettings({
       </h2>
 
       <div className="space-y-6">
-        <div className="rounded-2xl border border-gray-700 bg-[#1E293B] p-6">
+        <div className="rounded-2xl border border-border bg-surface p-6">
           <div className="flex items-start gap-4">
-            <Mail className="mt-1 h-7 w-7 shrink-0 text-indigo-400" />
+            <Mail className="mt-1 h-7 w-7 shrink-0 text-link" />
 
             <div className="min-w-0">
               <h3 className="text-xl font-bold">Email Addresses</h3>
 
               {emailLoading ? (
-                <p className="mt-3 text-gray-400">
-                  Loading email information...
-                </p>
+                <p className="mt-3 text-muted">Loading email information...</p>
               ) : emails.length > 0 ? (
                 <div className="mt-4 space-y-3">
                   {emails.map((email) => (
@@ -598,19 +590,21 @@ function SecuritySettings({
                       key={email.email}
                       className="flex flex-wrap items-center gap-3"
                     >
-                      <span className="break-all text-gray-200">
+                      <span className="break-all text-subtle">
                         {email.email}
                       </span>
 
                       {email.primary && (
-                        <span className="rounded-full bg-indigo-500/20 px-3 py-1 text-xs text-indigo-200">
+                        <span className="rounded-full bg-indigo-500/20 px-3 py-1 text-xs text-link">
                           Primary
                         </span>
                       )}
 
                       <span
                         className={`text-xs ${
-                          email.verified ? "text-emerald-400" : "text-amber-400"
+                          email.verified
+                            ? "text-emerald-400 [html[data-theme=light]_&]:text-emerald-700"
+                            : "text-amber-400 [html[data-theme=light]_&]:text-amber-700"
                         }`}
                       >
                         {email.verified ? "Verified" : "Unverified"}
@@ -619,12 +613,12 @@ function SecuritySettings({
                   ))}
                 </div>
               ) : (
-                <p className="mt-3 text-sm text-gray-400">
+                <p className="mt-3 text-sm text-muted">
                   {emailError || "No email information available."}
                 </p>
               )}
 
-              <p className="mt-4 text-sm text-gray-400">
+              <p className="mt-4 text-sm text-muted">
                 Email addresses are read from your authentication account.
                 Changing or removing an email address is not yet connected to
                 this Settings page.
@@ -635,18 +629,18 @@ function SecuritySettings({
 
         <ChangePasswordForm />
 
-        <div className="rounded-2xl border border-gray-700 bg-[#1E293B] p-6">
+        <div className="rounded-2xl border border-border bg-surface p-6">
           <div className="flex items-start gap-4">
-            <Shield className="mt-1 h-7 w-7 shrink-0 text-emerald-400" />
+            <Shield className="mt-1 h-7 w-7 shrink-0 text-emerald-400 [html[data-theme=light]_&]:text-emerald-700" />
 
             <div>
               <h3 className="text-xl font-bold">Multifactor Authentication</h3>
 
-              <p className="mt-2 text-gray-300">
+              <p className="mt-2 text-subtle">
                 QuestLog supports MFA during account setup.
               </p>
 
-              <p className="mt-3 text-sm text-gray-400">
+              <p className="mt-3 text-sm text-muted">
                 Your current MFA status and management options are not yet
                 connected to this page.
               </p>
@@ -654,10 +648,10 @@ function SecuritySettings({
           </div>
         </div>
 
-        <div className="rounded-2xl border border-gray-700 bg-[#1E293B] p-6">
+        <div className="rounded-2xl border border-border bg-surface p-6">
           <h3 className="text-xl font-bold">Account and Game Data</h3>
 
-          <p className="mt-3 text-gray-300">
+          <p className="mt-3 text-subtle">
             Game-data clearing and account deletion are not yet available from
             this page.
           </p>
@@ -666,7 +660,7 @@ function SecuritySettings({
             <button
               type="button"
               disabled
-              className="cursor-not-allowed rounded-full bg-red-900/50 px-6 py-3 font-semibold text-gray-400"
+              className="cursor-not-allowed rounded-full bg-red-900/50 [html[data-theme=light]_&]:bg-red-100 px-6 py-3 font-semibold text-muted"
             >
               Clear Game Data
             </button>
@@ -674,7 +668,7 @@ function SecuritySettings({
             <button
               type="button"
               disabled
-              className="cursor-not-allowed rounded-full bg-red-900/50 px-6 py-3 font-semibold text-gray-400"
+              className="cursor-not-allowed rounded-full bg-red-900/50 [html[data-theme=light]_&]:bg-red-100 px-6 py-3 font-semibold text-muted"
             >
               Delete Account
             </button>
@@ -705,12 +699,12 @@ function PrivacySettings({
           PRIVACY SETTINGS
         </h2>
 
-        <p className="mt-3 text-gray-300">
+        <p className="mt-3 text-subtle">
           Choose your profile visibility preference.
         </p>
       </div>
 
-      <div className="rounded-2xl border border-gray-700 bg-[#1E293B] p-6 sm:p-8">
+      <div className="rounded-2xl border border-border bg-surface p-6 sm:p-8">
         <h3 className="mb-5 text-xl font-bold">Profile Visibility</h3>
 
         <fieldset className="space-y-4">
@@ -722,7 +716,7 @@ function PrivacySettings({
               className={`flex cursor-pointer items-start gap-4 rounded-xl border p-4 transition ${
                 privacyLevel === option.value
                   ? "border-indigo-500 bg-indigo-500/10"
-                  : "border-gray-600 hover:border-gray-500"
+                  : "border-border hover:border-link"
               }`}
             >
               <input
@@ -737,7 +731,7 @@ function PrivacySettings({
               <span>
                 <span className="block font-bold">{option.label}</span>
 
-                <span className="mt-1 block text-sm text-gray-400">
+                <span className="mt-1 block text-sm text-muted">
                   {option.description}
                 </span>
               </span>
@@ -749,16 +743,16 @@ function PrivacySettings({
           type="button"
           onClick={onSave}
           disabled={saving || privacyLevel === savedPrivacyLevel}
-          className="mt-7 rounded-xl bg-indigo-600 px-6 py-3 font-semibold transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+          className="mt-7 rounded-xl bg-indigo-600 text-white px-6 py-3 font-semibold transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {saving ? "Saving..." : "Save Privacy Settings"}
         </button>
       </div>
 
-      <div className="rounded-2xl border border-gray-700 bg-[#1E293B] p-6">
+      <div className="rounded-2xl border border-border bg-surface p-6">
         <h3 className="text-xl font-bold">Community Privacy</h3>
 
-        <p className="mt-3 text-gray-300">
+        <p className="mt-3 text-subtle">
           Chat permissions, friend-request controls, mature-language filtering,
           and blocked accounts are not yet connected to the backend.
         </p>
@@ -767,12 +761,103 @@ function PrivacySettings({
   );
 }
 
+function AppearanceSettings() {
+  const { theme, setTheme } = useTheme();
+
+  return (
+    <section className="space-y-8">
+      <h2 className="text-3xl font-black tracking-wide sm:text-4xl">
+        APPEARANCE
+      </h2>
+      <div className="rounded-2xl border border-border bg-surface p-6 sm:p-8">
+        <h3 className="text-xl font-bold">Display Theme</h3>
+        <p className="mt-2 text-muted">
+          Choose how QuestLog looks on this browser.
+        </p>
+        <fieldset className="mt-6 grid gap-4 sm:grid-cols-2">
+          <legend className="sr-only">Display theme</legend>
+          {(["light", "dark"] as const).map((mode) => (
+            <label
+              key={mode}
+              className={`cursor-pointer rounded-xl border-2 p-4 transition ${
+                theme === mode ? "border-indigo-500" : "border-border"
+              }`}
+            >
+              <div
+                aria-hidden="true"
+                className={`mb-4 space-y-3 rounded-lg p-3 ${mode === "light" ? "bg-[#F1F5F9]" : "bg-[#0F172A]"}`}
+              >
+                <div
+                  className={`h-3 rounded ${mode === "light" ? "bg-slate-300" : "bg-slate-600"}`}
+                />
+                <div className="grid grid-cols-3 gap-2">
+                  <div
+                    className={`h-16 rounded ${mode === "light" ? "bg-white" : "bg-[#1E293B]"}`}
+                  />
+                  <div
+                    className={`col-span-2 h-16 rounded p-2 ${mode === "light" ? "bg-white" : "bg-[#1E293B]"}`}
+                  >
+                    <div className="h-2 w-3/4 rounded bg-indigo-500" />
+                  </div>
+                </div>
+              </div>
+              <span className="flex items-center gap-3 font-semibold">
+                <input
+                  type="radio"
+                  name="display-theme"
+                  value={mode}
+                  checked={theme === mode}
+                  onChange={() => setTheme(mode)}
+                  className="h-5 w-5 accent-indigo-500"
+                />
+                {mode === "light" ? "Light" : "Dark"}
+              </span>
+            </label>
+          ))}
+        </fieldset>
+        <p role="status" className="mt-5 text-sm text-muted">
+          {theme === "light" ? "Light" : "Dark"} mode is active. Your preference
+          is saved on this browser when storage is available.
+        </p>
+      </div>
+    </section>
+  );
+}
+
+function SettingsFeedback({
+  error,
+  success,
+}: {
+  error: string;
+  success: string;
+}) {
+  return (
+    <>
+      {error && (
+        <p
+          role="alert"
+          className="mt-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-300 [html[data-theme=light]_&]:text-red-700"
+        >
+          {error}
+        </p>
+      )}
+
+      {success && (
+        <p
+          role="status"
+          className="mt-6 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-emerald-300 [html[data-theme=light]_&]:text-emerald-700"
+        >
+          {success}
+        </p>
+      )}
+    </>
+  );
+}
+
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>("account");
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
-
-  const [userAvatar, setUserAvatar] = useState("");
 
   const [emails, setEmails] = useState<EmailAddress[]>([]);
   const [emailLoading, setEmailLoading] = useState(true);
@@ -792,13 +877,11 @@ export default function SettingsPage() {
     async function loadSettings() {
       try {
         const data = await fetchProfile(controller.signal);
-        const avatar = getSavedAvatar();
 
         if (controller.signal.aborted) return;
 
         setProfile(data);
         setPrivacyLevel(data.privacy_level);
-        setUserAvatar(avatar);
       } catch (err) {
         if (controller.signal.aborted) return;
 
@@ -863,10 +946,10 @@ export default function SettingsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#0F172A] px-5 py-8 text-white sm:px-10">
+    <main className="min-h-screen bg-background px-5 py-8 text-foreground sm:px-10">
       <div className="mx-auto max-w-7xl">
-        <div className="mb-8 flex items-center gap-3 border-b border-gray-600 pb-5">
-          <Settings className="h-8 w-8 text-indigo-400" />
+        <div className="mb-8 flex items-center gap-3 border-b border-border pb-5">
+          <Settings className="h-8 w-8 text-link" />
 
           <h1 className="text-3xl font-black tracking-wide sm:text-4xl">
             USER SETTINGS
@@ -880,6 +963,16 @@ export default function SettingsPage() {
               label="ACCOUNT DETAILS"
               onClick={() => {
                 setActiveTab("account");
+                setError("");
+                setSuccess("");
+              }}
+            />
+
+            <SidebarButton
+              active={activeTab === "appearance"}
+              label="APPEARANCE"
+              onClick={() => {
+                setActiveTab("appearance");
                 setError("");
                 setSuccess("");
               }}
@@ -908,20 +1001,23 @@ export default function SettingsPage() {
 
           <div className="min-w-0">
             {loading ? (
-              <p className="text-gray-300">Loading your settings...</p>
+              <p className="text-subtle">Loading your settings...</p>
             ) : !profile ? (
-              <div className="rounded-2xl border border-red-500/30 bg-gray-800 p-6">
+              <div className="rounded-2xl border border-red-500/30 bg-surface p-6">
                 <h2 className="mb-3 text-2xl font-bold">
                   Settings Unavailable
                 </h2>
 
-                <p role="alert" className="mb-5 text-red-400">
+                <p
+                  role="alert"
+                  className="mb-5 text-red-400 [html[data-theme=light]_&]:text-red-700"
+                >
                   {error || "Unable to load your account."}
                 </p>
 
                 <Link
                   href="/login"
-                  className="inline-block rounded-lg bg-indigo-600 px-5 py-2 font-semibold hover:bg-indigo-500"
+                  className="inline-block rounded-lg bg-indigo-600 text-white px-5 py-2 font-semibold hover:bg-indigo-500"
                 >
                   Go to Login
                 </Link>
@@ -931,12 +1027,14 @@ export default function SettingsPage() {
                 {activeTab === "account" && (
                   <AccountDetails
                     profile={profile}
-                    userAvatar={userAvatar}
+                    userAvatar={profile.avatar || ""}
                     emails={emails}
                     emailLoading={emailLoading}
                     emailError={emailError}
                   />
                 )}
+
+                {activeTab === "appearance" && <AppearanceSettings />}
 
                 {activeTab === "security" && (
                   <SecuritySettings
@@ -959,23 +1057,7 @@ export default function SettingsPage() {
                   />
                 )}
 
-                {error && (
-                  <p
-                    role="alert"
-                    className="mt-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-300"
-                  >
-                    {error}
-                  </p>
-                )}
-
-                {success && (
-                  <p
-                    role="status"
-                    className="mt-6 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-emerald-300"
-                  >
-                    {success}
-                  </p>
-                )}
+                <SettingsFeedback error={error} success={success} />
               </>
             )}
           </div>

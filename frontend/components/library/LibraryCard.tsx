@@ -29,6 +29,7 @@ const BUTTON =
 function formatDate(value: string): string {
   // Dates arrive as YYYY-MM-DD; parse as local time so the day doesn't shift.
   const [year, month, day] = value.split("-").map(Number);
+
   return new Date(year, month - 1, day).toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
@@ -38,21 +39,25 @@ function formatDate(value: string): string {
 
 function GameRating({ rating }: { rating: number | string | null }) {
   const numericRating = rating == null ? null : Number(rating);
+
   const displayRating =
     numericRating !== null && Number.isFinite(numericRating)
       ? `BGG ★ ${numericRating.toFixed(1)} / 10`
       : "Not rated on BGG";
 
   return (
-    <p className="mt-1 text-center text-sm text-[#FACC15]">{displayRating}</p>
+    <p className="mt-1 text-center text-sm text-yellow-400 [html[data-theme=light]_&]:text-amber-700">
+      {displayRating}
+    </p>
   );
 }
 
 export function PlayStats({ item }: { item: LibraryItem }) {
   if (item.play_count > 0) {
     const times = item.play_count === 1 ? "1 play" : `${item.play_count} plays`;
+
     return (
-      <p className="text-center text-xs text-gray-400">
+      <p className="text-center text-xs text-muted">
         {times}
         {item.last_played && ` · last ${formatDate(item.last_played)}`}
       </p>
@@ -60,7 +65,7 @@ export function PlayStats({ item }: { item: LibraryItem }) {
   }
 
   return (
-    <p className="text-center text-xs text-gray-400">
+    <p className="text-center text-xs text-muted">
       {item.has_played ? "Played" : "Not played yet"}
     </p>
   );
@@ -81,11 +86,12 @@ function CardImage({ item }: { item: LibraryItem }) {
           className="h-56 w-full rounded-xl object-cover transition group-hover:opacity-90"
         />
       ) : (
-        <div className="flex h-56 w-full items-center justify-center rounded-xl bg-[#334155] px-3 text-center text-sm text-gray-400">
+        <div className="flex h-56 w-full items-center justify-center rounded-xl bg-surface-hover px-3 text-center text-sm text-muted">
           No image available
         </div>
       )}
-      <h2 className="mt-3 text-center text-sm font-bold group-hover:text-indigo-300">
+
+      <h2 className="mt-3 break-words text-center text-sm font-bold text-foreground group-hover:text-link">
         {game.primary_name}
       </h2>
     </Link>
@@ -103,7 +109,7 @@ function WishlistControls({
 }) {
   return (
     <>
-      <label className="block text-xs text-gray-400">
+      <label className="block text-xs text-muted">
         Priority
         <select
           value={item.wishlist_priority ?? ""}
@@ -115,9 +121,10 @@ function WishlistControls({
                 : null,
             })
           }
-          className="mt-1 w-full rounded-lg border border-gray-700 bg-[#0F172A] p-1.5 text-sm text-white"
+          className="mt-1 w-full rounded-lg border border-border bg-input p-1.5 text-sm text-foreground outline-none focus:border-indigo-500"
         >
           <option value="">No priority</option>
+
           {WISHLIST_PRIORITIES.map((option) => (
             <option key={option.value} value={option.value}>
               {option.value}. {option.label}
@@ -125,11 +132,12 @@ function WishlistControls({
           ))}
         </select>
       </label>
+
       <button
         type="button"
         disabled={busy}
         onClick={() => save({ ownership: "OWNED" })}
-        className={`${BUTTON} w-full bg-emerald-600 text-white hover:bg-emerald-500`}
+        className={`${BUTTON} w-full bg-emerald-700 text-white hover:bg-emerald-600`}
       >
         Got it! Move to library
       </button>
@@ -151,7 +159,7 @@ function OwnedControls({
   return (
     <>
       <label
-        className="flex items-center gap-2 text-xs text-gray-300"
+        className="flex items-center gap-2 text-xs text-subtle"
         title={
           loggedPlays
             ? "You've logged plays of this game, so it counts as played."
@@ -167,17 +175,19 @@ function OwnedControls({
         />
         I&apos;ve played this
       </label>
+
       <HouseRulesEditor
         gameName={item.game.primary_name}
         value={item.house_rules}
         disabled={busy}
         onSave={(houseRules) => save({ house_rules: houseRules })}
       />
+
       <button
         type="button"
         disabled={busy}
         onClick={() => save({ ownership: "WISHLISTED" })}
-        className={`${BUTTON} w-full bg-slate-700 text-gray-200 hover:bg-slate-600`}
+        className={`${BUTTON} w-full border border-border bg-surface-hover text-foreground hover:bg-background`}
       >
         Move to wishlist
       </button>
@@ -203,7 +213,7 @@ function RemoveButton({
         disabled={busy}
         onClick={() => setConfirming(true)}
         aria-label={`Remove ${gameName}`}
-        className={`${BUTTON} w-full text-red-300 hover:bg-red-500/10`}
+        className={`${BUTTON} w-full text-red-300 hover:bg-red-500/10 [html[data-theme=light]_&]:text-red-700`}
       >
         Remove
       </button>
@@ -220,10 +230,11 @@ function RemoveButton({
       >
         Yes, remove
       </button>
+
       <button
         type="button"
         onClick={() => setConfirming(false)}
-        className={`${BUTTON} flex-1 bg-slate-700 text-gray-200 hover:bg-slate-600`}
+        className={`${BUTTON} flex-1 border border-border bg-surface-hover text-foreground hover:bg-background`}
       >
         Cancel
       </button>
@@ -241,12 +252,14 @@ export default function LibraryCard({
 }: LibraryCardProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+
   const isWishlist = item.ownership === "WISHLISTED";
   const priority = isWishlist ? priorityLabel(item.wishlist_priority) : null;
 
   async function run(action: () => Promise<unknown>) {
     setBusy(true);
     setError("");
+
     try {
       await action();
     } catch (err) {
@@ -260,10 +273,13 @@ export default function LibraryCard({
     void run(() => onUpdate(item.game.bgg_id, changes));
 
   return (
-    <article className="flex flex-col rounded-2xl bg-[#1E293B]/70 p-3 transition hover:shadow-xl hover:shadow-indigo-500/20">
+    <article className="flex min-w-0 flex-col rounded-2xl border border-border bg-surface p-3 text-foreground shadow-sm transition hover:shadow-xl hover:shadow-indigo-500/20">
       <CardImage item={item} />
+
       <GameRating rating={item.game.average_rating} />
+
       <PlayStats item={item} />
+
       {onRatingChange && (
         <div className="mt-2">
           <CardRating
@@ -274,8 +290,9 @@ export default function LibraryCard({
           />
         </div>
       )}
+
       {priority && (
-        <p className="mt-1 text-center text-xs font-semibold text-pink-300">
+        <p className="mt-1 text-center text-xs font-semibold text-pink-300 [html[data-theme=light]_&]:text-pink-700">
           {priority}
         </p>
       )}
@@ -286,13 +303,18 @@ export default function LibraryCard({
         ) : (
           <OwnedControls item={item} busy={busy} save={save} />
         )}
+
         <RemoveButton
           gameName={item.game.primary_name}
           busy={busy}
           onConfirm={() => void run(() => onRemove(item.game.bgg_id))}
         />
+
         {error && (
-          <p role="alert" className="text-xs text-red-400">
+          <p
+            role="alert"
+            className="text-xs text-red-400 [html[data-theme=light]_&]:text-red-700"
+          >
             {error}
           </p>
         )}

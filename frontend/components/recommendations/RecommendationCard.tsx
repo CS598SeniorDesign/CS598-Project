@@ -25,7 +25,7 @@ export default function RecommendationCard({
   }
 
   return (
-    <article className="flex flex-col rounded-2xl bg-gray-900 p-4 shadow-lg transition duration-300 hover:shadow-indigo-500/20">
+    <article className="flex flex-col rounded-2xl border border-border bg-surface p-4 text-foreground shadow-sm transition duration-300 hover:border-indigo-400/50 hover:shadow-indigo-500/20">
       <Link href={`/games/${game.bgg_id}`} className="group flex-1">
         {game.thumbnail_url ? (
           <div className="relative mb-3 h-40 w-full">
@@ -39,20 +39,22 @@ export default function RecommendationCard({
             />
           </div>
         ) : (
-          <div className="mb-3 flex h-40 items-center justify-center rounded-lg bg-slate-800 text-gray-400">
+          <div className="mb-3 flex h-40 items-center justify-center rounded-lg bg-background text-muted">
             No image available
           </div>
         )}
 
-        <h3 className="text-lg font-semibold group-hover:text-indigo-300">
+        <h3 className="text-lg font-semibold text-foreground group-hover:text-link">
           {game.primary_name}
         </h3>
-        <p className="text-sm text-gray-400">
+
+        <p className="text-sm text-muted">
           {game.year_published ?? "Year unknown"}
           {game.average_rating != null &&
             ` · BGG ${Number(game.average_rating).toFixed(1)}`}
         </p>
-        {reason && <p className="mt-2 text-sm text-indigo-200">{reason}</p>}
+
+        {reason && <p className="mt-2 text-sm text-link">{reason}</p>}
       </Link>
 
       {onFeedback && (
@@ -63,24 +65,25 @@ export default function RecommendationCard({
             aria-pressed={sentiment === "LIKE"}
             aria-label={`Like ${game.primary_name}`}
             onClick={() => toggle("LIKE")}
-            className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition disabled:opacity-50 ${
+            className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition disabled:opacity-50 ${
               sentiment === "LIKE"
-                ? "bg-emerald-600 text-white"
-                : "bg-slate-800 text-gray-300 hover:bg-slate-700"
+                ? "border-emerald-700 bg-emerald-700 text-white"
+                : "border-border bg-background text-subtle hover:bg-surface-hover"
             }`}
           >
             👍 {sentiment === "LIKE" ? "Liked" : "Like"}
           </button>
+
           <button
             type="button"
             disabled={disabled}
             aria-pressed={sentiment === "DISLIKE"}
             aria-label={`Not interested in ${game.primary_name}`}
             onClick={() => toggle("DISLIKE")}
-            className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition disabled:opacity-50 ${
+            className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition disabled:opacity-50 ${
               sentiment === "DISLIKE"
-                ? "bg-red-600 text-white"
-                : "bg-slate-800 text-gray-300 hover:bg-slate-700"
+                ? "border-red-600 bg-red-600 text-white"
+                : "border-border bg-background text-subtle hover:bg-surface-hover"
             }`}
           >
             👎 Not for me

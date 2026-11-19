@@ -32,7 +32,7 @@ function ResultsStatus({
 }) {
   if (loading) {
     return (
-      <p role="status" className="mt-8 text-center text-gray-400">
+      <p role="status" className="mt-8 text-center text-muted">
         Finding games for you...
       </p>
     );
@@ -40,13 +40,17 @@ function ResultsStatus({
 
   return (
     <div className="mt-8 text-center">
-      <p role="alert" className="text-red-400">
+      <p
+        role="alert"
+        className="text-red-400 [html[data-theme=light]_&]:text-red-700"
+      >
         {error}
       </p>
+
       {error.startsWith("Please log in") && (
         <Link
           href="/login"
-          className="mt-3 inline-block text-indigo-400 hover:text-indigo-300"
+          className="mt-3 inline-block text-link hover:text-foreground"
         >
           Go to Login
         </Link>
@@ -67,14 +71,15 @@ function FallbackNotice({
   return (
     <div
       role="note"
-      className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-600/60 bg-amber-950/30 p-4 text-amber-200"
+      className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-600/40 bg-amber-500/10 p-4 text-amber-200 [html[data-theme=light]_&]:text-amber-800"
     >
       <span>{FALLBACK_MESSAGES[reason] ?? reason}</span>
+
       {reason === "opt_in_required" && onOpenPreferences && (
         <button
           type="button"
           onClick={onOpenPreferences}
-          className="rounded-lg bg-amber-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-500"
+          className="rounded-lg bg-amber-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-800"
         >
           Open Preferences
         </button>
@@ -106,6 +111,7 @@ export default function RecommendationResults({
   const visible = response.results.filter(
     (item) => feedback[item.game.bgg_id] !== "DISLIKE",
   );
+
   const cardFeedback =
     onFeedback &&
     ((gameId: number, sentiment: Sentiment | null) =>
@@ -119,13 +125,13 @@ export default function RecommendationResults({
       />
 
       {response.personalized && (
-        <p className="mb-4 text-sm text-emerald-300">
+        <p className="mb-4 text-sm text-emerald-300 [html[data-theme=light]_&]:text-emerald-700">
           ✨ Personalized from your plays, library and likes
         </p>
       )}
 
       {visible.length === 0 ? (
-        <p className="mt-8 text-center text-gray-400">{emptyMessage}</p>
+        <p className="mt-8 text-center text-muted">{emptyMessage}</p>
       ) : (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {visible.map((item) => (

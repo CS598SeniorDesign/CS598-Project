@@ -19,7 +19,7 @@ const PLAYED_OPTIONS: { value: PlayedFilter; label: string }[] = [
 ];
 
 const SELECT =
-  "rounded-full border border-gray-700 bg-[#1E293B] px-4 py-3 text-sm text-white outline-none focus:border-[#4F46E5]";
+  "rounded-full border border-border bg-surface px-4 py-3 text-sm text-foreground outline-none transition focus:border-indigo-500";
 
 /** Search, the played filter and the sort order for the library list. */
 export default function LibraryToolbar({
@@ -45,7 +45,7 @@ export default function LibraryToolbar({
         }
         value={search}
         onChange={(event) => onSearchChange(event.target.value)}
-        className="w-full max-w-md rounded-full border border-gray-700 bg-[#1E293B] px-5 py-3 text-white outline-none focus:border-[#4F46E5]"
+        className="w-full max-w-md rounded-full border border-border bg-surface px-5 py-3 text-foreground outline-none transition placeholder:text-muted focus:border-indigo-500"
       />
 
       <select

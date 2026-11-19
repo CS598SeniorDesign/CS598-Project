@@ -25,6 +25,7 @@ function resultMessage(status: SyncStatus): string {
     `${status.updated ?? 0} updated`,
     `${status.skipped ?? 0} skipped`,
   ];
+
   return `Import finished: ${parts.join(", ")}.`;
 }
 
@@ -37,6 +38,7 @@ export default function BggImportButton({ onImported }: BggImportButtonProps) {
   const [status, setStatus] = useState<SyncStatus | null>(null);
   const [error, setError] = useState("");
   const [starting, setStarting] = useState(false);
+
   // Read through a ref so a new callback from the parent doesn't restart polling.
   const onImportedRef = useRef(onImported);
 
@@ -53,18 +55,26 @@ export default function BggImportButton({ onImported }: BggImportButtonProps) {
     async function poll(id: string) {
       try {
         const next = await fetchBggCollectionSyncStatus(id, controller.signal);
+
         if (controller.signal.aborted) return;
+
         setStatus(next);
 
         if (!FINISHED_SYNC_STATES.has(next.status)) {
           timer = setTimeout(() => void poll(id), SYNC_POLL_INTERVAL);
           return;
         }
+
         setTaskId(null);
-        if (next.status === "succeeded") onImportedRef.current();
+
+        if (next.status === "succeeded") {
+          onImportedRef.current();
+        }
       } catch (err) {
         if (controller.signal.aborted) return;
+
         setTaskId(null);
+
         setError(
           err instanceof Error ? err.message : "Unable to check the import.",
         );
@@ -86,6 +96,7 @@ export default function BggImportButton({ onImported }: BggImportButtonProps) {
 
     try {
       const queued = await startBggCollectionSync();
+
       setStatus(queued);
       setTaskId(queued.task_id);
     } catch (err) {
@@ -106,7 +117,7 @@ export default function BggImportButton({ onImported }: BggImportButtonProps) {
         type="button"
         onClick={() => void start()}
         disabled={running}
-        className="rounded-full border border-indigo-400 px-6 py-3 text-sm font-bold uppercase tracking-wider text-indigo-200 transition hover:bg-indigo-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+        className="rounded-full border border-indigo-400 bg-surface px-6 py-3 text-sm font-bold uppercase tracking-wider text-link transition hover:bg-indigo-500/10 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {running ? "Importing..." : "Import from BGG"}
       </button>
@@ -115,7 +126,11 @@ export default function BggImportButton({ onImported }: BggImportButtonProps) {
         <p
           role="status"
           className={`max-w-xs text-right text-xs ${
-            status.status === "failed" ? "text-red-400" : "text-gray-400"
+            status.status === "failed"
+              ? "text-red-400 [html[data-theme=light]_&]:text-red-700"
+              : status.status === "succeeded"
+                ? "text-emerald-400 [html[data-theme=light]_&]:text-emerald-700"
+                : "text-muted"
           }`}
         >
           {resultMessage(status)}
@@ -123,10 +138,13 @@ export default function BggImportButton({ onImported }: BggImportButtonProps) {
       )}
 
       {error && (
-        <p role="alert" className="max-w-xs text-right text-xs text-red-400">
+        <p
+          role="alert"
+          className="max-w-xs text-right text-xs text-red-400 [html[data-theme=light]_&]:text-red-700"
+        >
           {error}{" "}
           {needsUsername && (
-            <Link href="/profile/edit" className="underline">
+            <Link href="/profile/edit" className="text-link underline">
               Add your BGG username
             </Link>
           )}

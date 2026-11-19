@@ -230,12 +230,12 @@ function Modal({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-slate-700 bg-slate-900 p-6 text-slate-100 shadow-2xl"
+        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-border bg-surface p-6 text-foreground shadow-2xl"
       >
         <div className="mb-5 flex items-start justify-between gap-3">
           <div>
             <h3 className="text-xl font-bold">{title}</h3>
-            <p className="mt-1 text-sm text-slate-400">
+            <p className="mt-1 text-sm text-muted">
               Plan something fun with your community.
             </p>
           </div>
@@ -243,7 +243,7 @@ function Modal({
             type="button"
             aria-label="Close dialog"
             onClick={onClose}
-            className="rounded-lg p-2 hover:bg-slate-800"
+            className="rounded-lg p-2 hover:bg-surface-hover"
           >
             <X className="h-5 w-5" />
           </button>
@@ -254,7 +254,7 @@ function Modal({
   );
 }
 const FIELD_CLASS =
-  "w-full rounded-lg border border-slate-600 bg-slate-800 px-3 py-2.5 text-sm text-white outline-none focus:border-indigo-400";
+  "w-full rounded-lg border border-border bg-input px-3 py-2.5 text-sm text-foreground outline-none focus:border-indigo-400";
 function TextField({
   label,
   value,
@@ -271,7 +271,7 @@ function TextField({
   placeholder?: string;
 }) {
   return (
-    <label className="block space-y-1.5 text-sm font-medium text-slate-200">
+    <label className="block space-y-1.5 text-sm font-medium text-subtle">
       <span>{label}</span>
       <input
         type={type}
@@ -310,7 +310,7 @@ function GameSelector({
   }
   return (
     <div className="space-y-2">
-      <label className="block text-sm font-medium text-slate-200">
+      <label className="block text-sm font-medium text-subtle">
         Board Game (optional)
       </label>
       <div className="flex gap-2">
@@ -324,13 +324,13 @@ function GameSelector({
           type="button"
           disabled={loading || !query.trim()}
           onClick={() => void runSearch()}
-          className="rounded-lg bg-slate-700 px-3 text-xs font-semibold hover:bg-slate-600 disabled:opacity-50"
+          className="rounded-lg bg-surface-hover px-3 text-xs font-semibold hover:bg-surface disabled:opacity-50"
         >
           Search
         </button>
       </div>
       {value && (
-        <div className="flex items-center justify-between rounded-lg bg-indigo-500/15 px-3 py-2 text-xs text-indigo-200">
+        <div className="flex items-center justify-between rounded-lg bg-indigo-500/15 px-3 py-2 text-xs text-link">
           <span>Selected game: {query || `BGG #${value}`}</span>
           <button
             type="button"
@@ -345,7 +345,7 @@ function GameSelector({
         </div>
       )}
       {results.length > 0 && (
-        <div className="max-h-36 overflow-y-auto rounded-lg border border-slate-700">
+        <div className="max-h-36 overflow-y-auto rounded-lg border border-border">
           {results.map((game) => (
             <button
               key={game.bgg_id}
@@ -355,15 +355,19 @@ function GameSelector({
                 setQuery(game.primary_name);
                 setResults([]);
               }}
-              className="block w-full border-b border-slate-700 px-3 py-2 text-left text-sm hover:bg-slate-800"
+              className="block w-full border-b border-border px-3 py-2 text-left text-sm hover:bg-surface-hover"
             >
               {game.primary_name}
             </button>
           ))}
         </div>
       )}
-      {error && <p className="text-xs text-amber-300">{error}</p>}
-      <p className="text-xs text-slate-500">
+      {error && (
+        <p className="text-xs text-amber-300 [html[data-theme=light]_&]:text-amber-700">
+          {error}
+        </p>
+      )}
+      <p className="text-xs text-muted">
         Select a search result to attach a game to the event.
       </p>
     </div>
@@ -405,7 +409,7 @@ function EventFormFields({
         placeholder="RSC 231"
         onChange={(v) => change("location", v)}
       />
-      <label className="block space-y-1.5 text-sm font-medium text-slate-200">
+      <label className="block space-y-1.5 text-sm font-medium text-subtle">
         <span>Description</span>
         <textarea
           rows={3}
@@ -415,7 +419,7 @@ function EventFormFields({
           className={FIELD_CLASS}
         />
       </label>
-      <label className="block space-y-1.5 text-sm font-medium text-slate-200">
+      <label className="block space-y-1.5 text-sm font-medium text-subtle">
         <span>Game Group (optional)</span>
         <select
           value={form.group_id}
@@ -501,12 +505,15 @@ function EventEditor({
           original={original}
         />
         {groupError && (
-          <p className="mt-3 text-xs text-amber-300">
+          <p className="mt-3 text-xs text-amber-300 [html[data-theme=light]_&]:text-amber-700">
             Groups unavailable: {groupError}
           </p>
         )}
         {error && (
-          <p role="alert" className="mt-3 text-sm text-red-400">
+          <p
+            role="alert"
+            className="mt-3 text-sm text-red-400 [html[data-theme=light]_&]:text-red-700"
+          >
             {error}
           </p>
         )}
@@ -515,14 +522,14 @@ function EventEditor({
             type="button"
             disabled={saving}
             onClick={onClose}
-            className="rounded-lg border border-slate-600 px-4 py-2 text-sm disabled:opacity-50"
+            className="rounded-lg border border-border px-4 py-2 text-sm disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={saving || !form.title.trim() || !form.starts_at}
-            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold hover:bg-indigo-500 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
           >
             {saving ? (
               <LoaderCircle className="h-4 w-4 animate-spin" />
@@ -553,7 +560,7 @@ function EventArtwork({ event }: { event: GameEvent }) {
           src={thumbnail}
           alt=""
           onError={() => setImageFailed(true)}
-          className="h-full w-full object-cover object-center opacity-65"
+          className="h-full w-full object-cover object-center opacity-65 [html[data-theme=light]_&]:opacity-100"
         />
       ) : (
         <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-indigo-800 via-violet-800 to-emerald-800">
@@ -565,9 +572,9 @@ function EventArtwork({ event }: { event: GameEvent }) {
         </div>
       )}
 
-      <div className="absolute inset-0 bg-gradient-to-r from-slate-950/95 via-slate-950/85 to-slate-950/50" />
+      <div className="absolute inset-0 bg-gradient-to-r from-slate-950/95 [html[data-theme=light]_&]:from-white/100 via-slate-950/85 [html[data-theme=light]_&]:via-white/95 to-slate-950/50 [html[data-theme=light]_&]:to-white/35" />
 
-      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/75 via-transparent to-slate-950/20" />
+      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/75 [html[data-theme=light]_&]:from-white/80 via-transparent to-slate-950/20 [html[data-theme=light]_&]:to-transparent" />
     </div>
   );
 }
@@ -576,16 +583,18 @@ function EventDateBadge({ value }: { value: string }) {
   const date = new Date(value);
   return (
     <div className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-xl border border-indigo-400/25 bg-indigo-500/15">
-      <span className="text-xs font-bold uppercase text-indigo-300">
+      <span className="text-xs font-bold uppercase text-link">
         {date.toLocaleDateString(undefined, { month: "short" })}
       </span>
-      <span className="text-xl font-bold text-white">{date.getDate()}</span>
+      <span className="text-xl font-bold text-foreground">
+        {date.getDate()}
+      </span>
     </div>
   );
 }
 function EventMetadata({ event }: { event: GameEvent }) {
   return (
-    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs text-slate-400">
+    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted">
       <span className="inline-flex items-center gap-1.5">
         <CalendarDays className="h-3.5 w-3.5" />
         {dateLabel(event.starts_at)}
@@ -628,7 +637,7 @@ function RsvpButtons({
           className={`rounded-lg border px-3 py-2 text-xs font-semibold disabled:opacity-50 ${
             selected === option.value
               ? "border-indigo-400 bg-indigo-600 text-white"
-              : "border-slate-600 bg-slate-800 text-slate-300 hover:border-indigo-400/50"
+              : "border-slate-600 bg-input text-subtle hover:border-indigo-400/50"
           }`}
         >
           {option.label}
@@ -649,7 +658,7 @@ function HostActions({
       <button
         type="button"
         onClick={onEdit}
-        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-600 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-indigo-400"
+        className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs font-semibold text-subtle [html[data-theme=light]_&]:bg-white/90 hover:border-indigo-400"
       >
         <Pencil className="h-3.5 w-3.5" />
         Edit Event
@@ -657,7 +666,7 @@ function HostActions({
       <button
         type="button"
         onClick={onCancel}
-        className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/40 px-3 py-2 text-xs font-semibold text-red-300 hover:bg-red-500/10"
+        className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/40 px-3 py-2 text-xs font-semibold text-red-300 [html[data-theme=light]_&]:text-red-700 [html[data-theme=light]_&]:bg-white/90 hover:bg-red-500/10"
       >
         <Trash2 className="h-3.5 w-3.5" />
         Cancel Event
@@ -697,12 +706,15 @@ function CancelEventModal({
         if (!saving) onClose();
       }}
     >
-      <p className="text-sm leading-relaxed text-slate-300">
+      <p className="text-sm leading-relaxed text-subtle">
         This will permanently delete <strong>{event.title}</strong> and its
         RSVPs. This cannot be undone.
       </p>
       {error && (
-        <p role="alert" className="mt-3 text-sm text-red-400">
+        <p
+          role="alert"
+          className="mt-3 text-sm text-red-400 [html[data-theme=light]_&]:text-red-700"
+        >
           {error}
         </p>
       )}
@@ -711,7 +723,7 @@ function CancelEventModal({
           type="button"
           disabled={saving}
           onClick={onClose}
-          className="rounded-lg border border-slate-600 px-4 py-2 text-sm"
+          className="rounded-lg border border-border px-4 py-2 text-sm"
         >
           Keep Event
         </button>
@@ -750,38 +762,38 @@ function EventCardDetails({
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="break-words text-xl font-bold text-white drop-shadow-md">
+            <h3 className="break-words text-xl font-bold text-foreground drop-shadow-md [html[data-theme=light]_&]:drop-shadow-none">
               {event.title}
             </h3>
 
             {event.is_host && (
-              <span className="rounded-full border border-indigo-400/30 bg-indigo-500/25 px-2.5 py-1 text-xs font-semibold text-indigo-200 backdrop-blur-sm">
+              <span className="rounded-full border border-indigo-400/30 bg-indigo-500/25 px-2.5 py-1 text-xs font-semibold text-link backdrop-blur-sm">
                 Hosting
               </span>
             )}
           </div>
 
           {event.description && (
-            <p className="mt-3 text-sm leading-relaxed text-slate-200">
+            <p className="mt-3 text-sm leading-relaxed text-subtle">
               {event.description}
             </p>
           )}
 
           {event.game && (
-            <p className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-indigo-200">
+            <p className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-link">
               <Gamepad2 className="h-4 w-4" />
               {event.game.primary_name}
             </p>
           )}
 
           {event.group && (
-            <p className="mt-2 text-xs text-slate-200">
+            <p className="mt-2 text-xs text-subtle">
               Group: {event.group.name}
             </p>
           )}
 
           {event.host && !event.is_host && (
-            <p className="mt-2 text-xs text-slate-200">
+            <p className="mt-2 text-xs text-subtle">
               Hosted by {event.host.display_name}
             </p>
           )}
@@ -797,7 +809,10 @@ function EventCardDetails({
           />
 
           {error && (
-            <p role="alert" className="mt-3 text-xs text-red-300">
+            <p
+              role="alert"
+              className="mt-3 text-xs text-red-300 [html[data-theme=light]_&]:text-red-700"
+            >
               {error}
             </p>
           )}
@@ -844,7 +859,7 @@ function EventCard({
 
   return (
     <>
-      <article className="group relative isolate overflow-hidden rounded-2xl border border-slate-700 bg-zinc-900 transition-all duration-300 hover:border-indigo-400/50 hover:shadow-xl hover:shadow-indigo-500/10">
+      <article className="group relative isolate overflow-hidden rounded-2xl border border-border bg-surface transition-all duration-300 hover:border-indigo-400/50 hover:shadow-xl hover:shadow-indigo-500/10">
         <EventArtwork event={event} />
 
         <EventCardDetails
@@ -895,10 +910,7 @@ function EventsContent({
     return (
       <div role="status" className="space-y-3">
         {[1, 2].map((i) => (
-          <div
-            key={i}
-            className="h-40 animate-pulse rounded-2xl bg-slate-800/50"
-          />
+          <div key={i} className="h-40 animate-pulse rounded-2xl bg-surface" />
         ))}
       </div>
     );
@@ -906,19 +918,19 @@ function EventsContent({
     return (
       <p
         role="alert"
-        className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300"
+        className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300 [html[data-theme=light]_&]:text-red-700"
       >
         {error}
       </p>
     );
   if (events.length === 0)
     return (
-      <div className="rounded-2xl border border-slate-700 bg-zinc-900 p-6 text-center">
-        <Dice5 className="mx-auto h-10 w-10 text-indigo-300" />
-        <h3 className="mt-3 text-lg font-semibold text-white">
+      <div className="rounded-2xl border border-border bg-surface p-6 text-center">
+        <Dice5 className="mx-auto h-10 w-10 text-link" />
+        <h3 className="mt-3 text-lg font-semibold text-foreground">
           No upcoming events yet
         </h3>
-        <p className="mt-2 text-sm text-slate-400">
+        <p className="mt-2 text-sm text-muted">
           Start planning your next game night!
         </p>
         <button
@@ -965,13 +977,13 @@ export default function UpcomingEvents() {
     return () => controller.abort();
   }, []);
   return (
-    <section className="min-w-0 border-t border-gray-600 pt-6">
+    <section className="min-w-0 border-t border-border pt-6">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-2xl font-bold tracking-wide sm:text-3xl">
             UPCOMING EVENTS 🎮
           </h2>
-          <p className="mt-2 text-sm text-slate-400">
+          <p className="mt-2 text-sm text-muted">
             Plan your next game night with the community.
           </p>
         </div>

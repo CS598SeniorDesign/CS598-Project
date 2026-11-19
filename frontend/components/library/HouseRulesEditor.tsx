@@ -36,17 +36,18 @@ export default function HouseRulesEditor({
     return (
       <div className="text-xs">
         {value && (
-          <p className="mb-1 line-clamp-3 whitespace-pre-line text-gray-300">
-            <span className="font-semibold text-gray-400">House rules: </span>
+          <p className="mb-1 line-clamp-3 whitespace-pre-line text-subtle">
+            <span className="font-semibold text-muted">House rules: </span>
             {value}
           </p>
         )}
+
         <button
           type="button"
           disabled={disabled}
           onClick={startEditing}
           aria-label={`${value ? "Edit" : "Add"} house rules for ${gameName}`}
-          className="text-indigo-300 hover:text-indigo-200 disabled:opacity-50"
+          className="text-link hover:underline disabled:opacity-50"
         >
           {value ? "Edit house rules" : "+ Add house rules"}
         </button>
@@ -56,19 +57,21 @@ export default function HouseRulesEditor({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-2">
-      <label className="block text-xs text-gray-400">
+      <label className="block text-xs text-muted">
         House rules for {gameName}
         <textarea
           value={draft}
           maxLength={HOUSE_RULES_MAX_LENGTH}
           rows={4}
           onChange={(event) => setDraft(event.target.value)}
-          className="mt-1 w-full rounded-lg border border-gray-700 bg-[#0F172A] p-2 text-sm text-white"
+          className="mt-1 w-full rounded-lg border border-border bg-input p-2 text-sm text-foreground outline-none focus:border-indigo-500"
         />
       </label>
-      <p className="text-right text-[10px] text-gray-500">
+
+      <p className="text-right text-[10px] text-muted">
         {draft.length} / {HOUSE_RULES_MAX_LENGTH}
       </p>
+
       <div className="flex gap-2">
         <button
           type="submit"
@@ -76,10 +79,11 @@ export default function HouseRulesEditor({
         >
           Save
         </button>
+
         <button
           type="button"
           onClick={() => setEditing(false)}
-          className="flex-1 rounded-lg bg-slate-700 px-3 py-1.5 text-xs font-semibold text-gray-200 hover:bg-slate-600"
+          className="flex-1 rounded-lg border border-border bg-surface-hover px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-background"
         >
           Cancel
         </button>

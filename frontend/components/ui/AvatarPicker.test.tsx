@@ -7,7 +7,7 @@ describe("AvatarPicker", () => {
 
     const avatars = screen.getAllByAltText("avatar");
 
-    expect(avatars).toHaveLength(9);
+    expect(avatars).toHaveLength(12);
   });
 
   it("calls onSelect when an avatar is clicked", () => {

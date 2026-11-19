@@ -79,7 +79,7 @@ export default function Navbar() {
     return null;
 
   return (
-    <header className="w-full bg-[#111827] text-[#F8FAFC] shadow-lg">
+    <header className="w-full bg-navabr text-foreground shadow-lg">
       <nav
         aria-label="Main navigation"
         className="mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-5 py-4 lg:px-8"

@@ -28,6 +28,7 @@ export default function RatingDialog({
 
   useEffect(() => {
     const dialog = dialogRef.current;
+
     // jsdom has no showModal; fall back to a plain open dialog there.
     if (dialog && !dialog.open) {
       if (typeof dialog.showModal === "function") dialog.showModal();
@@ -43,11 +44,12 @@ export default function RatingDialog({
         event.preventDefault();
         onClose();
       }}
-      className="w-full max-w-md rounded-2xl bg-[#1E293B] p-6 text-white backdrop:bg-black/60"
+      className="w-full max-w-md rounded-2xl border border-border bg-surface p-6 text-foreground shadow-2xl backdrop:bg-black/60"
     >
       <h2 id={`rating-dialog-${gameId}`} className="mb-4 text-xl font-bold">
         {rating ? "Edit your rating of" : "Rate"} {gameName}
       </h2>
+
       <RatingEditor
         gameId={gameId}
         gameName={gameName}

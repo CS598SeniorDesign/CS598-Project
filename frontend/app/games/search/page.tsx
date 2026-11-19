@@ -133,7 +133,7 @@ function GameCard({ game }: { game: Game }) {
   return (
     <Link
       href={`/games/${game.bgg_id}`}
-      className="rounded-2xl bg-gray-900 p-4 shadow-lg transition duration-300 hover:scale-105 hover:shadow-indigo-500/20"
+      className="rounded-2xl border border-border bg-surface p-4 text-foreground shadow-sm transition duration-300 hover:scale-105 hover:shadow-lg hover:shadow-indigo-500/20"
     >
       {game.thumbnail_url ? (
         <div className="relative mb-3 h-40 w-full">
@@ -147,19 +147,21 @@ function GameCard({ game }: { game: Game }) {
           />
         </div>
       ) : (
-        <div className="mb-3 flex h-40 items-center justify-center rounded-lg bg-slate-800 text-gray-400">
+        <div className="mb-3 flex h-40 items-center justify-center rounded-lg bg-surface-hover text-muted">
           No image available
         </div>
       )}
 
-      <h2 className="text-lg font-semibold">{game.primary_name}</h2>
+      <h2 className="text-lg font-semibold text-foreground">
+        {game.primary_name}
+      </h2>
 
-      <p className="text-sm text-gray-400">
+      <p className="text-sm text-muted">
         {game.year_published ?? "Year unknown"}
       </p>
 
       {game.average_rating != null && (
-        <p className="mt-2 text-sm text-gray-300">
+        <p className="mt-2 text-sm text-subtle">
           BGG Rating: {Number(game.average_rating).toFixed(1)}
         </p>
       )}
@@ -176,11 +178,11 @@ function GameResults({
   if (!submittedSearch) {
     return (
       <div className="mt-16 text-center">
-        <p className="text-xl font-semibold text-gray-200">
+        <p className="text-xl font-semibold text-foreground">
           Ready to find your next favorite game?
         </p>
 
-        <p className="mt-3 text-gray-400">
+        <p className="mt-3 text-muted">
           Search for a board game to explore titles available through
           BoardGameGeek.
         </p>
@@ -190,23 +192,24 @@ function GameResults({
 
   if (loading) {
     return (
-      <p className="mt-10 text-center text-gray-400">
-        Searching BoardGameGeek...
-      </p>
+      <p className="mt-10 text-center text-muted">Searching BoardGameGeek...</p>
     );
   }
 
   if (error) {
     return (
       <div className="mt-10 text-center">
-        <p role="alert" className="text-red-400">
+        <p
+          role="alert"
+          className="text-red-400 [html[data-theme=light]_&]:text-red-700"
+        >
           {error}
         </p>
 
         {error === "Please log in to search for games." && (
           <Link
             href="/login"
-            className="mt-3 inline-block text-indigo-400 hover:text-indigo-300"
+            className="mt-3 inline-block text-link hover:underline"
           >
             Go to Login
           </Link>
@@ -217,7 +220,7 @@ function GameResults({
 
   if (games.length === 0) {
     return (
-      <p className="mt-10 text-center text-gray-400">
+      <p className="mt-10 text-center text-muted">
         No games found for &quot;{submittedSearch.query}&quot;.
       </p>
     );
@@ -312,12 +315,15 @@ export default function GameSearchPage() {
   const isValidQuery = trimmedQuery.length >= 2 && trimmedQuery.length <= 100;
 
   return (
-    <main className="min-h-screen bg-[#0F172A] p-8 text-[#F8FAFC]">
+    <main className="min-h-screen bg-background p-4 text-foreground sm:p-8">
       <h1 className="mb-2 text-3xl font-bold">Game Search</h1>
 
-      <p className="mb-6 text-gray-400">Find your next favorite game</p>
+      <p className="mb-6 text-muted">Find your next favorite game</p>
 
-      <form onSubmit={handleSearch} className="mb-8 flex gap-4">
+      <form
+        onSubmit={handleSearch}
+        className="mb-8 flex flex-wrap gap-4 sm:flex-nowrap"
+      >
         <input
           type="search"
           placeholder="Search games..."
@@ -325,13 +331,13 @@ export default function GameSearchPage() {
           onChange={(event) => setQuery(event.target.value)}
           maxLength={100}
           aria-label="Search board games"
-          className="w-full rounded-2xl border border-gray-700 bg-gray-900 p-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full min-w-0 rounded-2xl border border-border bg-surface p-4 text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
 
         <button
           type="submit"
           disabled={!isValidQuery}
-          className="rounded-xl bg-indigo-600 px-6 transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-xl bg-primary px-6 py-3 text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Search
         </button>
@@ -340,7 +346,7 @@ export default function GameSearchPage() {
           <button
             type="button"
             onClick={handleClear}
-            className="rounded-xl bg-gray-700 px-4 transition hover:bg-gray-600"
+            className="rounded-xl border border-border bg-surface px-4 py-3 text-foreground transition hover:bg-surface-hover"
           >
             Clear
           </button>
@@ -348,7 +354,10 @@ export default function GameSearchPage() {
       </form>
 
       {!submittedSearch && error && (
-        <p role="alert" className="mb-4 text-red-400">
+        <p
+          role="alert"
+          className="mb-4 text-red-400 [html[data-theme=light]_&]:text-red-700"
+        >
           {error}
         </p>
       )}
