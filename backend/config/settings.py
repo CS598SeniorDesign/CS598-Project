@@ -310,7 +310,8 @@ if SMTP_HOST:
         },
     }
 else:
-    MAILERS = {"default": {"BACKEND": "django.core.mail.backends.console.EmailBackend"}}
+    # No SMTP server in development: print emails (e.g. verification links) to the backend's log, unwrapped.
+    MAILERS = {"default": {"BACKEND": "core.email_backends.ReadableConsoleEmailBackend"}}
 
 DEFAULT_FROM_EMAIL = env.str("DEFAULT_FROM_EMAIL", default="QuestLog <noreply@localhost>")
 # Internationalization

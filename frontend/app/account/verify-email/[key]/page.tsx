@@ -22,7 +22,8 @@ export default function VerifyEmailPage() {
   const [error, setError] = useState("");
   const hasCheckedKey = useRef(false);
 
-  const verificationKey = decodeURIComponent(params.key);
+  // Keys never contain "=" or whitespace; strip any picked up when a link was copied from a wrapped email.
+  const verificationKey = decodeURIComponent(params.key).replace(/[=\s]/g, "");
 
   useEffect(() => {
     if (!verificationKey || hasCheckedKey.current) {
@@ -44,7 +45,7 @@ export default function VerifyEmailPage() {
 
         if (!response.ok) {
           setError(
-            "This verification link is invalid or has expired. Please request a new verification email.",
+            "This verification link is invalid, has expired, or has already been used. If you already verified your email, you can log in.",
           );
           setStatus("error");
           return;
@@ -125,13 +126,23 @@ export default function VerifyEmailPage() {
 
           <p className="mb-6 text-red-600">{error}</p>
 
-          <button
-            type="button"
-            onClick={() => router.push("/signup")}
-            className="rounded-lg bg-blue-600 px-6 py-3 text-white"
-          >
-            Back to Sign Up
-          </button>
+          <div className="flex flex-wrap justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => router.push("/login")}
+              className="rounded-lg bg-blue-600 px-6 py-3 text-white"
+            >
+              Go to Login
+            </button>
+
+            <button
+              type="button"
+              onClick={() => router.push("/signup")}
+              className="rounded-lg border border-blue-600 px-6 py-3 text-blue-400"
+            >
+              Back to Sign Up
+            </button>
+          </div>
         </div>
       </main>
     );
