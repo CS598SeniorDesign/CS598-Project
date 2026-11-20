@@ -14,7 +14,7 @@ dependencies = [
     "requests>=2.34.2",
     "django-allauth[headless,headless-spec]>=65.21.1",
     "fido2>=2.2.1",
-    "pandas>=3.1.0",
+    "pandas>=3.1.1",
     "scikit-learn>=1.9.1",
     "scikit-surprise>=1.1.5",
     "pgvector>=0.5.1",
@@ -32,7 +32,7 @@ dev = [
     "pytest-cov>=7.1.0",
     "pytest-django>=4.14.0",
     "factory-boy>=3.3.1",
-    "ruff>=0.17.3",
+    "ruff>=0.17.4",
     "psycopg2-binary>=2.9.12",
     "whitenoise>=6.12.0",
     "django-migration-linter>=6.0.0",
@@ -45,7 +45,7 @@ prod = [
     "gunicorn>=23.0.0",
 ]
 monitoring = [
-    "mlflow>=3.0",
+    "mlflow>=3.18.0",
     "wandb>=0.21",
 ]
 
