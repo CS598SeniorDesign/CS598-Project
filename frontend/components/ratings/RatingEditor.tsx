@@ -41,6 +41,7 @@ function isComplete(draft: Draft): draft is RatingScores {
 function average(draft: Draft): number | null {
   if (!isComplete(draft)) return null;
   const scores = Object.values(draft);
+
   return scores.reduce((total, score) => total + score, 0) / scores.length;
 }
 
@@ -60,6 +61,7 @@ export default function RatingEditor({
   async function run(action: () => Promise<Rating | null>) {
     setBusy(true);
     setError("");
+
     try {
       onSaved(await action());
     } catch (err) {
@@ -71,7 +73,9 @@ export default function RatingEditor({
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
     if (!isComplete(draft)) return;
+
     void run(() => saveRating(gameId, draft, rating !== null));
   }
 
@@ -86,7 +90,7 @@ export default function RatingEditor({
     <form
       onSubmit={handleSubmit}
       aria-label={`Your rating for ${gameName}`}
-      className="space-y-4"
+      className="space-y-4 text-foreground"
     >
       {RATING_DIMENSIONS.map((dimension) => (
         <StarInput
@@ -96,14 +100,17 @@ export default function RatingEditor({
           value={draft[dimension.key]}
           disabled={busy}
           onChange={(score) =>
-            setDraft((current) => ({ ...current, [dimension.key]: score }))
+            setDraft((current) => ({
+              ...current,
+              [dimension.key]: score,
+            }))
           }
         />
       ))}
 
-      <p className="text-sm text-gray-300">
+      <p className="text-sm text-subtle">
         Overall:{" "}
-        <span className="font-semibold text-[#FACC15]">
+        <span className="font-semibold text-yellow-400 [html[data-theme=light]_&]:text-amber-700">
           {overall === null
             ? "Pick a score for each"
             : `★ ${formatOverall(overall)} / 5`}
@@ -114,26 +121,28 @@ export default function RatingEditor({
         <button
           type="submit"
           disabled={busy || overall === null}
-          className="rounded-xl bg-indigo-600 px-5 py-2 font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-xl bg-primary px-5 py-2 font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {busy ? "Saving..." : "Save rating"}
         </button>
+
         {rating && (
           <button
             type="button"
             disabled={busy}
             onClick={handleDelete}
-            className="rounded-xl px-4 py-2 font-semibold text-red-300 transition hover:bg-red-500/10 disabled:opacity-50"
+            className="rounded-xl px-4 py-2 font-semibold text-red-300 transition hover:bg-red-500/10 disabled:opacity-50 [html[data-theme=light]_&]:text-red-700"
           >
             Delete rating
           </button>
         )}
+
         {onCancel && (
           <button
             type="button"
             disabled={busy}
             onClick={onCancel}
-            className="rounded-xl bg-slate-700 px-4 py-2 font-semibold text-gray-200 transition hover:bg-slate-600"
+            className="rounded-xl border border-border bg-surface-hover px-4 py-2 font-semibold text-foreground transition hover:bg-surface"
           >
             Cancel
           </button>
@@ -141,7 +150,10 @@ export default function RatingEditor({
       </div>
 
       {error && (
-        <p role="alert" className="text-sm text-red-400">
+        <p
+          role="alert"
+          className="text-sm text-red-400 [html[data-theme=light]_&]:text-red-700"
+        >
           {error}
         </p>
       )}

@@ -29,6 +29,7 @@ function useMyRating(gameId: number) {
       })
       .catch((err: unknown) => {
         if (controller.signal.aborted) return;
+
         setLoaded({
           gameId,
           rating: null,
@@ -54,15 +55,19 @@ function useMyRating(gameId: number) {
 function RatingSummary({ rating }: { rating: Rating }) {
   return (
     <div>
-      <p className="text-2xl font-bold text-[#FACC15]">
+      <p className="text-2xl font-bold text-yellow-400 [html[data-theme=light]_&]:text-amber-700">
         ★ {formatOverall(rating.overall_rating)}{" "}
-        <span className="text-base font-normal text-gray-400">/ 5 overall</span>
+        <span className="text-base font-normal text-muted">/ 5 overall</span>
       </p>
+
       <dl className="mt-3 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
         {RATING_DIMENSIONS.map((dimension) => (
           <div key={dimension.key}>
-            <dt className="text-gray-400">{dimension.label}</dt>
-            <dd className="font-semibold">{rating[dimension.key]} / 5</dd>
+            <dt className="text-muted">{dimension.label}</dt>
+
+            <dd className="font-semibold text-foreground">
+              {rating[dimension.key]} / 5
+            </dd>
           </div>
         ))}
       </dl>
@@ -83,14 +88,14 @@ export default function MyRating({
   const [message, setMessage] = useState("");
 
   if (loading) {
-    return <p className="mt-8 text-gray-400">Loading your rating...</p>;
+    return <p className="mt-8 text-muted">Loading your rating...</p>;
   }
 
   return (
-    <section className="mt-8" aria-label="Your rating">
+    <section className="mt-8 text-foreground" aria-label="Your rating">
       <h2 className="mb-3 text-xl font-semibold">Your Rating</h2>
 
-      <div className="rounded-xl bg-gray-900 p-4">
+      <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
         {editing ? (
           <RatingEditor
             gameId={gameId}
@@ -108,17 +113,18 @@ export default function MyRating({
             {rating ? (
               <RatingSummary rating={rating} />
             ) : (
-              <p className="text-gray-400">
+              <p className="text-muted">
                 You haven&apos;t rated this game yet.
               </p>
             )}
+
             <button
               type="button"
               onClick={() => {
                 setMessage("");
                 setEditing(true);
               }}
-              className="mt-4 rounded-xl border border-indigo-500 px-5 py-2 font-semibold text-indigo-300 transition hover:bg-indigo-500/10"
+              className="mt-4 rounded-xl border border-indigo-500 px-5 py-2 font-semibold text-link transition hover:bg-indigo-500/10"
             >
               {rating ? "Edit rating" : "Rate this game"}
             </button>
@@ -127,12 +133,19 @@ export default function MyRating({
       </div>
 
       {message && (
-        <p role="status" className="mt-3 text-green-400">
+        <p
+          role="status"
+          className="mt-3 text-green-400 [html[data-theme=light]_&]:text-green-700"
+        >
           {message}
         </p>
       )}
+
       {error && (
-        <p role="alert" className="mt-3 text-red-400">
+        <p
+          role="alert"
+          className="mt-3 text-red-400 [html[data-theme=light]_&]:text-red-700"
+        >
           {error}
         </p>
       )}

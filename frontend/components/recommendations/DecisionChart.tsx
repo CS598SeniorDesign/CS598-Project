@@ -54,24 +54,27 @@ export default function DecisionChart({
     return (
       <section
         aria-label="Your answers"
-        className="rounded-2xl bg-gray-900 p-6"
+        className="rounded-2xl border border-border bg-surface p-6 text-foreground"
       >
-        <p className="text-sm text-gray-400">Picking games for</p>
+        <p className="text-sm text-muted">Picking games for</p>
+
         <p className="mt-1 text-lg font-semibold">
           {describeAnswers(answers, context)}
         </p>
+
         <div className="mt-4 flex gap-3">
           <button
             type="button"
             onClick={() => setStepIndex(steps.length - 1)}
-            className="rounded-lg bg-slate-800 px-4 py-2 text-sm hover:bg-slate-700"
+            className="rounded-lg border border-border bg-background px-4 py-2 text-sm text-foreground hover:bg-surface-hover"
           >
             ← Change last answer
           </button>
+
           <button
             type="button"
             onClick={restart}
-            className="rounded-lg bg-slate-800 px-4 py-2 text-sm hover:bg-slate-700"
+            className="rounded-lg border border-border bg-background px-4 py-2 text-sm text-foreground hover:bg-surface-hover"
           >
             Start over
           </button>
@@ -85,12 +88,13 @@ export default function DecisionChart({
   return (
     <section
       aria-label="Help me pick a game"
-      className="rounded-2xl bg-gray-900 p-6"
+      className="rounded-2xl border border-border bg-surface p-6 text-foreground"
     >
-      <div className="mb-4 flex items-center justify-between text-sm text-gray-400">
+      <div className="mb-4 flex items-center justify-between text-sm text-muted">
         <span>
           Question {stepIndex + 1} of {steps.length}
         </span>
+
         {stepIndex > 0 && (
           <span className="truncate pl-4">
             {describeAnswers(answers, context)}
@@ -99,7 +103,7 @@ export default function DecisionChart({
       </div>
 
       <div
-        className="mb-6 h-1.5 w-full overflow-hidden rounded-full bg-slate-800"
+        className="mb-6 h-1.5 w-full overflow-hidden rounded-full bg-surface-hover"
         aria-hidden="true"
       >
         <div
@@ -114,6 +118,7 @@ export default function DecisionChart({
         {step.options.map((option) => {
           const isSelected =
             selected !== undefined && selected === option.value;
+
           return (
             <button
               key={String(option.value)}
@@ -122,15 +127,14 @@ export default function DecisionChart({
               onClick={() => choose(option)}
               className={`rounded-xl border px-4 py-3 text-left transition disabled:opacity-50 ${
                 isSelected
-                  ? "border-indigo-400 bg-indigo-600/30"
-                  : "border-slate-700 bg-slate-800 hover:border-indigo-500"
+                  ? "border-indigo-400 bg-indigo-600/20 text-foreground"
+                  : "border-border bg-background text-foreground hover:border-indigo-500 hover:bg-surface-hover"
               }`}
             >
               <span className="block font-medium">{option.label}</span>
+
               {option.hint && (
-                <span className="block text-sm text-gray-400">
-                  {option.hint}
-                </span>
+                <span className="block text-sm text-muted">{option.hint}</span>
               )}
             </button>
           );
@@ -142,10 +146,11 @@ export default function DecisionChart({
           type="button"
           disabled={stepIndex === 0}
           onClick={() => setStepIndex(stepIndex - 1)}
-          className="rounded-lg px-4 py-2 text-sm text-gray-300 hover:text-white disabled:invisible"
+          className="rounded-lg px-4 py-2 text-sm text-subtle hover:text-foreground disabled:invisible"
         >
           ← Back
         </button>
+
         <button
           type="button"
           disabled={disabled}
@@ -153,7 +158,7 @@ export default function DecisionChart({
             setStepIndex(steps.length);
             onComplete(answers);
           }}
-          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium hover:bg-indigo-500 disabled:opacity-50"
+          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
         >
           Show games now
         </button>

@@ -37,9 +37,11 @@ export default function StarInput({
       className="flex items-center justify-between gap-4"
     >
       <legend className="sr-only">{label}</legend>
+
       <div aria-hidden="true">
-        <p className="text-sm font-semibold">{label}</p>
-        {hint && <p className="text-xs text-gray-400">{hint}</p>}
+        <p className="text-sm font-semibold text-foreground">{label}</p>
+
+        {hint && <p className="text-xs text-muted">{hint}</p>}
       </div>
 
       <div className="flex">
@@ -57,12 +59,13 @@ export default function StarInput({
               aria-label={`${score} ${score === 1 ? "star" : "stars"}`}
               className="peer sr-only"
             />
+
             <span
               aria-hidden="true"
               className={`rounded transition peer-focus-visible:ring-2 peer-focus-visible:ring-indigo-400 ${
                 score <= value
-                  ? "text-[#FACC15]"
-                  : "text-gray-600 hover:text-gray-400"
+                  ? "text-[#FACC15] [html[data-theme=light]_&]:text-amber-600"
+                  : "text-gray-600 hover:text-gray-400 [html[data-theme=light]_&]:text-slate-400 [html[data-theme=light]_&]:hover:text-amber-500"
               }`}
             >
               ★

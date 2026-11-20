@@ -56,7 +56,7 @@ type Loadable<T> = {
 const weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 const cardClass =
-  "rounded-2xl bg-[#1E293B]/70 p-5 shadow-lg transition duration-300 hover:shadow-xl hover:shadow-indigo-500/10";
+  "rounded-2xl bg-surface p-5 shadow-lg transition duration-300 hover:shadow-xl hover:shadow-indigo-500/10";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -303,7 +303,7 @@ function UserMenu() {
         aria-expanded={menuOpen}
         aria-controls="dashboard-account-menu"
         onClick={() => setMenuOpen((open) => !open)}
-        className="flex items-center gap-3 rounded-lg p-2 hover:bg-white/10"
+        className="flex items-center gap-3 rounded-lg p-2 hover:bg-surface-hover"
       >
         {avatar?.startsWith("/avatars/") ? (
           <Image
@@ -314,7 +314,7 @@ function UserMenu() {
             className="h-8 w-8 rounded-full object-cover"
           />
         ) : (
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-sm font-bold">
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-white text-sm font-bold">
             {profile.data.charAt(0).toUpperCase() || "?"}
           </span>
         )}
@@ -328,35 +328,38 @@ function UserMenu() {
       {menuOpen && (
         <div
           id="dashboard-account-menu"
-          className="absolute right-0 top-full z-50 mt-2 w-48 rounded-xl border border-slate-700 bg-[#1E293B] p-2 shadow-xl"
+          className="absolute right-0 top-full z-50 mt-2 w-48 rounded-xl border border-border bg-surface p-2 shadow-xl"
         >
           <Link
             href="/profile"
             onClick={() => setMenuOpen(false)}
-            className="block rounded-lg px-3 py-2 text-sm hover:bg-white/10"
+            className="block rounded-lg px-3 py-2 text-sm hover:bg-surface-hover"
           >
             My Profile
           </Link>
           <Link
             href="/settings"
             onClick={() => setMenuOpen(false)}
-            className="block rounded-lg px-3 py-2 text-sm hover:bg-white/10"
+            className="block rounded-lg px-3 py-2 text-sm hover:bg-surface-hover"
           >
             Settings
           </Link>
-          <div className="my-2 border-t border-slate-700" />
+          <div className="my-2 border-t border-border" />
           <button
             type="button"
             onClick={() => void handleLogout()}
             disabled={loggingOut}
-            className="w-full rounded-lg px-3 py-2 text-left text-sm text-red-300 hover:bg-white/10 disabled:opacity-50"
+            className="w-full rounded-lg px-3 py-2 text-left text-sm text-red-300 [html[data-theme=light]_&]:text-red-700 hover:bg-surface-hover disabled:opacity-50"
           >
             {loggingOut ? "Logging Out..." : "Log Out"}
           </button>
         </div>
       )}
       {logoutError && (
-        <p role="alert" className="text-xs text-red-400">
+        <p
+          role="alert"
+          className="text-xs text-red-400 [html[data-theme=light]_&]:text-red-700"
+        >
           {logoutError}
         </p>
       )}
@@ -366,25 +369,25 @@ function UserMenu() {
 
 function DashboardNavbar() {
   return (
-    <header className="flex flex-wrap items-center justify-between gap-4 bg-gradient-to-r from-[#1E293B] to-[#0F172A] px-4 py-4 shadow-xl sm:px-8">
+    <header className="flex flex-wrap items-center justify-between gap-4 bg-gradient-to-r from-surface to-background px-4 py-4 shadow-xl sm:px-8">
       <Link href="/" className="text-xl font-bold">
         QuestLog
       </Link>
 
       <nav
         aria-label="Dashboard navigation"
-        className="flex flex-wrap items-center gap-4 text-gray-300 lg:gap-10"
+        className="flex flex-wrap items-center gap-4 text-subtle lg:gap-10"
       >
-        <Link href="/library" className="hover:text-white">
+        <Link href="/library" className="hover:text-foreground">
           Game Library
         </Link>
-        <Link href="/recommendations" className="hover:text-white">
+        <Link href="/recommendations" className="hover:text-foreground">
           Recommendations for you
         </Link>
-        <Link href="/community" className="hover:text-white">
+        <Link href="/community" className="hover:text-foreground">
           Weeple
         </Link>
-        <Link href="/analytics" className="hover:text-white">
+        <Link href="/analytics" className="hover:text-foreground">
           Your Analytics
         </Link>
       </nav>
@@ -410,19 +413,22 @@ function StatusMessage({
   emptyText: string;
 }) {
   if (loading) {
-    return <p className="text-sm text-gray-400">{loadingText}</p>;
+    return <p className="text-sm text-muted">{loadingText}</p>;
   }
 
   if (error) {
     return (
-      <p role="alert" className="text-sm text-red-400">
+      <p
+        role="alert"
+        className="text-sm text-red-400 [html[data-theme=light]_&]:text-red-700"
+      >
         {error}
       </p>
     );
   }
 
   if (empty && !hasData) {
-    return <p className="text-sm text-gray-400">{emptyText}</p>;
+    return <p className="text-sm text-muted">{emptyText}</p>;
   }
 
   return null;
@@ -441,7 +447,7 @@ function GameCover({
 }) {
   if (!game.thumbnail_url) {
     return (
-      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-700 text-xl">
+      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-surface-hover text-xl">
         🎲
       </div>
     );
@@ -477,7 +483,7 @@ function RecentlyPlayed({ state }: { state: Loadable<ApiPlay[]> }) {
 
   return (
     <section className={`${cardClass} lg:col-span-2`}>
-      <h2 className="mb-4 text-gray-300">Recently Played</h2>
+      <h2 className="mb-4 text-subtle">Recently Played</h2>
 
       <StatusMessage
         loading={state.loading}
@@ -505,7 +511,7 @@ function RecentlyPlayed({ state }: { state: Loadable<ApiPlay[]> }) {
               <p className="text-sm font-semibold">{game.primary_name}</p>
 
               {typeof game.average_rating === "number" && (
-                <p className="text-sm text-[#FFBF00]">
+                <p className="text-sm text-[#FFBF00] [html[data-theme=light]_&]:text-amber-700">
                   BGG {game.average_rating.toFixed(1)}/10
                 </p>
               )}
@@ -569,7 +575,7 @@ function CalendarCell({
           ? `${count} logged session${count === 1 ? "" : "s"}`
           : undefined
       }
-      className="relative flex h-12 flex-col items-center justify-center rounded-lg bg-[#0F172A]"
+      className="relative flex h-12 flex-col items-center justify-center rounded-lg bg-background"
     >
       {day}
 
@@ -597,14 +603,14 @@ function PlayCalendar({ plays }: { plays: ApiPlay[] }) {
 
   return (
     <section className={cardClass}>
-      <h2 className="mb-2 text-gray-300">Calendar</h2>
+      <h2 className="mb-2 text-subtle">Calendar</h2>
 
       <div className="mb-3 flex items-center justify-between gap-2">
         <button
           type="button"
           aria-label="Previous month"
           onClick={() => changeMonth(-1)}
-          className="rounded-lg px-3 py-1 hover:bg-[#4F46E5]"
+          className="rounded-lg px-3 py-1 hover:bg-primary hover:text-white"
         >
           ‹
         </button>
@@ -620,13 +626,13 @@ function PlayCalendar({ plays }: { plays: ApiPlay[] }) {
           type="button"
           aria-label="Next month"
           onClick={() => changeMonth(1)}
-          className="rounded-lg px-3 py-1 hover:bg-[#4F46E5]"
+          className="rounded-lg px-3 py-1 hover:bg-primary hover:text-white"
         >
           ›
         </button>
       </div>
 
-      <div className="mb-2 grid grid-cols-7 text-center text-xs text-gray-400">
+      <div className="mb-2 grid grid-cols-7 text-center text-xs text-muted">
         {weekdays.map((day) => (
           <div key={day}>{day}</div>
         ))}
@@ -665,14 +671,14 @@ function RecentPlayItem({ play }: { play: ApiPlay }) {
   return (
     <Link
       href={`/games/${play.game.bgg_id}`}
-      className="mb-2 flex gap-3 rounded-lg bg-[#0F172A] p-3 transition hover:bg-[#28354E]"
+      className="mb-2 flex gap-3 rounded-lg bg-background p-3 transition hover:bg-surface-hover"
     >
       <GameCover game={play.game} />
 
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold">{play.game.primary_name}</p>
 
-        <p className="text-xs text-gray-400">
+        <p className="text-xs text-muted">
           {formatPlayDate(play.play_date)}
           {" | "}
           {play.players.length} players
@@ -683,7 +689,7 @@ function RecentPlayItem({ play }: { play: ApiPlay }) {
       </div>
 
       {winnerRecorded && (
-        <span className="text-xs font-semibold text-[#10B981]">
+        <span className="text-xs font-semibold text-[#10B981] [html[data-theme=light]_&]:text-emerald-700">
           Winner recorded
         </span>
       )}
@@ -743,10 +749,10 @@ function FeedActivityItem({ item }: { item: FeedActivity }) {
     : item.actor?.display_name || "Player";
 
   return (
-    <article className="mb-2 flex items-center gap-3 rounded-lg bg-[#0F172A] p-2">
+    <article className="mb-2 flex items-center gap-3 rounded-lg bg-background p-2">
       <div
         aria-hidden="true"
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-600 font-semibold"
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-white font-semibold"
       >
         {actorName.charAt(0).toUpperCase()}
       </div>
@@ -761,16 +767,16 @@ function FeedActivityItem({ item }: { item: FeedActivity }) {
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold">
           {actorName}
-          <span className="ml-2 text-xs font-normal text-gray-400">
+          <span className="ml-2 text-xs font-normal text-muted">
             {formatActivityDate(item.occurred_at)}
           </span>
         </p>
 
-        <p className="text-xs text-gray-400">
+        <p className="text-xs text-muted">
           {activityVerb(item)}{" "}
           <Link
             href={`/games/${item.game.bgg_id}`}
-            className="text-indigo-300 hover:underline"
+            className="text-link hover:underline"
           >
             {item.game.primary_name}
           </Link>
@@ -788,7 +794,7 @@ function CommunityFeed({ state }: { state: Loadable<FeedActivity[]> }) {
 
         <Link
           href="/community"
-          className="text-sm font-medium text-indigo-400 hover:text-indigo-300 hover:underline"
+          className="text-sm font-medium text-link hover:text-link hover:underline"
         >
           View Community →
         </Link>
@@ -813,10 +819,10 @@ function CommunityFeed({ state }: { state: Loadable<FeedActivity[]> }) {
 
 function FriendItem({ friend }: { friend: Friend }) {
   return (
-    <div className="mb-2 flex items-center gap-3 rounded-lg bg-[#0F172A] p-2">
+    <div className="mb-2 flex items-center gap-3 rounded-lg bg-background p-2">
       <div
         aria-hidden="true"
-        className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-600 text-sm font-semibold"
+        className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-600 text-white text-sm font-semibold"
       >
         {friend.display_name.charAt(0).toUpperCase() || "?"}
       </div>
@@ -834,7 +840,7 @@ function Members({ state }: { state: Loadable<Friend[]> }) {
 
         <Link
           href="/community"
-          className="text-sm font-medium text-indigo-400 hover:text-indigo-300 hover:underline"
+          className="text-sm font-medium text-link hover:text-link hover:underline"
         >
           View Weeple →
         </Link>
@@ -863,15 +869,15 @@ export default function Page() {
   const friends = useApiList("/api/v1/friends/", isFriend);
 
   return (
-    <div className="min-h-screen bg-[#0F172A] text-[#F8FAFC]">
+    <div className="min-h-screen bg-background text-foreground">
       <DashboardNavbar />
 
       <main className="p-4 sm:p-8">
-        <h1 className="text-4xl font-extrabold tracking-tight text-white">
+        <h1 className="text-4xl font-extrabold tracking-tight text-foreground">
           Welcome to QuestLog
         </h1>
 
-        <p className="mb-6 text-gray-400">Your shared activity hub</p>
+        <p className="mb-6 text-muted">Your shared activity hub</p>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <RecentlyPlayed state={plays} />

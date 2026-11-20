@@ -37,30 +37,31 @@ export default function RecommendationStrip({
   return (
     <section className={className} aria-label={title}>
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-xl font-semibold">{title}</h2>
+        <h2 className="text-xl font-semibold text-foreground">{title}</h2>
+
         <Link
           href="/recommendations"
-          className="text-sm text-indigo-400 hover:text-indigo-300"
+          className="text-sm text-link hover:text-foreground"
         >
           More recommendations →
         </Link>
       </div>
 
       {error ? (
-        <p className="text-sm text-gray-400">{error}</p>
+        <p className="text-sm text-muted">{error}</p>
       ) : items === null ? (
-        <p role="status" className="text-sm text-gray-400">
+        <p role="status" className="text-sm text-muted">
           Loading suggestions...
         </p>
       ) : visible.length === 0 ? (
-        <p className="text-sm text-gray-400">{emptyMessage}</p>
+        <p className="text-sm text-muted">{emptyMessage}</p>
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           {visible.map(({ game, reason }) => (
             <Link
               key={game.bgg_id}
               href={`/games/${game.bgg_id}`}
-              className="group rounded-xl bg-[#0F172A] p-3 transition hover:shadow-[0_0_20px_rgba(79,70,229,0.3)]"
+              className="group rounded-xl border border-border bg-surface p-3 text-foreground transition hover:border-indigo-400/50 hover:shadow-[0_0_20px_rgba(79,70,229,0.2)]"
             >
               {game.thumbnail_url ? (
                 <div className="relative mb-2 h-28 w-full">
@@ -74,15 +75,17 @@ export default function RecommendationStrip({
                   />
                 </div>
               ) : (
-                <div className="mb-2 flex h-28 items-center justify-center rounded-lg bg-slate-800 text-xs text-gray-400">
+                <div className="mb-2 flex h-28 items-center justify-center rounded-lg bg-background text-xs text-muted">
                   No image
                 </div>
               )}
-              <p className="truncate text-sm font-semibold group-hover:text-indigo-300">
+
+              <p className="truncate text-sm font-semibold text-foreground group-hover:text-link">
                 {game.primary_name}
               </p>
+
               {reason && (
-                <p className="line-clamp-2 text-xs text-gray-400">{reason}</p>
+                <p className="line-clamp-2 text-xs text-muted">{reason}</p>
               )}
             </Link>
           ))}

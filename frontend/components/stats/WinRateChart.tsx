@@ -18,22 +18,40 @@ export default function WinRateChart({
 
   return (
     <div className={className}>
-      <ResponsiveContainer width={300} height={300}>
-        <PieChart>
-          <Pie
-            data={chartData}
-            dataKey="value"
-            nameKey="label"
-            outerRadius={100}
-            innerRadius={60}
-            paddingAngle={2}
-          >
-            <Cell fill="#10B981" />
-            <Cell fill="#EF4444" />
-          </Pie>
-          <Tooltip />
-        </PieChart>
-      </ResponsiveContainer>
+      <div className="h-[300px] w-full max-w-[300px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={chartData}
+              dataKey="value"
+              nameKey="label"
+              outerRadius={100}
+              innerRadius={60}
+              paddingAngle={2}
+              stroke="var(--surface)"
+              strokeWidth={2}
+            >
+              <Cell fill="#10B981" />
+              <Cell fill="#EF4444" />
+            </Pie>
+
+            <Tooltip
+              contentStyle={{
+                backgroundColor: "var(--surface)",
+                border: "1px solid var(--border)",
+                borderRadius: 12,
+                color: "var(--foreground)",
+              }}
+              labelStyle={{
+                color: "var(--foreground)",
+              }}
+              itemStyle={{
+                color: "var(--foreground)",
+              }}
+            />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }

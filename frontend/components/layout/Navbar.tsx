@@ -23,19 +23,25 @@ export default function Navbar() {
 
   useEffect(() => {
     let active = true;
+
     async function checkSession() {
       setIsLoading(true);
+
       try {
         const response = await fetch("/_allauth/browser/v1/auth/session", {
           credentials: "same-origin",
           cache: "no-store",
         });
+
         if (!active) return;
+
         if (!response.ok) {
           setIsAuthenticated(false);
           return;
         }
+
         const result: SessionResponse = await response.json();
+
         if (active) setIsAuthenticated(result.meta?.is_authenticated === true);
       } catch {
         if (active) setIsAuthenticated(false);
@@ -43,7 +49,9 @@ export default function Navbar() {
         if (active) setIsLoading(false);
       }
     }
+
     void checkSession();
+
     return () => {
       active = false;
     };
@@ -51,19 +59,25 @@ export default function Navbar() {
 
   async function handleLogout() {
     if (isLoggingOut) return;
+
     setIsLoggingOut(true);
     setError("");
+
     try {
       const csrfToken = getCookie("csrf_token");
+
       if (!csrfToken)
         throw new Error("Missing security token. Refresh and try again.");
+
       const response = await fetch("/_allauth/browser/v1/auth/session", {
         method: "DELETE",
         credentials: "same-origin",
         headers: { "X-CSRFToken": csrfToken },
       });
+
       if (!response.ok && response.status !== 401)
         throw new Error("Unable to log out. Please try again.");
+
       setIsAuthenticated(false);
       router.replace("/login");
       router.refresh();
@@ -79,17 +93,18 @@ export default function Navbar() {
     return null;
 
   return (
-    <header className="w-full bg-[#111827] text-[#F8FAFC] shadow-lg">
+    <header className="w-full border-b border-border bg-navbar text-foreground shadow-sm">
       <nav
         aria-label="Main navigation"
         className="mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-5 py-4 lg:px-8"
       >
         <Link
           href="/"
-          className="text-2xl font-extrabold tracking-tight transition hover:text-indigo-300"
+          className="text-2xl font-extrabold tracking-tight text-foreground transition hover:text-link"
         >
           QuestLog
         </Link>
+
         {!isLoading && (
           <div className="flex items-center gap-4 text-sm">
             {isAuthenticated ? (
@@ -97,18 +112,22 @@ export default function Navbar() {
                 type="button"
                 onClick={() => void handleLogout()}
                 disabled={isLoggingOut}
-                className="rounded-lg bg-indigo-600 px-4 py-2 font-medium transition hover:bg-indigo-500 disabled:opacity-50"
+                className="rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white transition hover:bg-indigo-500 disabled:opacity-50"
               >
                 {isLoggingOut ? "Logging Out..." : "Log Out"}
               </button>
             ) : (
               <>
-                <Link href="/login" className="hover:text-indigo-300">
+                <Link
+                  href="/login"
+                  className="font-medium text-foreground transition hover:text-link"
+                >
                   Login
                 </Link>
+
                 <Link
                   href="/signup"
-                  className="rounded-lg bg-indigo-600 px-4 py-2 font-medium transition hover:bg-indigo-500"
+                  className="rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white transition hover:bg-indigo-500"
                 >
                   Sign Up
                 </Link>
@@ -117,8 +136,12 @@ export default function Navbar() {
           </div>
         )}
       </nav>
+
       {error && (
-        <p role="alert" className="px-8 pb-3 text-right text-sm text-red-400">
+        <p
+          role="alert"
+          className="px-8 pb-3 text-right text-sm text-red-400 [html[data-theme=light]_&]:text-red-700"
+        >
           {error}
         </p>
       )}

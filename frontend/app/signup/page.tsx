@@ -124,21 +124,21 @@ export default function SignupPage() {
 
   if (signupComplete) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-black text-white">
-        <div className="w-full max-w-md bg-gray-900 p-8 rounded-xl text-center">
-          <h1 className="text=3xl font-bold mb-4">Check Your Email</h1>
+      <div className="min-h-screen flex items-center justify-center bg-background text-foreground p-4">
+        <div className="w-full max-w-md rounded-xl border border-border bg-surface p-8 shadow-sm text-center">
+          <h1 className="text-3xl font-bold mb-4">Check Your Email</h1>
 
-          <p className="text-gray-300 mb-4">
+          <p className="text-subtle mb-4">
             Your QuestLog account was created successfully.
           </p>
 
-          <p className="text-gray-400">
+          <p className="text-muted">
             We sent a verification link to{" "}
-            <span className="text-white font-medium">{email}</span>. Verify your
-            email to continue setting up your account.
+            <span className="text-foreground font-medium">{email}</span>. Verify
+            your email to continue setting up your account.
           </p>
 
-          <p className="text-sm text-gray-500 mt-6">
+          <p className="text-sm text-muted mt-6">
             After verifying your email, you can continue with MFA setup.
           </p>
         </div>
@@ -147,8 +147,8 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black text-white">
-      <div className="w-full max-w-md bg-gray-900 p-8 rounded-xl">
+    <div className="min-h-screen flex items-center justify-center bg-background text-foreground p-4">
+      <div className="w-full max-w-md rounded-xl border border-border bg-surface p-8 shadow-sm">
         <h1 className="text-3xl font-bold mb-6">Create Account</h1>
 
         <form
@@ -162,7 +162,7 @@ export default function SignupPage() {
             autoComplete="off"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            className="p-3 rounded bg-gray-800 border border-gray-700"
+            className="rounded-lg border border-border bg-input p-3 text-foreground placeholder:text-muted outline-none focus:border-indigo-500 disabled:opacity-60"
             required
             disabled={isLoading}
           />
@@ -173,7 +173,7 @@ export default function SignupPage() {
             autoComplete="new-password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            className="p-3 rounded bg-gray-800 border border-gray-700"
+            className="rounded-lg border border-border bg-input p-3 text-foreground placeholder:text-muted outline-none focus:border-indigo-500 disabled:opacity-60"
             required
             disabled={isLoading}
           />
@@ -183,7 +183,7 @@ export default function SignupPage() {
             <select
               value={privacy}
               onChange={(event) => setPrivacy(event.target.value)}
-              className="p-3 rounded bg-gray-800 border border-gray-700"
+              className="rounded-lg border border-border bg-input p-3 text-foreground placeholder:text-muted outline-none focus:border-indigo-500 disabled:opacity-60"
               disabled={isLoading}
             >
               <option value="public">Public</option>
@@ -193,7 +193,10 @@ export default function SignupPage() {
           </label>
 
           {error && (
-            <p role="alert" className="text-sm text-red-400">
+            <p
+              role="alert"
+              className="text-sm text-red-400 [html[data-theme=light]_&]:text-red-700"
+            >
               {error}
             </p>
           )}
@@ -201,15 +204,15 @@ export default function SignupPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="bg-primary py-2 rounded-lg hover:opacity-90 disabled:opacity-60"
+            className="bg-primary py-2 font-medium text-white rounded-lg hover:opacity-90 disabled:opacity-60"
           >
             {isLoading ? "Creating Account..." : "Sign Up"}
           </button>
         </form>
 
-        <p className="text-sm text-gray-400 mt-6 text-center">
+        <p className="text-sm text-muted mt-6 text-center">
           Already have an account?{" "}
-          <a href="/login" className="text-white underline">
+          <a href="/login" className="text-link underline">
             Login
           </a>
         </p>

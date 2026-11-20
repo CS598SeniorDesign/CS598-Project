@@ -1,5 +1,6 @@
 import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
+import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -7,16 +8,34 @@ export const metadata: Metadata = {
   description: "Track and discover your favorite board games.",
 };
 
+const themeScript = `
+  (function () {
+    try {
+      var theme = localStorage.getItem("questlog-theme");
+      document.documentElement.dataset.theme =
+        theme === "light" ? "light" : "dark";
+    } catch {
+      document.documentElement.dataset.theme = "dark";
+    }
+  })();
+`;
+
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className="min-h-screen bg-background text-white">
-        <Navbar />
-        <main>{children}</main>
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
+
+      <body className="min-h-screen bg-background text-foreground">
+        <ThemeProvider>
+          <Navbar />
+          <main>{children}</main>
+        </ThemeProvider>
       </body>
     </html>
   );

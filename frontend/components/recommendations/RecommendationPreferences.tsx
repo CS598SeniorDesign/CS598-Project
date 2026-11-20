@@ -53,20 +53,22 @@ function TagPicker({
 
   return (
     <fieldset className="mt-6">
-      <legend className="mb-2 font-semibold">{legend}</legend>
+      <legend className="mb-2 font-semibold text-foreground">{legend}</legend>
+
       <div className="flex max-h-48 flex-wrap gap-2 overflow-y-auto">
         {tags.map((tag) => {
           const active = selected.includes(tag.bgg_id);
+
           return (
             <button
               key={tag.bgg_id}
               type="button"
               aria-pressed={active}
               onClick={() => onToggle(tag.bgg_id)}
-              className={`rounded-full px-3 py-1 text-sm transition ${
+              className={`rounded-full border px-3 py-1 text-sm transition ${
                 active
-                  ? "bg-indigo-600 text-white"
-                  : "bg-slate-800 text-gray-300 hover:bg-slate-700"
+                  ? "border-indigo-600 bg-indigo-600 text-white"
+                  : "border-border bg-background text-subtle hover:bg-surface-hover"
               }`}
             >
               {tag.name}
@@ -91,14 +93,15 @@ function NumberField({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-sm text-gray-400">{label}</span>
+      <span className="mb-1 block text-sm text-muted">{label}</span>
+
       <input
         type="number"
         min={1}
         max={max}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-lg border border-gray-700 bg-slate-800 p-2"
+        className="w-full rounded-lg border border-border bg-input p-2 text-foreground outline-none focus:border-indigo-500"
       />
     </label>
   );
@@ -114,21 +117,29 @@ function SaveRow({
   error: string;
 }) {
   return (
-    <div className="mt-6 flex items-center gap-4">
+    <div className="mt-6 flex flex-wrap items-center gap-4">
       <button
         type="submit"
         disabled={saving}
-        className="rounded-xl bg-indigo-600 px-6 py-2 font-semibold hover:bg-indigo-500 disabled:opacity-50"
+        className="rounded-xl bg-indigo-600 px-6 py-2 font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
       >
         {saving ? "Saving..." : "Save preferences"}
       </button>
+
       {message && (
-        <p role="status" className="text-green-400">
+        <p
+          role="status"
+          className="text-green-400 [html[data-theme=light]_&]:text-green-700"
+        >
           {message}
         </p>
       )}
+
       {error && (
-        <p role="alert" className="text-red-400">
+        <p
+          role="alert"
+          className="text-red-400 [html[data-theme=light]_&]:text-red-700"
+        >
           {error}
         </p>
       )}
@@ -184,6 +195,7 @@ export default function RecommendationPreferences({
         preferred_max_play_time: toNumberOrNull(playTime),
         preferred_complexity: complexity || null,
       });
+
       setMessage("Preferences saved.");
     } catch (err) {
       setError(
@@ -198,7 +210,7 @@ export default function RecommendationPreferences({
     <form
       onSubmit={handleSubmit}
       aria-label="Recommendation preferences"
-      className="rounded-2xl bg-gray-900 p-6"
+      className="rounded-2xl border border-border bg-surface p-6 text-foreground"
     >
       <label className="flex items-start gap-3">
         <input
@@ -207,11 +219,13 @@ export default function RecommendationPreferences({
           onChange={(event) => setOptedIn(event.target.checked)}
           className="mt-1 h-5 w-5 accent-indigo-500"
         />
+
         <span>
           <span className="block font-semibold">
             Use my plays, library and likes to personalize recommendations
           </span>
-          <span className="block text-sm text-gray-400">
+
+          <span className="block text-sm text-muted">
             Off by default. Unlocks &quot;Recommended for you&quot;,
             &quot;Players like you enjoy&quot; and the other personal picks.
           </span>
@@ -225,18 +239,21 @@ export default function RecommendationPreferences({
           value={playerCount}
           onChange={setPlayerCount}
         />
+
         <NumberField
           label="Longest game (minutes)"
           max={1440}
           value={playTime}
           onChange={setPlayTime}
         />
+
         <label className="block">
-          <span className="mb-1 block text-sm text-gray-400">Complexity</span>
+          <span className="mb-1 block text-sm text-muted">Complexity</span>
+
           <select
             value={complexity}
             onChange={(event) => setComplexity(event.target.value)}
-            className="w-full rounded-lg border border-gray-700 bg-slate-800 p-2"
+            className="w-full rounded-lg border border-border bg-input p-2 text-foreground outline-none focus:border-indigo-500"
           >
             {COMPLEXITY_POINTS.map((point) => (
               <option key={point.value} value={point.value}>
@@ -253,6 +270,7 @@ export default function RecommendationPreferences({
         selected={categories}
         onToggle={(id) => setCategories((list) => toggle(list, id))}
       />
+
       <TagPicker
         legend="Favorite mechanics"
         tags={options?.mechanics}

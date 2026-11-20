@@ -25,6 +25,7 @@ const DAY_OPTIONS: Choice[] = [
 ];
 
 const CURRENT_YEAR = new Date().getFullYear();
+
 const YEAR_OPTIONS: Choice[] = Array.from({ length: 6 }, (_, index) => {
   const year = String(CURRENT_YEAR - index);
   return { key: year, label: year };
@@ -46,13 +47,15 @@ function FilterSelect({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-sm text-gray-400">{label}</span>
+      <span className="mb-1 block text-sm text-muted">{label}</span>
+
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="rounded-lg border border-gray-700 bg-slate-800 p-2"
+        className="rounded-lg border border-border bg-input p-2 text-foreground outline-none focus:border-indigo-500"
       >
         {blankLabel !== undefined && <option value="">{blankLabel}</option>}
+
         {choices.map((choice) => (
           <option key={choice.key} value={choice.key}>
             {choice.label}
@@ -84,6 +87,7 @@ export default function StrategyFilters({
   onChange,
 }: StrategyFiltersProps) {
   const usingYear = values.year !== undefined;
+
   const filters = [
     parameters.includes("period") && (
       <FilterSelect
@@ -95,6 +99,7 @@ export default function StrategyFilters({
         onChange={(period) => onChange({ period: period || undefined })}
       />
     ),
+
     parameters.includes("year") && (
       <FilterSelect
         key="year"
@@ -105,6 +110,7 @@ export default function StrategyFilters({
         onChange={(year) => onChange({ year: toNumber(year) })}
       />
     ),
+
     parameters.includes("days") && (
       <FilterSelect
         key="days"

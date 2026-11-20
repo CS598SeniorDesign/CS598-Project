@@ -71,7 +71,7 @@ function GameImage({ game }: { game: GameDetails }) {
 
   if (!imageUrl) {
     return (
-      <div className="flex h-80 items-center justify-center rounded-2xl bg-slate-800 text-gray-400">
+      <div className="flex h-80 items-center justify-center rounded-2xl border border-border bg-surface text-muted">
         No image available
       </div>
     );
@@ -96,13 +96,13 @@ function GameTags({ title, items }: { title: string; items: GameAttribute[] }) {
 
   return (
     <section className="mt-6">
-      <h2 className="mb-3 text-xl font-semibold">{title}</h2>
+      <h2 className="mb-3 text-xl font-semibold text-foreground">{title}</h2>
 
       <div className="flex flex-wrap gap-2">
         {items.map((item) => (
           <span
             key={item.bgg_id}
-            className="rounded-full bg-indigo-600 px-3 py-1 text-sm"
+            className="rounded-full bg-indigo-600 px-3 py-1 text-sm text-white [html[data-theme=light]_&]:bg-indigo-100 [html[data-theme=light]_&]:text-indigo-800"
           >
             {item.name}
           </span>
@@ -114,16 +114,16 @@ function GameTags({ title, items }: { title: string; items: GameAttribute[] }) {
 
 function GameInformation({ game }: { game: GameDetails }) {
   return (
-    <div className="grid grid-cols-2 gap-4 rounded-2xl bg-gray-900 p-6 sm:grid-cols-3">
+    <div className="grid grid-cols-2 gap-4 rounded-2xl border border-border bg-surface p-6 text-foreground shadow-sm sm:grid-cols-3">
       <div>
-        <p className="text-sm text-gray-400">Players</p>
+        <p className="text-sm text-muted">Players</p>
         <p className="font-semibold">
           {game.minimum_players ?? "?"}–{game.maximum_players ?? "?"}
         </p>
       </div>
 
       <div>
-        <p className="text-sm text-gray-400">Playing Time</p>
+        <p className="text-sm text-muted">Playing Time</p>
         <p className="font-semibold">
           {game.playing_time != null
             ? `${game.playing_time} minutes`
@@ -132,20 +132,20 @@ function GameInformation({ game }: { game: GameDetails }) {
       </div>
 
       <div>
-        <p className="text-sm text-gray-400">Minimum Age</p>
+        <p className="text-sm text-muted">Minimum Age</p>
         <p className="font-semibold">
           {game.minimum_age != null ? `${game.minimum_age}+` : "Unknown"}
         </p>
       </div>
 
       <div>
-        <p className="text-sm text-gray-400">Published</p>
+        <p className="text-sm text-muted">Published</p>
         <p className="font-semibold">{game.year_published ?? "Unknown"}</p>
       </div>
 
       <div>
-        <p className="text-sm text-gray-400">BGG Rating</p>
-        <p className="font-semibold">
+        <p className="text-sm text-muted">BGG Rating</p>
+        <p className="font-semibold text-yellow-400 [html[data-theme=light]_&]:text-amber-700">
           {game.average_rating != null
             ? Number(game.average_rating).toFixed(1)
             : "Not rated"}
@@ -153,7 +153,7 @@ function GameInformation({ game }: { game: GameDetails }) {
       </div>
 
       <div>
-        <p className="text-sm text-gray-400">BGG Rank</p>
+        <p className="text-sm text-muted">BGG Rank</p>
         <p className="font-semibold">{game.bgg_rank ?? "Unranked"}</p>
       </div>
     </div>
@@ -167,7 +167,7 @@ function GameContent({ game }: { game: GameDetails }) {
     <>
       <Link
         href="/games/search"
-        className="mb-6 inline-block text-indigo-400 hover:text-indigo-300"
+        className="mb-6 inline-block text-link hover:underline"
       >
         ← Back to Game Search
       </Link>
@@ -178,9 +178,11 @@ function GameContent({ game }: { game: GameDetails }) {
         </div>
 
         <div>
-          <h1 className="mb-2 text-3xl font-bold">{game.primary_name}</h1>
+          <h1 className="mb-2 text-3xl font-bold text-foreground">
+            {game.primary_name}
+          </h1>
 
-          <p className="mb-6 text-gray-400">BoardGameGeek ID: {game.bgg_id}</p>
+          <p className="mb-6 text-muted">BoardGameGeek ID: {game.bgg_id}</p>
 
           <GameInformation game={game} />
 
@@ -196,7 +198,7 @@ function GameContent({ game }: { game: GameDetails }) {
           <button
             type="button"
             onClick={() => setIsLogPlayOpen(true)}
-            className="mt-8 rounded-xl bg-indigo-600 px-6 py-3 font-semibold text-white transition hover:bg-indigo-500"
+            className="mt-8 rounded-xl bg-primary px-6 py-3 font-semibold text-white transition hover:bg-indigo-500"
           >
             Log Play
           </button>
@@ -204,10 +206,12 @@ function GameContent({ game }: { game: GameDetails }) {
       </div>
 
       {game.description && (
-        <section className="mt-10 rounded-2xl bg-gray-900 p-6">
-          <h2 className="mb-4 text-2xl font-semibold">About This Game</h2>
+        <section className="mt-10 rounded-2xl border border-border bg-surface p-6 shadow-sm">
+          <h2 className="mb-4 text-2xl font-semibold text-foreground">
+            About This Game
+          </h2>
 
-          <p className="whitespace-pre-line leading-7 text-gray-300">
+          <p className="whitespace-pre-line leading-7 text-subtle">
             {game.description}
           </p>
         </section>
@@ -219,10 +223,14 @@ function GameContent({ game }: { game: GameDetails }) {
 
       <RecommendationStrip
         title="Games like this one"
-        query={{ strategy: "similar_games", game_id: game.bgg_id, limit: 5 }}
+        query={{
+          strategy: "similar_games",
+          game_id: game.bgg_id,
+          limit: 5,
+        }}
         excludeGameId={game.bgg_id}
         emptyMessage="We don't have enough data to find similar games yet."
-        className="mt-10 rounded-2xl bg-gray-900 p-6"
+        className="mt-10 rounded-2xl border border-border bg-surface p-6 shadow-sm"
       />
 
       {/* Preserve existing play logging functionality */}
@@ -276,19 +284,20 @@ export default function GameDetailsPage() {
   }, [id]);
 
   return (
-    <main className="min-h-screen bg-[#0F172A] p-8 text-[#F8FAFC]">
+    <main className="min-h-screen bg-background p-4 text-foreground sm:p-8">
       {loading ? (
-        <p className="mt-10 text-center text-gray-400">
-          Loading game details...
-        </p>
+        <p className="mt-10 text-center text-muted">Loading game details...</p>
       ) : error ? (
-        <p role="alert" className="mt-10 text-center text-red-400">
+        <p
+          role="alert"
+          className="mt-10 text-center text-red-400 [html[data-theme=light]_&]:text-red-700"
+        >
           {error}
         </p>
       ) : game ? (
         <GameContent game={game} />
       ) : (
-        <p className="mt-10 text-center text-gray-400">Game not found.</p>
+        <p className="mt-10 text-center text-muted">Game not found.</p>
       )}
     </main>
   );

@@ -193,17 +193,17 @@ export default function AvatarSelectionPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black text-white p-4">
-      <div className="w-full max-w-md bg-gray-900 p-8 rounded-xl">
+    <div className="min-h-screen flex items-center justify-center bg-background text-foreground p-4">
+      <div className="w-full max-w-md rounded-xl border border-border bg-surface p-8 shadow-sm">
         <h1 className="text-3xl font-bold mb-3">Pick Your Avatar</h1>
 
-        <p className="text-gray-400 mb-6">
+        <p className="text-muted mb-6">
           Choose an avatar for your QuestLog profile. Your friends will be able
           to see it.
         </p>
 
         {loading ? (
-          <p className="text-gray-400 mb-6">Loading your profile...</p>
+          <p className="text-muted mb-6">Loading your profile...</p>
         ) : (
           <div className="grid grid-cols-2 gap-4 mb-6">
             {AVATARS.map((avatar) => (
@@ -217,7 +217,7 @@ export default function AvatarSelectionPage() {
                 disabled={saving}
                 aria-label={`Select ${avatar.split("/").pop()}`}
                 aria-pressed={selectedAvatar === avatar}
-                className="flex items-center justify-center rounded-lg p-2 disabled:opacity-50"
+                className="flex items-center justify-center rounded-lg p-2 transition hover:bg-surface-hover disabled:opacity-50"
               >
                 <Image
                   src={avatar}
@@ -227,7 +227,7 @@ export default function AvatarSelectionPage() {
                   className={`w-20 h-20 rounded-full object-cover border-4 ${
                     selectedAvatar === avatar
                       ? "border-indigo-500"
-                      : "border-gray-700"
+                      : "border-border"
                   }`}
                 />
               </button>
@@ -236,7 +236,10 @@ export default function AvatarSelectionPage() {
         )}
 
         {error && (
-          <p role="alert" className="text-red-400 text-sm mb-4">
+          <p
+            role="alert"
+            className="text-red-400 [html[data-theme=light]_&]:text-red-700 text-sm mb-4"
+          >
             {error}
           </p>
         )}
@@ -245,7 +248,7 @@ export default function AvatarSelectionPage() {
           type="button"
           onClick={() => void handleConfirm()}
           disabled={!selectedAvatar || saving || loading}
-          className="bg-primary py-2 rounded-lg hover:opacity-90 w-full disabled:opacity-50"
+          className="bg-primary py-2 font-medium text-white rounded-lg hover:opacity-90 w-full disabled:opacity-50"
         >
           {saving ? "Saving Avatar..." : "Confirm → Dashboard"}
         </button>

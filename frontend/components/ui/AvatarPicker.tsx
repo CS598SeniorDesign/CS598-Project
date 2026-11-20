@@ -1,4 +1,5 @@
 "use client";
+
 import Image from "next/image";
 
 type AvatarPickerProps = {
@@ -26,12 +27,14 @@ export default function AvatarPicker({
   selected,
 }: AvatarPickerProps) {
   return (
-    <div className="grid grid-cols-3 sm:grid-cols-4 gap-4">
+    <div className="grid grid-cols-3 gap-4 sm:grid-cols-4">
       {AVATARS.map((av) => (
         <div
           key={av}
-          className={`cursor-pointer border-2 rounded-full p-1 ${
-            selected === av ? "border-indigo-500" : "border-transparent"
+          className={`cursor-pointer rounded-full border-2 p-1 transition ${
+            selected === av
+              ? "border-primary bg-indigo-500/10"
+              : "border-transparent hover:border-border hover:bg-surface-hover"
           }`}
           onClick={() => onSelect(av)}
         >

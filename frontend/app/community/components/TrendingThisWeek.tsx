@@ -19,10 +19,10 @@ type TrendingGame = {
 };
 
 const RANK_STYLES = [
-  "border-yellow-400 bg-yellow-500/20 text-yellow-200",
-  "border-gray-300 bg-gray-400/20 text-gray-100",
-  "border-orange-400 bg-orange-500/20 text-orange-200",
-  "border-gray-600 bg-zinc-800 text-gray-300",
+  "border-yellow-400 bg-yellow-500/20 text-yellow-200 [html[data-theme=light]_&]:text-yellow-800",
+  "border-border bg-gray-400/20 text-foreground",
+  "border-orange-400 bg-orange-500/20 text-orange-200 [html[data-theme=light]_&]:text-orange-800",
+  "border-border bg-surface-hover text-muted",
 ];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -76,7 +76,7 @@ function GameCover({ game }: { game: BoardGame }) {
   const [imageFailed, setImageFailed] = useState(false);
 
   return (
-    <div className="relative flex h-24 w-18 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-gray-600 bg-slate-800 sm:h-28 sm:w-20">
+    <div className="relative flex h-24 w-18 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-surface-hover sm:h-28 sm:w-20">
       {game.thumbnail_url && !imageFailed ? (
         <Image
           src={game.thumbnail_url}
@@ -88,7 +88,7 @@ function GameCover({ game }: { game: BoardGame }) {
           onError={() => setImageFailed(true)}
         />
       ) : (
-        <Gamepad2 className="h-8 w-8 text-indigo-300" />
+        <Gamepad2 className="h-8 w-8 text-link" />
       )}
     </div>
   );
@@ -97,7 +97,7 @@ function GameCover({ game }: { game: BoardGame }) {
 function TrendingBadge({ item }: { item: TrendingGame }) {
   if (item.reason === "questlog_plays") {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-orange-500/25 bg-orange-500/10 px-2.5 py-1 text-xs font-semibold text-orange-300">
+      <span className="inline-flex items-center gap-1 rounded-full border border-orange-500/25 bg-orange-500/10 px-2.5 py-1 text-xs font-semibold text-orange-300 [html[data-theme=light]_&]:text-orange-700">
         <Flame className="h-3 w-3" />
         {item.play_count} {item.play_count === 1 ? "play" : "plays"} this week
       </span>
@@ -105,7 +105,7 @@ function TrendingBadge({ item }: { item: TrendingGame }) {
   }
 
   return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-indigo-500/25 bg-indigo-500/10 px-2.5 py-1 text-xs font-semibold text-indigo-300">
+    <span className="inline-flex items-center gap-1 rounded-full border border-indigo-500/25 bg-indigo-500/10 px-2.5 py-1 text-xs font-semibold text-link">
       <Trophy className="h-3 w-3" />
       BGG Top Pick
     </span>
@@ -117,7 +117,7 @@ function GameDetails({ item }: { item: TrendingGame }) {
 
   return (
     <div className="min-w-0 flex-1">
-      <h3 className="break-words text-base font-bold text-white sm:text-lg">
+      <h3 className="break-words text-base font-bold text-foreground sm:text-lg">
         {item.game.primary_name}
       </h3>
 
@@ -125,7 +125,7 @@ function GameDetails({ item }: { item: TrendingGame }) {
         <TrendingBadge item={item} />
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400">
+      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
         {item.game.bgg_rank != null && <span>BGG #{item.game.bgg_rank}</span>}
 
         {rating !== null && (
@@ -147,7 +147,7 @@ function TrendingGameCard({
   index: number;
 }) {
   return (
-    <article className="flex items-center gap-3 rounded-2xl border border-slate-700 bg-zinc-900/90 p-3 transition-colors hover:border-indigo-400/50 hover:bg-slate-800/80 sm:gap-4 sm:p-4">
+    <article className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-3 transition-all duration-300 hover:border-indigo-400/50 hover:bg-surface-hover hover:shadow-md sm:gap-4 sm:p-4">
       <div
         className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-sm font-bold ${getRankStyle(index)}`}
       >
@@ -167,7 +167,7 @@ function TrendingLoading() {
       {[1, 2, 3, 4].map((item) => (
         <div
           key={item}
-          className="h-28 animate-pulse rounded-2xl border border-slate-700 bg-slate-800/50"
+          className="h-28 animate-pulse rounded-2xl border border-border bg-surface-hover"
         />
       ))}
       <span className="sr-only">Loading trending games...</span>
@@ -190,7 +190,7 @@ function TrendingContent({
     return (
       <p
         role="alert"
-        className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300"
+        className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300 [html[data-theme=light]_&]:text-red-700"
       >
         {error}
       </p>
@@ -199,9 +199,11 @@ function TrendingContent({
 
   if (games.length === 0) {
     return (
-      <div className="rounded-xl border border-slate-700 bg-slate-800/40 p-6">
-        <p className="text-lg font-semibold">No trending games available</p>
-        <p className="mt-2 text-sm text-slate-400">
+      <div className="rounded-xl border border-border bg-surface p-6">
+        <p className="text-lg font-semibold text-foreground">
+          No trending games available
+        </p>
+        <p className="mt-2 text-sm text-muted">
           Games will appear here as QuestLog activity grows.
         </p>
       </div>
@@ -273,16 +275,16 @@ export default function TrendingThisWeek() {
   }, []);
 
   return (
-    <section className="border-t border-gray-600 pt-6">
+    <section className="border-t border-border pt-6">
       <div className="mb-5">
         <div className="flex items-center gap-2">
-          <h2 className="text-2xl font-bold tracking-wide sm:text-3xl">
+          <h2 className="text-2xl font-bold tracking-wide text-foreground sm:text-3xl">
             TRENDING THIS WEEK
           </h2>
           <Flame className="h-6 w-6 text-orange-400" />
         </div>
 
-        <p className="mt-2 text-sm text-slate-400">
+        <p className="mt-2 text-sm text-muted">
           Popular games on QuestLog and top BoardGameGeek picks.
         </p>
       </div>

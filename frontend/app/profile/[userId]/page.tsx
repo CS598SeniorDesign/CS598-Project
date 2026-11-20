@@ -122,18 +122,18 @@ export default function FriendProfilePage() {
   }, [userId]);
 
   return (
-    <main className="min-h-screen bg-[#0F172A] px-4 py-8 text-[#F8FAFC] sm:px-8">
+    <main className="min-h-screen bg-background px-4 py-8 text-foreground sm:px-8">
       <div className="mx-auto max-w-5xl">
         <Link
           href="/community"
-          className="mb-8 inline-flex items-center gap-2 text-sm font-semibold text-indigo-300 transition hover:text-indigo-200"
+          className="mb-8 inline-flex items-center gap-2 text-sm font-semibold text-link transition hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to Community
         </Link>
 
         {loading && (
-          <p role="status" className="text-gray-300">
+          <p role="status" className="text-subtle">
             Loading player profile...
           </p>
         )}
@@ -141,17 +141,19 @@ export default function FriendProfilePage() {
         {!loading && error && (
           <div
             role="alert"
-            className="rounded-xl border border-red-700 bg-red-950/40 p-5 text-red-300"
+            className="rounded-xl border border-red-500/40 bg-red-500/10 p-5 text-red-300 [html[data-theme=light]_&]:text-red-700"
           >
             {error}
           </div>
         )}
 
         {!loading && !error && !friend && (
-          <div className="rounded-xl border border-gray-700 bg-[#1E293B] p-8">
-            <h1 className="text-2xl font-bold">Profile unavailable</h1>
+          <div className="rounded-xl border border-border bg-surface p-8">
+            <h1 className="text-2xl font-bold text-foreground">
+              Profile unavailable
+            </h1>
 
-            <p className="mt-3 text-gray-400">
+            <p className="mt-3 text-muted">
               This player is not available in your friends list.
             </p>
           </div>
@@ -160,14 +162,16 @@ export default function FriendProfilePage() {
         {!loading && !error && friend && (
           <>
             <div className="mb-6">
-              <h1 className="text-3xl font-bold">Player Profile</h1>
+              <h1 className="text-3xl font-bold text-foreground">
+                Player Profile
+              </h1>
 
-              <p className="mt-2 text-sm text-gray-400">
+              <p className="mt-2 text-sm text-muted">
                 Get to know your QuestLog friends.
               </p>
             </div>
 
-            <section className="overflow-hidden rounded-2xl border border-gray-700 bg-[#1E293B] shadow-xl">
+            <section className="overflow-hidden rounded-2xl border border-border bg-surface text-foreground shadow-xl">
               <div className="h-52 bg-gradient-to-r from-indigo-900 via-indigo-700 to-emerald-700 sm:h-64" />
 
               <div className="relative px-6 pb-8 sm:px-10">
@@ -177,53 +181,59 @@ export default function FriendProfilePage() {
                     alt={`${friend.display_name}'s avatar`}
                     width={128}
                     height={128}
-                    className="h-28 w-28 rounded-full border-4 border-[#1E293B] bg-indigo-600 object-cover shadow-lg sm:h-32 sm:w-32"
+                    className="h-28 w-28 rounded-full border-4 border-surface bg-indigo-600 object-cover shadow-lg sm:h-32 sm:w-32"
                   />
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
-                  <h2 className="text-2xl font-bold">{friend.display_name}</h2>
+                  <h2 className="text-2xl font-bold text-foreground">
+                    {friend.display_name}
+                  </h2>
 
-                  <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-200">
+                  <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-200 [html[data-theme=light]_&]:text-emerald-700">
                     <ShieldCheck className="h-4 w-4" />
                     Friends
                   </span>
                 </div>
 
-                <p className="mt-3 text-gray-400">
+                <p className="mt-3 text-muted">
                   This player&apos;s bio and additional profile details will
                   appear here when public profile viewing is connected.
                 </p>
               </div>
             </section>
 
-            <section className="mt-8 rounded-2xl border border-gray-700 bg-[#1E293B] p-6">
+            <section className="mt-8 rounded-2xl border border-border bg-surface p-6">
               <div className="mb-4 flex items-center gap-2">
-                <UserRound className="h-6 w-6 text-indigo-400" />
+                <UserRound className="h-6 w-6 text-link" />
 
-                <h2 className="text-xl font-bold">About This Player</h2>
+                <h2 className="text-xl font-bold text-foreground">
+                  About This Player
+                </h2>
               </div>
 
-              <p className="text-sm leading-relaxed text-gray-400">
+              <p className="text-sm leading-relaxed text-muted">
                 More profile information is coming soon.
               </p>
             </section>
 
-            <section className="mt-8 rounded-2xl border border-gray-700 bg-[#1E293B] p-6">
+            <section className="mt-8 rounded-2xl border border-border bg-surface p-6">
               <div className="mb-4 flex items-center gap-2">
-                <Gamepad2 className="h-6 w-6 text-indigo-400" />
+                <Gamepad2 className="h-6 w-6 text-link" />
 
-                <h2 className="text-xl font-bold">Gaming Stats</h2>
+                <h2 className="text-xl font-bold text-foreground">
+                  Gaming Stats
+                </h2>
               </div>
 
-              <div className="rounded-xl border border-dashed border-gray-600 bg-[#0F172A]/60 p-8 text-center">
-                <p className="text-gray-300">
+              <div className="rounded-xl border border-dashed border-border bg-background p-8 text-center">
+                <p className="text-subtle">
                   Player statistics are not available yet.
                 </p>
 
-                <p className="mt-2 text-sm text-gray-400">
+                <p className="mt-2 text-sm text-muted">
                   Games played, wins, and recent activity can be displayed here
-                  once the player stats API is connected.
+                  soon.
                 </p>
               </div>
             </section>

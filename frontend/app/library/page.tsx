@@ -58,7 +58,7 @@ function EmptyLibrary({
 
   return (
     <div className="mt-12 text-center">
-      <p className="text-lg text-gray-400">{message}</p>
+      <p className="text-lg text-muted">{message}</p>
 
       {!filtered && (
         <Link
@@ -95,7 +95,7 @@ function LibraryGrid({
 }) {
   if (loading) {
     return (
-      <p role="status" className="mt-12 text-center text-gray-400">
+      <p role="status" className="mt-12 text-center text-muted">
         Loading your games...
       </p>
     );
@@ -105,7 +105,7 @@ function LibraryGrid({
     return (
       <div
         role="alert"
-        className="mx-auto mt-12 max-w-lg rounded-xl border border-red-500/30 bg-red-500/10 p-6 text-center text-red-300"
+        className="mx-auto mt-12 max-w-lg rounded-xl border border-red-500/30 bg-red-500/10 p-6 text-center text-red-300 [html[data-theme=light]_&]:text-red-700"
       >
         {error}
       </div>
@@ -145,10 +145,11 @@ function SummaryLine({
     ownership === "OWNED"
       ? summary.owned_unplayed
       : summary.wishlisted_unplayed;
+
   if (unplayed === 0) return null;
 
   return (
-    <p className="mt-1 text-sm text-gray-500">
+    <p className="mt-1 text-sm text-muted">
       {unplayed} {unplayed === 1 ? "game" : "games"} not played yet
     </p>
   );
@@ -181,17 +182,19 @@ export default function LibraryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0F172A] px-8 py-10 text-white">
+    <div className="min-h-screen bg-background px-4 py-10 text-foreground sm:px-8">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-5xl font-black tracking-widest">
+          <h1 className="text-4xl font-black tracking-widest sm:text-5xl">
             {isWishlist ? "WISHLIST" : "LIBRARY"}
           </h1>
-          <p className="mt-2 text-gray-400">
+
+          <p className="mt-2 text-muted">
             {isWishlist
               ? "Board games you want to add to your collection"
               : "Board games in your QuestLog collection"}
           </p>
+
           <SummaryLine summary={library.summary} ownership={ownership} />
         </div>
 
@@ -202,6 +205,7 @@ export default function LibraryPage() {
           >
             + Add Game
           </Link>
+
           <BggImportButton onImported={library.reload} />
         </div>
       </div>
@@ -209,7 +213,7 @@ export default function LibraryPage() {
       <div
         role="tablist"
         aria-label="Library or wishlist"
-        className="mb-6 flex gap-2"
+        className="mb-6 flex flex-wrap gap-2"
       >
         {TABS.map((tab) => (
           <button
@@ -218,10 +222,10 @@ export default function LibraryPage() {
             role="tab"
             aria-selected={ownership === tab.key}
             onClick={() => switchTab(tab.key)}
-            className={`rounded-full px-6 py-2 text-sm font-bold uppercase tracking-wider transition ${
+            className={`rounded-full border border-transparent px-6 py-2 text-sm font-bold uppercase tracking-wider transition ${
               ownership === tab.key
                 ? "bg-[#F87171] text-black"
-                : "bg-[#1E293B] text-gray-300 hover:bg-[#334155]"
+                : "bg-surface text-subtle hover:bg-surface-hover [html[data-theme=light]_&]:border-border"
             }`}
           >
             {tab.label}

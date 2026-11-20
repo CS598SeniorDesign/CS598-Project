@@ -223,7 +223,7 @@ interface RequestRowProps {
 
 function RequestRow({ name, busy, actions }: RequestRowProps) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-700 bg-slate-800/50 p-3">
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface p-3">
       <span className="font-medium">{name}</span>
 
       <div className="flex flex-wrap gap-2">
@@ -235,8 +235,8 @@ function RequestRow({ name, busy, actions }: RequestRowProps) {
             onClick={action.onClick}
             className={`rounded-lg px-3 py-2 text-sm font-semibold disabled:opacity-50 ${
               action.destructive
-                ? "bg-slate-700 text-red-300 hover:bg-slate-600"
-                : "bg-indigo-600 text-white hover:bg-indigo-500"
+                ? "bg-surface-hover text-red-300 [html[data-theme=light]_&]:text-red-700 hover:bg-surface-hover"
+                : "bg-indigo-600 text-white  hover:bg-indigo-500"
             }`}
           >
             {action.label}
@@ -396,13 +396,13 @@ export default function FriendsList() {
   const visibleFriends = expanded ? friends : friends.slice(0, INITIAL_VISIBLE);
 
   return (
-    <section className="border-t border-gray-500 pt-6">
+    <section className="border-t border-border pt-6">
       <h2 className="mb-6 text-3xl font-bold tracking-wide">YOUR FRIENDS</h2>
 
       {error && (
         <p
           role="alert"
-          className="mb-4 rounded-lg border border-red-700 bg-red-950 p-3 text-sm text-red-300"
+          className="mb-4 rounded-lg border border-red-700 bg-red-500/10 p-3 text-sm text-red-300 [html[data-theme=light]_&]:text-red-700"
         >
           {error}
         </p>
@@ -411,14 +411,14 @@ export default function FriendsList() {
       {message && (
         <p
           role="status"
-          className="mb-4 rounded-lg border border-emerald-700 bg-emerald-950 p-3 text-sm text-emerald-300"
+          className="mb-4 rounded-lg border border-emerald-700 bg-emerald-500/10 p-3 text-sm text-emerald-300 [html[data-theme=light]_&]:text-emerald-700"
         >
           {message}
         </p>
       )}
 
       <div className="mb-6 space-y-3">
-        <label className="block text-sm font-medium text-slate-200">
+        <label className="block text-sm font-medium text-subtle">
           Find QuestLog Players
           <input
             type="search"
@@ -432,24 +432,27 @@ export default function FriendsList() {
               setSearchLoading(false);
             }}
             placeholder="Search by display name..."
-            className="mt-2 w-full rounded-lg border border-slate-600 bg-slate-900 p-3 text-white"
+            className="mt-2 w-full rounded-lg border border-border bg-surface p-3 text-foreground"
           />
         </label>
 
         {query.trim().length === 1 && (
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-muted">
             Enter at least 2 characters to search.
           </p>
         )}
 
         {searchLoading && (
-          <p role="status" className="text-sm text-slate-400">
+          <p role="status" className="text-sm text-muted">
             Searching players...
           </p>
         )}
 
         {searchError && (
-          <p role="alert" className="text-sm text-red-400">
+          <p
+            role="alert"
+            className="text-sm text-red-400 [html[data-theme=light]_&]:text-red-700"
+          >
             {searchError}
           </p>
         )}
@@ -459,7 +462,7 @@ export default function FriendsList() {
           !searchLoading &&
           !searchError &&
           results.length === 0 && (
-            <p className="text-sm text-slate-400">No matching players found.</p>
+            <p className="text-sm text-muted">No matching players found.</p>
           )}
 
         {results
@@ -500,12 +503,12 @@ export default function FriendsList() {
 
       {/* Friends list */}
       <div className="space-y-4">
-        {loading && <p className="text-gray-400">Loading your friends...</p>}
+        {loading && <p className="text-muted">Loading your friends...</p>}
 
         {!loading && friends.length === 0 && (
-          <div className="rounded-xl border border-gray-700 bg-slate-800/40 p-5">
+          <div className="rounded-xl border border-border bg-surface p-5">
             <p className="text-lg font-medium">No friends yet</p>
-            <p className="mt-2 text-sm text-gray-400">
+            <p className="mt-2 text-sm text-muted">
               Search for registered players above to start connecting.
             </p>
           </div>
@@ -529,15 +532,15 @@ export default function FriendsList() {
                     alt=""
                     width={48}
                     height={48}
-                    className="h-12 w-12 rounded-full border border-gray-500 object-cover transition group-hover:border-indigo-400"
+                    className="h-12 w-12 rounded-full border border-border object-cover transition group-hover:border-indigo-400"
                   />
 
                   <div className="min-w-0">
-                    <span className="block truncate font-medium text-white transition group-hover:text-indigo-400">
+                    <span className="block truncate font-medium text-foreground transition group-hover:text-link">
                       {friend.display_name}
                     </span>
 
-                    <span className="text-xs text-gray-400 group-hover:text-indigo-300">
+                    <span className="text-xs text-muted group-hover:text-link">
                       View Profile
                     </span>
                   </div>
@@ -547,7 +550,7 @@ export default function FriendsList() {
                   type="button"
                   disabled={busy}
                   onClick={() => setFriendToRemove(friend)}
-                  className="rounded-lg border border-slate-600 px-3 py-2 text-xs text-red-300 hover:bg-slate-800 disabled:opacity-50"
+                  className="rounded-lg border border-border px-3 py-2 text-xs text-red-300 [html[data-theme=light]_&]:text-red-700 hover:bg-surface-hover disabled:opacity-50"
                 >
                   Remove
                 </button>
@@ -566,14 +569,14 @@ export default function FriendsList() {
         />
       )}
 
-      <div className="mt-8 space-y-4 border-t border-slate-700 pt-6">
+      <div className="mt-8 space-y-4 border-t border-border pt-6">
         <h3 className="text-xl font-semibold">Friend Requests</h3>
 
         <div className="space-y-3">
-          <h4 className="font-medium text-slate-200">Incoming</h4>
+          <h4 className="font-medium text-subtle">Incoming</h4>
 
           {!loading && requests.incoming.length === 0 && (
-            <p className="text-sm text-slate-400">No incoming requests.</p>
+            <p className="text-sm text-muted">No incoming requests.</p>
           )}
 
           {requests.incoming.map((request) => (
@@ -607,10 +610,10 @@ export default function FriendsList() {
         </div>
 
         <div className="space-y-3">
-          <h4 className="font-medium text-slate-200">Sent</h4>
+          <h4 className="font-medium text-subtle">Sent</h4>
 
           {!loading && requests.outgoing.length === 0 && (
-            <p className="text-sm text-slate-400">No pending sent requests.</p>
+            <p className="text-sm text-muted">No pending sent requests.</p>
           )}
 
           {requests.outgoing.map((request) => (
@@ -651,7 +654,7 @@ export default function FriendsList() {
             aria-modal="true"
             aria-labelledby="remove-friend-title"
             aria-describedby="remove-friend-description"
-            className="w-full max-w-md rounded-2xl border border-slate-600 bg-slate-900 p-6 shadow-2xl"
+            className="w-full max-w-md rounded-2xl border border-border bg-surface p-6 shadow-2xl"
           >
             <h3 id="remove-friend-title" className="text-xl font-bold">
               Remove friend?
@@ -659,7 +662,7 @@ export default function FriendsList() {
 
             <p
               id="remove-friend-description"
-              className="mt-3 text-sm text-slate-300"
+              className="mt-3 text-sm text-subtle"
             >
               Remove {friendToRemove.display_name} from your friends list?
             </p>
@@ -670,7 +673,7 @@ export default function FriendsList() {
                 autoFocus
                 disabled={busy}
                 onClick={() => setFriendToRemove(null)}
-                className="rounded-lg border border-slate-600 px-4 py-2 text-sm hover:bg-slate-800 disabled:opacity-50"
+                className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-surface-hover disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -688,7 +691,7 @@ export default function FriendsList() {
                     `${friend.display_name} was removed from your friends.`,
                   );
                 }}
-                className="rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white hover:bg-red-600 disabled:opacity-50"
+                className="rounded-lg bg-red-700 text-white px-4 py-2 text-sm font-semibold  hover:bg-red-600 disabled:opacity-50"
               >
                 Remove friend
               </button>

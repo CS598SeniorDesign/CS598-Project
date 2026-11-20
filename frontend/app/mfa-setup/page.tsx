@@ -165,9 +165,9 @@ async function activateTOTP(code: string): Promise<MFAActivationResult> {
 
 function MFALoadingScreen() {
   return (
-    <main className="min-h-screen bg-gray-900 text-white">
+    <main className="min-h-screen bg-background text-foreground">
       <div className="flex min-h-[calc(100vh-80px)] items-center justify-center px-6">
-        <p className="text-gray-400">Loading MFA setup...</p>
+        <p className="text-muted">Loading MFA setup...</p>
       </div>
     </main>
   );
@@ -360,23 +360,23 @@ export default function MFASetup() {
 
   if (!showMFASetup) {
     return (
-      <main className="min-h-screen bg-gray-900 text-white">
+      <main className="min-h-screen bg-background text-foreground">
         <div className="flex min-h-[calc(100vh-80px)] items-center justify-center px-6 py-12">
           <div className="w-full max-w-xl text-center">
             <h1 className="text-3xl font-bold sm:text-4xl">
               Keep Your Account Secure
             </h1>
 
-            <p className="mt-3 text-sm font-medium text-indigo-400">
+            <p className="mt-3 text-sm font-medium text-link">
               Optional Security Setup
             </p>
 
-            <p className="mt-6 text-gray-400">
+            <p className="mt-6 text-muted">
               Add an extra layer of security to your QuestLog account by
               enabling multi-factor authentication (MFA).
             </p>
 
-            <p className="mt-3 text-gray-400">
+            <p className="mt-3 text-muted">
               When enabled, you&apos;ll enter a verification code from your
               authenticator app when signing in.
             </p>
@@ -385,7 +385,7 @@ export default function MFASetup() {
               <button
                 type="button"
                 onClick={() => setShowMFASetup(true)}
-                className="rounded-lg bg-indigo-600 px-7 py-3 font-medium transition hover:bg-indigo-500"
+                className="rounded-lg bg-indigo-600 px-7 text-white py-3 font-medium transition hover:bg-indigo-500"
               >
                 Enable MFA
               </button>
@@ -393,13 +393,13 @@ export default function MFASetup() {
               <button
                 type="button"
                 onClick={handleSkip}
-                className="rounded-lg border border-gray-600 px-7 py-3 font-medium text-gray-200 transition hover:border-gray-400 hover:bg-gray-800"
+                className="rounded-lg border border-border bg-surface px-7 py-3 font-medium text-foreground transition hover:border-link hover:bg-surface-hover"
               >
                 Skip for Now
               </button>
             </div>
 
-            <p className="mt-6 text-sm text-gray-500">
+            <p className="mt-6 text-sm text-muted">
               You can enable MFA later from your account settings.
             </p>
           </div>
@@ -409,14 +409,14 @@ export default function MFASetup() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-900 text-white">
+    <main className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex min-h-[calc(100vh-80px)] w-full max-w-3xl flex-col justify-center px-6 py-12 sm:px-10">
         <div className="text-center">
           <h1 className="text-3xl font-bold sm:text-4xl">
             Secure Your Account
           </h1>
 
-          <p className="mx-auto mt-3 max-w-xl text-gray-400">
+          <p className="mx-auto mt-3 max-w-xl text-muted">
             Scan this QR code with your authenticator app to add QuestLog to
             your account.
           </p>
@@ -425,7 +425,7 @@ export default function MFASetup() {
         {error && (
           <div
             role="alert"
-            className="mx-auto mt-6 w-full max-w-xl rounded-lg border border-red-800 bg-red-950/40 px-4 py-3 text-center text-sm text-red-300"
+            className="mx-auto mt-6 w-full max-w-xl rounded-lg border border-red-800 [html[data-theme=light]_&]:border-red-300 bg-red-950/40 [html[data-theme=light]_&]:bg-red-50 px-4 py-3 text-center text-sm text-red-300 [html[data-theme=light]_&]:text-red-700"
           >
             {error}
           </div>
@@ -441,19 +441,19 @@ export default function MFASetup() {
 
         {secret && (
           <div className="mx-auto mt-7 w-full max-w-xl">
-            <p className="mb-3 text-center text-sm text-gray-400">
+            <p className="mb-3 text-center text-sm text-muted">
               Can&apos;t scan the QR code? Enter this setup key manually:
             </p>
 
-            <div className="flex items-center gap-3 rounded-xl border border-gray-700 bg-black/30 p-3">
-              <code className="min-w-0 flex-1 break-all text-sm text-gray-200 sm:text-base">
+            <div className="flex items-center gap-3 rounded-xl border border-border bg-input p-3">
+              <code className="min-w-0 flex-1 break-all text-sm text-foreground sm:text-base">
                 {secret}
               </code>
 
               <button
                 type="button"
                 onClick={() => void handleCopySecret()}
-                className="shrink-0 rounded-lg border border-gray-600 px-4 py-2 text-sm font-medium text-gray-200 transition hover:border-gray-400 hover:bg-gray-800"
+                className="shrink-0 rounded-lg border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground transition hover:border-link hover:bg-surface-hover"
               >
                 {copied ? "✓ Copied!" : "Copy"}
               </button>
@@ -461,13 +461,13 @@ export default function MFASetup() {
           </div>
         )}
 
-        <div className="mx-auto mt-9 w-full max-w-xl border-t border-gray-800 pt-8">
+        <div className="mx-auto mt-9 w-full max-w-xl border-t border-border pt-8">
           {!passwordConfirmed ? (
             <>
               <div className="text-center">
                 <h2 className="text-xl font-semibold">Confirm Your Password</h2>
 
-                <p className="mt-2 text-sm text-gray-400">
+                <p className="mt-2 text-sm text-muted">
                   For your security, confirm your QuestLog password before
                   enabling MFA.
                 </p>
@@ -476,7 +476,7 @@ export default function MFASetup() {
               <div className="mt-6">
                 <label
                   htmlFor="password"
-                  className="mb-2 block text-sm font-medium text-gray-300"
+                  className="mb-2 block text-sm font-medium text-subtle"
                 >
                   Password
                 </label>
@@ -494,7 +494,7 @@ export default function MFASetup() {
                     }
                   }}
                   placeholder="Enter your password"
-                  className="w-full rounded-lg border border-gray-700 bg-black/30 px-4 py-3 outline-none transition focus:border-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="w-full rounded-lg border border-border bg-input px-4 py-3 outline-none transition focus:border-indigo-500 disabled:cursor-not-allowed disabled:opacity-50 text-foreground placeholder:text-muted"
                 />
               </div>
 
@@ -503,7 +503,7 @@ export default function MFASetup() {
                   type="button"
                   onClick={() => void handleReauthenticate()}
                   disabled={!password || isEnabling}
-                  className="rounded-lg bg-indigo-600 px-7 py-3 font-medium transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-lg bg-indigo-600 px-7 text-white py-3 font-medium transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isEnabling ? "Verifying..." : "Continue"}
                 </button>
@@ -512,7 +512,7 @@ export default function MFASetup() {
                   type="button"
                   onClick={handleSkip}
                   disabled={isEnabling}
-                  className="rounded-lg border border-gray-600 px-7 py-3 font-medium text-gray-200 transition hover:border-gray-400 hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-lg border border-border bg-surface px-7 py-3 font-medium text-foreground transition hover:border-link hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Skip
                 </button>
@@ -525,7 +525,7 @@ export default function MFASetup() {
                   Enter Verification Code
                 </h2>
 
-                <p className="mt-2 text-sm text-gray-400">
+                <p className="mt-2 text-sm text-muted">
                   Enter the current six-digit code shown in your authenticator
                   app.
                 </p>
@@ -534,7 +534,7 @@ export default function MFASetup() {
               <div className="mt-6">
                 <label
                   htmlFor="verification-code"
-                  className="mb-2 block text-center text-sm font-medium text-gray-300"
+                  className="mb-2 block text-center text-sm font-medium text-subtle"
                 >
                   Verification Code
                 </label>
@@ -560,7 +560,7 @@ export default function MFASetup() {
                     }
                   }}
                   placeholder="000000"
-                  className="mx-auto block w-full max-w-xs rounded-lg border border-gray-700 bg-black/30 px-4 py-3 text-center text-2xl tracking-[0.35em] outline-none transition focus:border-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="mx-auto block w-full max-w-xs rounded-lg border border-border bg-input px-4 py-3 text-center text-2xl tracking-[0.35em] outline-none transition focus:border-indigo-500 disabled:cursor-not-allowed disabled:opacity-50 text-foreground placeholder:text-muted"
                 />
               </div>
 
@@ -569,7 +569,7 @@ export default function MFASetup() {
                   type="button"
                   onClick={() => void handleEnableMFA()}
                   disabled={code.length !== 6 || isEnabling}
-                  className="rounded-lg bg-indigo-600 px-7 py-3 font-medium transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-lg bg-indigo-600 px-7 text-white py-3 font-medium transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isEnabling ? "Enabling..." : "Enable MFA"}
                 </button>
@@ -578,7 +578,7 @@ export default function MFASetup() {
                   type="button"
                   onClick={handleBack}
                   disabled={isEnabling}
-                  className="rounded-lg border border-gray-600 px-7 py-3 font-medium text-gray-200 transition hover:border-gray-400 hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-lg border border-border bg-surface px-7 py-3 font-medium text-foreground transition hover:border-link hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Back
                 </button>
@@ -586,7 +586,7 @@ export default function MFASetup() {
             </>
           )}
 
-          <p className="mt-6 text-center text-xs text-gray-500">
+          <p className="mt-6 text-center text-xs text-muted">
             You can enable MFA later in Settings.
           </p>
         </div>
