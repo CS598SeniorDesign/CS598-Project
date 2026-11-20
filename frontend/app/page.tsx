@@ -45,27 +45,27 @@ export default function HomePage() {
   }, []);
 
   return (
-    <section className="min-h-screen flex flex-col items-center justify-center bg-background text-white px-6">
-      <h1 className="text-7xl md:text-8xl font-extrabold tracking-light mb-6 bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 bg-clip-text text-transparent">
+    <section className="flex min-h-screen flex-col items-center justify-center bg-background px-6 text-center text-foreground">
+      <h1 className="mb-6 bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 bg-clip-text text-5xl font-extrabold tracking-tight text-transparent sm:text-7xl md:text-8xl [html[data-theme=light]_&]:from-purple-600 [html[data-theme=light]_&]:via-pink-600 [html[data-theme=light]_&]:to-red-600">
         Game just got competitive!?
       </h1>
 
-      <p className="text-lg md:text-xl text-gray-400 mb-10 max-w-2xl leading-relaxed">
+      <p className="mb-10 max-w-2xl text-lg leading-relaxed text-muted md:text-xl">
         QuestLog keeps the score. You bring the chaos.
       </p>
 
-      <div className="flex flex-wrap gap-4">
+      <div className="flex flex-wrap items-center justify-center gap-4">
         {isLoading ? (
           <span
             aria-live="polite"
-            className="bg-primary px-6 py-3 rounded-lg opacity-60"
+            className="rounded-lg bg-primary px-6 py-3 font-medium text-white opacity-60"
           >
             Loading...
           </span>
         ) : (
           <Link
             href={isAuthenticated ? "/dashboardPpt" : "/signup"}
-            className="bg-primary px-6 py-3 rounded-lg hover:opacity-90 transition"
+            className="rounded-lg bg-primary px-6 py-3 font-medium text-white transition hover:opacity-90"
           >
             {isAuthenticated ? "Go to Dashboard" : "Get Started"}
           </Link>
@@ -73,7 +73,7 @@ export default function HomePage() {
 
         <Link
           href="/about"
-          className="border border-gray-700 px-6 py-3 rounded-lg hover:border-purple-400 hover:text-purple-300 transition"
+          className="rounded-lg border border-border bg-surface px-6 py-3 font-medium text-foreground shadow-sm transition hover:border-indigo-500 hover:bg-surface-hover hover:text-link"
         >
           Learn More
         </Link>

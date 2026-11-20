@@ -245,14 +245,14 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black text-white">
-      <div className="w-full max-w-md bg-gray-900 p-8 rounded-xl">
+    <div className="min-h-screen flex items-center justify-center bg-background text-foreground p-4">
+      <div className="w-full max-w-md rounded-xl border border-border bg-surface p-8 shadow-sm">
         <h1 className="text-3xl font-bold mb-6">
           {requiresMfaCode ? "Verify Your Identity" : "Login"}
         </h1>
 
         {requiresMfaCode && (
-          <p className="text-gray-400 mb-6">
+          <p className="text-muted mb-6">
             Enter the code from your authenticator app to finish signing in.
           </p>
         )}
@@ -273,7 +273,7 @@ export default function LoginPage() {
               onChange={(event) =>
                 setMfaCode(event.target.value.replace(/\D/g, "").slice(0, 6))
               }
-              className="p-3 rounded bg-gray-800 border border-gray-700"
+              className="rounded-lg border border-border bg-input p-3 text-foreground placeholder:text-muted outline-none focus:border-indigo-500 disabled:opacity-60"
               maxLength={6}
               pattern="[0-9]{6}"
               required
@@ -288,7 +288,7 @@ export default function LoginPage() {
                 autoComplete="off"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
-                className="p-3 rounded bg-gray-800 border border-gray-700"
+                className="rounded-lg border border-border bg-input p-3 text-foreground placeholder:text-muted outline-none focus:border-indigo-500 disabled:opacity-60"
                 required
                 disabled={isLoading}
               />
@@ -300,7 +300,7 @@ export default function LoginPage() {
                 autoComplete="current-password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                className="p-3 rounded bg-gray-800 border border-gray-700"
+                className="rounded-lg border border-border bg-input p-3 text-foreground placeholder:text-muted outline-none focus:border-indigo-500 disabled:opacity-60"
                 required
                 disabled={isLoading}
               />
@@ -308,7 +308,10 @@ export default function LoginPage() {
           )}
 
           {error && (
-            <p role="alert" className="text-sm text-red-400">
+            <p
+              role="alert"
+              className="text-sm text-red-400 [html[data-theme=light]_&]:text-red-700"
+            >
               {error}
             </p>
           )}
@@ -316,7 +319,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="bg-primary py-2 rounded-lg hover:opacity-90"
+            className="bg-primary py-2 font-medium text-white rounded-lg hover:opacity-90"
           >
             {isLoading
               ? "Please wait..."
@@ -330,7 +333,7 @@ export default function LoginPage() {
               type="button"
               onClick={handleBack}
               disabled={isLoading}
-              className="text-sm text-gray-400 hover:text-white"
+              className="text-sm text-muted hover:text-foreground"
             >
               Back to Login
             </button>
@@ -338,9 +341,9 @@ export default function LoginPage() {
         </form>
 
         {!requiresMfaCode && (
-          <p className="text-sm text-gray-400 mt-6 text-center">
+          <p className="text-sm text-muted mt-6 text-center">
             Don&apos;t have an account?{" "}
-            <a href="/signup" className="text-white underline">
+            <a href="/signup" className="text-link underline">
               Sign Up
             </a>
           </p>
