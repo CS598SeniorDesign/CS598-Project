@@ -805,7 +805,7 @@ flowchart LR
         bl["Backend lint<br/>Ruff · complexipy ≤10 · mypy ·<br/>migration drift + lintmigrations"]
         fl["Frontend lint<br/>ESLint + SonarJS ≤10 · tsc · Prettier"]
         ss["Secret scan<br/>TruffleHog"]
-        bt["Backend unit tests<br/>pytest · Postgres + Redis services ·<br/>coverage ≥ 60%"]
+        bt["Backend unit tests<br/>pytest · Postgres + Redis services ·<br/>coverage ≥ 85%"]
         ft["Frontend unit tests<br/>Jest + coverage"]
         dc["Docker Compose smoke test<br/>build · up · /health/ · /ready/ ·<br/>migrate --check"]
     end
