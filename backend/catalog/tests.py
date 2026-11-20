@@ -2,12 +2,16 @@ from unittest.mock import patch
 from xml.etree.ElementTree import fromstring
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.db import connection
+from django.db.migrations.executor import MigrationExecutor
+from django.db.migrations.recorder import MigrationRecorder
+from django.test import TestCase, TransactionTestCase, override_settings
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
 from catalog.models import BoardGame
+from catalog.serializers import BoardGameDetailSerializer
 
 User = get_user_model()
 
@@ -42,6 +46,73 @@ class BoardGameXMLParsingTest(TestCase):
         game = BoardGame.create_from_xml(fromstring(self.thing_xml("0")))
 
         self.assertIsNone(game.average_weight)
+
+
+class BoardGameRecordTest(APITestCase):
+    def test_created_game_record_can_be_read_with_required_fields(self):
+        game = BoardGame.objects.create(
+            bgg_id=822,
+            primary_name="Carcassonne",
+            item_type=BoardGame.BOARD_GAME,
+        )
+
+        response = self.client.get(detail_url(game.bgg_id))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            {field: response.data[field] for field in ("bgg_id", "item_type", "primary_name")},
+            {"bgg_id": 822, "item_type": BoardGame.BOARD_GAME, "primary_name": "Carcassonne"},
+        )
+
+    def test_game_serializer_requires_bgg_id_and_primary_name(self):
+        serializer = BoardGameDetailSerializer(data={})
+
+        self.assertFalse(serializer.is_valid())
+        self.assertEqual(set(serializer.errors), {"bgg_id", "primary_name"})
+
+    def test_game_serializer_rejects_an_invalid_item_type(self):
+        serializer = BoardGameDetailSerializer(
+            data={"bgg_id": 822, "item_type": "not-a-game-type", "primary_name": "Carcassonne"}
+        )
+
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("item_type", serializer.errors)
+
+
+class CatalogMigrationTest(TransactionTestCase):
+    @override_settings(MIGRATION_MODULES={})
+    def test_latest_catalog_migration_can_be_undone_and_reapplied(self):
+        latest_migration = ("catalog", "0004_board_game_last_synced_at")
+        previous_migration = ("catalog", "0003_board_game_item_type")
+
+        # The test suite creates the schema with --nomigrations, so synchronize the migration
+        # recorder before exercising the latest migration's forward and backward operations.
+        recorder = MigrationRecorder(connection)
+        for migration_name in (
+            "0001_initial",
+            "0002_boardgame_average_weight",
+            "0003_board_game_item_type",
+            "0004_board_game_last_synced_at",
+        ):
+            recorder.record_applied("catalog", migration_name)
+
+        executor = MigrationExecutor(connection)
+        executor.migrate([previous_migration])
+        with connection.cursor() as cursor:
+            columns_after_rollback = {
+                column.name for column in connection.introspection.get_table_description(cursor, "catalog_boardgame")
+            }
+
+        self.assertNotIn("last_synced_at", columns_after_rollback)
+
+        executor = MigrationExecutor(connection)
+        executor.migrate([latest_migration])
+        with connection.cursor() as cursor:
+            columns_after_reapply = {
+                column.name for column in connection.introspection.get_table_description(cursor, "catalog_boardgame")
+            }
+
+        self.assertIn("last_synced_at", columns_after_reapply)
 
 
 class CatalogAnonymousAccessTest(APITestCase):
