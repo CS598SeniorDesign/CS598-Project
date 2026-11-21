@@ -558,6 +558,464 @@ function ChangePasswordForm() {
   );
 }
 
+type AuthenticatorRecord = {
+  type?: string;
+  total_code_count?: number;
+  unused_code_count?: number;
+  unused_codes?: string[];
+};
+type MFAAction = "disable" | "view" | "regenerate";
+const MFA_BASE = "/_allauth/browser/v1/account/authenticators";
+
+async function mfaRequest(
+  path: string,
+  method = "GET",
+  body?: object,
+): Promise<Response> {
+  const csrfToken = getCsrfToken();
+  if (method !== "GET" && !csrfToken) {
+    throw new Error("Missing security token. Refresh the page and try again.");
+  }
+  return fetch(path, {
+    method,
+    credentials: "include",
+    cache: "no-store",
+    headers: {
+      Accept: "application/json",
+      ...(method !== "GET" ? { "X-CSRFToken": csrfToken } : {}),
+      ...(body ? { "Content-Type": "application/json" } : {}),
+    },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  });
+}
+
+async function mfaError(response: Response, fallback: string): Promise<Error> {
+  const payload: unknown = await response.json().catch(() => null);
+  if (response.status === 401 || response.status === 403) {
+    const data = payload as {
+      data?: { flows?: Array<{ id?: string }> };
+      meta?: { is_authenticated?: boolean };
+    } | null;
+    if (data?.data?.flows?.some((flow) => flow.id === "reauthenticate")) {
+      return new Error(
+        "Password confirmation expired. Please confirm your password and try again.",
+      );
+    }
+    return new Error(
+      "Your session expired or another security check is required. Please sign in again if this continues.",
+    );
+  }
+  const errors = (payload as { errors?: Array<{ message?: string }> } | null)
+    ?.errors;
+  return new Error(
+    errors
+      ?.map((item) => item.message)
+      .filter(Boolean)
+      .join(" ") || fallback,
+  );
+}
+
+async function fetchMFAStatus(
+  signal?: AbortSignal,
+): Promise<AuthenticatorRecord[]> {
+  const response = await fetch(MFA_BASE, {
+    credentials: "include",
+    cache: "no-store",
+    headers: { Accept: "application/json" },
+    signal,
+  });
+  if (!response.ok)
+    throw await mfaError(response, "Unable to check your MFA status.");
+  const payload: unknown = await response.json();
+  if (
+    !payload ||
+    typeof payload !== "object" ||
+    !("data" in payload) ||
+    !Array.isArray(payload.data)
+  ) {
+    throw new Error("Unexpected MFA status response from the server.");
+  }
+  const items = payload.data as AuthenticatorRecord[];
+  return items;
+}
+
+async function performMFAAction(
+  selected: MFAAction,
+): Promise<{ codes: string[]; message: string }> {
+  const requests = {
+    disable: { path: `${MFA_BASE}/totp`, method: "DELETE" },
+    regenerate: { path: `${MFA_BASE}/recovery-codes`, method: "POST" },
+    view: { path: `${MFA_BASE}/recovery-codes`, method: "GET" },
+  };
+  const { path, method } = requests[selected];
+  const response = await mfaRequest(path, method);
+  if (!response.ok)
+    throw await mfaError(response, "Unable to complete the MFA action.");
+  if (selected === "disable") {
+    return { codes: [], message: "Authenticator-app MFA has been disabled." };
+  }
+  const payload: unknown = await response.json();
+  const data = (payload as { data?: AuthenticatorRecord } | null)?.data;
+  if (!Array.isArray(data?.unused_codes)) {
+    return {
+      codes: [],
+      message:
+        "Recovery-code information loaded, but the codes are not available to display. They may have been shown previously.",
+    };
+  }
+  return {
+    codes: data.unused_codes,
+    message:
+      selected === "regenerate"
+        ? "New recovery codes generated. Previous codes are no longer valid. Save these now."
+        : "Save these recovery codes in a secure location. They may only be shown once.",
+  };
+}
+
+function MFAEnabledControls({
+  recovery,
+  busy,
+  onSelect,
+}: {
+  recovery: AuthenticatorRecord | null;
+  busy: boolean;
+  onSelect: (action: MFAAction) => void;
+}) {
+  return (
+    <>
+      <p
+        role="status"
+        className="font-semibold text-emerald-400 [html[data-theme=light]_&]:text-emerald-700"
+      >
+        Authenticator app enabled
+      </p>
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() => onSelect("disable")}
+        className="rounded-xl border border-red-500 px-4 py-2 text-sm font-semibold text-red-400 hover:bg-red-500/10 disabled:opacity-50"
+      >
+        Disable MFA
+      </button>
+      <div className="border-t border-border pt-5 space-y-3">
+        <h4 className="font-bold">Recovery Codes</h4>
+        <p className="text-sm text-muted">
+          {recovery
+            ? `${recovery.unused_code_count ?? "?"} of ${recovery.total_code_count ?? "?"} recovery codes remaining.`
+            : "No recovery codes found."}
+        </p>
+        <p className="text-sm text-muted">
+          Recovery codes may only be shown once. Generating a new set
+          invalidates all previous codes.
+        </p>
+        <div className="flex flex-wrap gap-3">
+          {recovery && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => onSelect("view")}
+              className="rounded-xl border border-border px-4 py-2 text-sm font-semibold hover:bg-surface-hover disabled:opacity-50"
+            >
+              View available codes
+            </button>
+          )}
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => onSelect("regenerate")}
+            className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
+          >
+            {recovery ? "Regenerate codes" : "Generate recovery codes"}
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function MFAActionForm({
+  action,
+  password,
+  busy,
+  onSubmit,
+  onPasswordChange,
+  onCancel,
+}: {
+  action: MFAAction;
+  password: string;
+  busy: boolean;
+  onSubmit: (event: React.FormEvent<HTMLFormElement>) => Promise<void>;
+  onPasswordChange: (value: string) => void;
+  onCancel: () => void;
+}) {
+  return (
+    <form
+      onSubmit={(event) => void onSubmit(event)}
+      className="space-y-3 rounded-xl border border-border bg-background p-4"
+    >
+      <h4 className="font-semibold">
+        {action === "disable"
+          ? "Confirm disabling MFA"
+          : action === "regenerate"
+            ? "Confirm recovery-code generation"
+            : "View recovery codes"}
+      </h4>
+      <p className="text-sm text-muted">
+        {action === "disable"
+          ? "This removes authenticator-app protection from your account."
+          : action === "regenerate"
+            ? "All previously generated recovery codes will immediately stop working."
+            : "For your security, confirm your password to view codes if they have not already been shown."}
+      </p>
+      <label htmlFor="mfa-password" className="block text-sm font-semibold">
+        Current password
+      </label>
+      <input
+        id="mfa-password"
+        type="password"
+        autoComplete="current-password"
+        required
+        value={password}
+        disabled={busy}
+        onChange={(event) => onPasswordChange(event.target.value)}
+        className="w-full max-w-md rounded-xl border border-border bg-input px-4 py-3 text-foreground"
+      />
+      <div className="flex flex-wrap gap-3">
+        <button
+          type="submit"
+          disabled={busy || !password}
+          className="rounded-xl bg-indigo-600 px-4 py-2 font-semibold text-white disabled:opacity-50"
+        >
+          {busy ? "Processing..." : "Confirm"}
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={onCancel}
+          className="rounded-xl border border-border px-4 py-2 font-semibold disabled:opacity-50"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function MFASettingsCard() {
+  function startAction(selected: MFAAction) {
+    setCodes([]);
+    setMessage("");
+    setError("");
+    setAction(selected);
+  }
+
+  const [status, setStatus] = useState<
+    "loading" | "enabled" | "disabled" | "error"
+  >("loading");
+  const [recovery, setRecovery] = useState<AuthenticatorRecord | null>(null);
+  const [action, setAction] = useState<MFAAction | null>(null);
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [codes, setCodes] = useState<string[]>([]);
+
+  function applyStatus(items: AuthenticatorRecord[]) {
+    setStatus(
+      items.some((item) => item.type?.toLowerCase() === "totp")
+        ? "enabled"
+        : "disabled",
+    );
+    setRecovery(
+      items.find((item) => item.type?.toLowerCase() === "recovery_codes") ??
+        null,
+    );
+  }
+
+  async function refreshStatus() {
+    applyStatus(await fetchMFAStatus());
+  }
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetchMFAStatus(controller.signal)
+      .then((items) => {
+        if (controller.signal.aborted) return;
+        setStatus(
+          items.some((item) => item.type?.toLowerCase() === "totp")
+            ? "enabled"
+            : "disabled",
+        );
+        setRecovery(
+          items.find((item) => item.type?.toLowerCase() === "recovery_codes") ??
+            null,
+        );
+      })
+      .catch((err: unknown) => {
+        if (!controller.signal.aborted) {
+          setError(
+            err instanceof Error ? err.message : "Unable to check MFA status.",
+          );
+          setStatus("error");
+        }
+      });
+    return () => controller.abort();
+  }, []);
+
+  function cancelAction() {
+    setAction(null);
+    setPassword("");
+    setError("");
+  }
+
+  async function handleAction(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!action || busy || !password) return;
+    setBusy(true);
+    setError("");
+    setMessage("");
+    setCodes([]);
+    const selected = action;
+    try {
+      const reauth = await mfaRequest(
+        "/_allauth/browser/v1/auth/reauthenticate",
+        "POST",
+        { password },
+      );
+      if (!reauth.ok)
+        throw await mfaError(reauth, "Unable to confirm your password.");
+      setPassword("");
+      const result = await performMFAAction(selected);
+      setCodes(result.codes);
+      setMessage(result.message);
+      setAction(null);
+      await refreshStatus();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to complete the MFA action.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="rounded-2xl border border-border bg-surface p-6">
+      <div className="flex items-start gap-4">
+        <Shield className="mt-1 h-7 w-7 shrink-0 text-emerald-400 [html[data-theme=light]_&]:text-emerald-700" />
+        <div className="min-w-0 flex-1 space-y-4">
+          <h3 className="text-xl font-bold">Multifactor Authentication</h3>
+          <p className="text-subtle">
+            Protect your account with an authenticator app.
+          </p>
+          {status === "loading" && (
+            <p role="status" className="text-sm text-muted">
+              Checking MFA status...
+            </p>
+          )}
+          {status === "error" && (
+            <button
+              type="button"
+              className="text-link underline"
+              onClick={() => {
+                setStatus("loading");
+                setError("");
+                void refreshStatus().catch((err: unknown) => {
+                  setError(
+                    err instanceof Error
+                      ? err.message
+                      : "Unable to check MFA status.",
+                  );
+                  setStatus("error");
+                });
+              }}
+            >
+              Retry status check
+            </button>
+          )}
+          {status === "disabled" && (
+            <>
+              <p className="text-sm text-muted">
+                Authenticator app not enabled
+              </p>
+              <Link
+                href="/mfa-setup?from=settings"
+                className="inline-flex rounded-xl bg-indigo-600 px-5 py-2.5 font-semibold text-white hover:bg-indigo-500"
+              >
+                Enable MFA
+              </Link>
+            </>
+          )}
+          {status === "enabled" && (
+            <MFAEnabledControls
+              recovery={recovery}
+              busy={busy}
+              onSelect={startAction}
+            />
+          )}
+          {action && (
+            <MFAActionForm
+              action={action}
+              password={password}
+              busy={busy}
+              onSubmit={handleAction}
+              onPasswordChange={setPassword}
+              onCancel={cancelAction}
+            />
+          )}
+          {error && (
+            <p
+              role="alert"
+              className="text-sm text-red-400 [html[data-theme=light]_&]:text-red-700"
+            >
+              {error}
+            </p>
+          )}
+          {message && (
+            <p
+              role="status"
+              className="text-sm text-emerald-400 [html[data-theme=light]_&]:text-emerald-700"
+            >
+              {message}
+            </p>
+          )}
+          {codes.length > 0 && (
+            <div className="space-y-3 rounded-xl border border-border bg-background p-4">
+              <h4 className="font-bold">Your recovery codes</h4>
+              <p className="text-sm text-muted">
+                Store these somewhere safe. Do not share them or take
+                screenshots.
+              </p>
+              <ul className="grid gap-2 sm:grid-cols-2">
+                {codes.map((code, index) => (
+                  <li
+                    key={index}
+                    className="rounded-lg border border-border bg-input p-2 font-mono text-sm select-all"
+                  >
+                    {code}
+                  </li>
+                ))}
+              </ul>
+              <button
+                type="button"
+                onClick={() => {
+                  setCodes([]);
+                  setMessage("Recovery codes hidden.");
+                }}
+                className="rounded-xl border border-border px-4 py-2 text-sm font-semibold"
+              >
+                I&apos;ve saved my codes — hide them
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SecuritySettings({
   emails,
   emailLoading,
@@ -629,24 +1087,7 @@ function SecuritySettings({
 
         <ChangePasswordForm />
 
-        <div className="rounded-2xl border border-border bg-surface p-6">
-          <div className="flex items-start gap-4">
-            <Shield className="mt-1 h-7 w-7 shrink-0 text-emerald-400 [html[data-theme=light]_&]:text-emerald-700" />
-
-            <div>
-              <h3 className="text-xl font-bold">Multifactor Authentication</h3>
-
-              <p className="mt-2 text-subtle">
-                QuestLog supports MFA during account setup.
-              </p>
-
-              <p className="mt-3 text-sm text-muted">
-                Your current MFA status and management options are not yet
-                connected to this page.
-              </p>
-            </div>
-          </div>
-        </div>
+        <MFASettingsCard />
 
         <div className="rounded-2xl border border-border bg-surface p-6">
           <h3 className="text-xl font-bold">Account and Game Data</h3>

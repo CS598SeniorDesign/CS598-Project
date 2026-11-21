@@ -449,11 +449,7 @@ function ProfileHeader({
       <div className="absolute inset-0 -z-20 overflow-hidden">
         {shownCover ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={shownCover}
-            alt=""
-            className="h-full w-full object-cover"
-          />
+          <img src={shownCover} alt="" className="h-full w-full object-cover" />
         ) : (
           <div className="h-full w-full bg-gradient-to-r from-indigo-900 via-indigo-700 to-emerald-700" />
         )}
@@ -501,7 +497,9 @@ function ProfileHeader({
                 type="button"
                 disabled={coverBusy}
                 onClick={(event) => {
-                  event.currentTarget.closest("details")?.removeAttribute("open");
+                  event.currentTarget
+                    .closest("details")
+                    ?.removeAttribute("open");
                   onRemove();
                 }}
                 className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-white hover:bg-white/10 disabled:opacity-50"
@@ -513,7 +511,10 @@ function ProfileHeader({
         </details>
       </div>
       {coverMessage && (
-        <p role="status" className="absolute bottom-2 right-4 z-10 max-w-xs rounded-lg bg-black/75 px-3 py-2 text-xs text-white">
+        <p
+          role="status"
+          className="absolute bottom-2 right-4 z-10 max-w-xs rounded-lg bg-black/75 px-3 py-2 text-xs text-white"
+        >
           {coverMessage}
         </p>
       )}
@@ -572,7 +573,7 @@ export default function ProfilePage() {
   }, [coverUrl]);
 
   async function uploadCover(file: File) {
-    if (!(["image/jpeg", "image/png", "image/webp"].includes(file.type))) {
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
       setCoverMessage("Choose a JPG, PNG, or WebP image.");
       return;
     }
@@ -612,7 +613,8 @@ export default function ProfilePage() {
         credentials: "include",
         headers: { "X-CSRFToken": getCsrfToken() },
       });
-      if (!response.ok) throw new Error(`Unable to remove cover (${response.status}).`);
+      if (!response.ok)
+        throw new Error(`Unable to remove cover (${response.status}).`);
       setCoverUrl(null);
       setAppearance((previous) => ({ ...previous, cover: "" }));
       // Remove old local-only cover so it doesn't reappear after refresh.
@@ -640,6 +642,20 @@ export default function ProfilePage() {
   useEffect(() => {
     const controller = new AbortController();
 
+    async function loadProfileCover() {
+      try {
+        const savedCover = await fetchCover(controller.signal);
+        if (controller.signal.aborted) {
+          if (savedCover) URL.revokeObjectURL(savedCover);
+          return;
+        }
+        setCoverUrl(savedCover);
+      } catch (coverError) {
+        if (!controller.signal.aborted)
+          setCoverMessage(getErrorMessage(coverError));
+      }
+    }
+
     async function loadProfile() {
       try {
         const data = await fetchOwnProfile(controller.signal);
@@ -652,16 +668,7 @@ export default function ProfilePage() {
           ...savedAppearance,
           avatar: data.avatar || savedAppearance.avatar,
         });
-        try {
-          const savedCover = await fetchCover(controller.signal);
-          if (controller.signal.aborted) {
-            if (savedCover) URL.revokeObjectURL(savedCover);
-            return;
-          }
-          setCoverUrl(savedCover);
-        } catch (coverError) {
-          if (!controller.signal.aborted) setCoverMessage(getErrorMessage(coverError));
-        }
+        await loadProfileCover();
       } catch (err) {
         if (controller.signal.aborted) return;
 
@@ -762,4 +769,3 @@ export default function ProfilePage() {
     </main>
   );
 }
-
