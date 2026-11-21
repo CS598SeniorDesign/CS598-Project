@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import ShowMoreButton from "@/app/community/components/ShowMoreButton";
 import RecommendationStrip from "@/components/recommendations/RecommendationStrip";
 
 type ApiGame = {
@@ -468,21 +469,19 @@ function GameCover({
 function uniqueRecentGames(plays: ApiPlay[]): ApiPlay[] {
   const seen = new Set<number>();
 
-  return plays
-    .filter((play) => {
-      if (seen.has(play.game.bgg_id)) return false;
+  return plays.filter((play) => {
+    if (seen.has(play.game.bgg_id)) return false;
 
-      seen.add(play.game.bgg_id);
-      return true;
-    })
-    .slice(0, 8);
+    seen.add(play.game.bgg_id);
+    return true;
+  });
 }
 
 function RecentlyPlayed({ state }: { state: Loadable<ApiPlay[]> }) {
   const games = useMemo(() => uniqueRecentGames(state.data), [state.data]);
 
   return (
-    <section className={`${cardClass} lg:col-span-2`}>
+    <section className={`${cardClass} min-w-0 lg:col-span-2`}>
       <h2 className="mb-4 text-subtle">Recently Played</h2>
 
       <StatusMessage
@@ -493,25 +492,40 @@ function RecentlyPlayed({ state }: { state: Loadable<ApiPlay[]> }) {
         emptyText="No plays logged yet. Log a play to see your games here."
       />
 
-      <div className="flex gap-5 overflow-x-auto pb-2">
+      <div className="grid max-h-[24rem] grid-cols-2 content-start gap-3 overflow-y-auto pr-2 sm:grid-cols-4 xl:grid-cols-6">
         {games.map(({ game }) => (
           <Link
             key={game.bgg_id}
             href={`/games/${game.bgg_id}`}
-            className="block shrink-0"
+            className="block min-w-0 rounded-lg bg-background p-2 hover:bg-surface-hover"
           >
-            <div className="w-36 sm:w-44">
-              <GameCover
-                game={game}
-                width={200}
-                height={160}
-                className="mb-2 h-40 w-full rounded-xl object-cover transition duration-300 hover:scale-105 hover:shadow-[0_0_20px_rgba(79,70,229,0.4)]"
-              />
+            <div className="min-w-0">
+              <div className="relative mb-2 h-24 w-full overflow-hidden rounded-lg bg-surface">
+                {game.thumbnail_url ? (
+                  <Image
+                    src={game.thumbnail_url}
+                    alt={game.primary_name}
+                    fill
+                    unoptimized
+                    sizes="(max-width: 640px) 50vw, 20vw"
+                    className="object-contain"
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center text-2xl">
+                    🎲
+                  </div>
+                )}
+              </div>
 
-              <p className="text-sm font-semibold">{game.primary_name}</p>
+              <p
+                className="line-clamp-2 h-10 text-sm font-semibold"
+                title={game.primary_name}
+              >
+                {game.primary_name}
+              </p>
 
               {typeof game.average_rating === "number" && (
-                <p className="text-sm text-[#FFBF00] [html[data-theme=light]_&]:text-amber-700">
+                <p className="text-xs text-[#FFBF00] [html[data-theme=light]_&]:text-amber-700">
                   BGG {game.average_rating.toFixed(1)}/10
                 </p>
               )}
@@ -698,6 +712,9 @@ function RecentPlayItem({ play }: { play: ApiPlay }) {
 }
 
 function RecentPlays({ state }: { state: Loadable<ApiPlay[]> }) {
+  const [expanded, setExpanded] = useState(false);
+  const visible = expanded ? state.data : state.data.slice(0, 4);
+
   return (
     <section className={cardClass}>
       <h2 className="mb-3">Recent Plays</h2>
@@ -712,9 +729,15 @@ function RecentPlays({ state }: { state: Loadable<ApiPlay[]> }) {
 
       {!state.loading &&
         !state.error &&
-        state.data
-          .slice(0, 5)
-          .map((play) => <RecentPlayItem key={play.id} play={play} />)}
+        visible.map((play) => <RecentPlayItem key={play.id} play={play} />)}
+      {!state.loading && !state.error && (
+        <ShowMoreButton
+          expanded={expanded}
+          total={state.data.length}
+          initialVisible={4}
+          onToggle={() => setExpanded((value) => !value)}
+        />
+      )}
     </section>
   );
 }
@@ -787,6 +810,9 @@ function FeedActivityItem({ item }: { item: FeedActivity }) {
 }
 
 function CommunityFeed({ state }: { state: Loadable<FeedActivity[]> }) {
+  const [expanded, setExpanded] = useState(false);
+  const visible = expanded ? state.data : state.data.slice(0, 4);
+
   return (
     <section className={cardClass}>
       <div className="mb-3 flex items-center justify-between gap-3">
@@ -810,9 +836,15 @@ function CommunityFeed({ state }: { state: Loadable<FeedActivity[]> }) {
 
       {!state.loading &&
         !state.error &&
-        state.data.map((item) => (
-          <FeedActivityItem key={item.id} item={item} />
-        ))}
+        visible.map((item) => <FeedActivityItem key={item.id} item={item} />)}
+      {!state.loading && !state.error && (
+        <ShowMoreButton
+          expanded={expanded}
+          total={state.data.length}
+          initialVisible={4}
+          onToggle={() => setExpanded((value) => !value)}
+        />
+      )}
     </section>
   );
 }
@@ -833,6 +865,9 @@ function FriendItem({ friend }: { friend: Friend }) {
 }
 
 function Members({ state }: { state: Loadable<Friend[]> }) {
+  const [expanded, setExpanded] = useState(false);
+  const visible = expanded ? state.data : state.data.slice(0, 4);
+
   return (
     <section className={cardClass}>
       <div className="mb-3 flex items-center justify-between gap-3">
@@ -856,16 +891,24 @@ function Members({ state }: { state: Loadable<Friend[]> }) {
 
       {!state.loading &&
         !state.error &&
-        state.data.map((friend) => (
+        visible.map((friend) => (
           <FriendItem key={friend.user_id} friend={friend} />
         ))}
+      {!state.loading && !state.error && (
+        <ShowMoreButton
+          expanded={expanded}
+          total={state.data.length}
+          initialVisible={4}
+          onToggle={() => setExpanded((value) => !value)}
+        />
+      )}
     </section>
   );
 }
 
 export default function Page() {
   const plays = useApiList("/api/v1/plays/", isPlay);
-  const feed = useApiList("/api/v1/community/feed/?limit=5", isFeedActivity);
+  const feed = useApiList("/api/v1/community/feed/?limit=20", isFeedActivity);
   const friends = useApiList("/api/v1/friends/", isFriend);
 
   return (
@@ -884,18 +927,19 @@ export default function Page() {
           <PlayCalendar plays={plays.data} />
         </div>
 
-        <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="mt-6 grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
           <RecentPlays state={plays} />
           <CommunityFeed state={feed} />
         </div>
 
-        <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="mt-6 grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
           <Members state={friends} />
 
           <div className={cardClass}>
             <RecommendationStrip
               title="Recommended for you"
-              query={{ strategy: "for_you", limit: 4 }}
+              initialVisible={4}
+              query={{ strategy: "for_you", limit: 12 }}
               emptyMessage="Log a few plays or like some games to get suggestions."
             />
           </div>

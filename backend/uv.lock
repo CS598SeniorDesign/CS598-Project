@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.12"
 resolution-markers = [
     "python_full_version >= '3.15' and sys_platform == 'win32'",
@@ -398,6 +398,7 @@ dependencies = [
     { name = "flower" },
     { name = "pandas" },
     { name = "pgvector" },
+    { name = "pillow" },
     { name = "prometheus-client" },
     { name = "requests" },
     { name = "scikit-learn" },
@@ -447,6 +448,7 @@ requires-dist = [
     { name = "mlflow", marker = "extra == 'monitoring'", specifier = ">=3.0" },
     { name = "pandas", specifier = ">=3.1.0" },
     { name = "pgvector", specifier = ">=0.5.1" },
+    { name = "pillow", specifier = ">=11" },
     { name = "prometheus-client", specifier = ">=0.22" },
     { name = "psycopg2", marker = "extra == 'prod'", specifier = ">=2.9.12" },
     { name = "requests", specifier = ">=2.34.2" },
