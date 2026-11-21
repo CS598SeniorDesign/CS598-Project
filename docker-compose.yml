@@ -76,6 +76,7 @@ services:
       - questlog-net
     volumes:
       - ./backend:/app
+      - profile_media:/app/media
 
   # Celery services share the backend image and code. They start once the backend is healthy, so migrations have run.
   # Celery does not reload on code changes: `docker compose restart celery-worker celery-beat` after editing tasks.
@@ -207,6 +208,7 @@ volumes:
   backend_venv:
   frontend_node_modules:
   frontend_next:
+  profile_media:
 
 networks:
   questlog-net:

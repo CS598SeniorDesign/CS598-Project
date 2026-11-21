@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   BookOpen,
@@ -13,6 +13,9 @@ import {
   Pencil,
   Clock3,
   ArrowRight,
+  ImagePlus,
+  Trash2,
+  Camera,
 } from "lucide-react";
 
 type UserProfile = {
@@ -74,6 +77,27 @@ async function fetchOwnProfile(signal: AbortSignal): Promise<UserProfile> {
   }
 
   return (await response.json()) as UserProfile;
+}
+
+const COVER_ENDPOINT = "/api/v1/profile/cover/";
+const MAX_COVER_BYTES = 5 * 1024 * 1024;
+
+function getCsrfToken(): string {
+  const cookie = document.cookie
+    .split("; ")
+    .find((entry) => entry.startsWith("csrf_token="));
+  return cookie ? decodeURIComponent(cookie.slice("csrf_token=".length)) : "";
+}
+
+async function fetchCover(signal?: AbortSignal): Promise<string | null> {
+  const response = await fetch(COVER_ENDPOINT, {
+    credentials: "include",
+    cache: "no-store",
+    signal,
+  });
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error("Unable to load your saved cover image.");
+  return URL.createObjectURL(await response.blob());
 }
 
 type ApiGame = {
@@ -400,21 +424,33 @@ function RecentActivity() {
 function ProfileHeader({
   profile,
   appearance,
+  coverUrl,
+  onUpload,
+  onRemove,
+  coverBusy,
+  coverMessage,
 }: {
   profile: UserProfile;
   appearance: LocalProfile;
+  coverUrl: string | null;
+  onUpload: (file: File) => void;
+  onRemove: () => void;
+  coverBusy: boolean;
+  coverMessage: string;
 }) {
   const displayName = profile.display_name || "QuestLog Player";
   const initial = displayName.charAt(0).toUpperCase();
+  const coverInputRef = useRef<HTMLInputElement>(null);
+  const shownCover = coverUrl || appearance.cover;
 
   return (
     <div className="relative isolate overflow-hidden rounded-2xl border border-border bg-indigo-950 text-white shadow-xl">
       {/* COVER */}
       <div className="absolute inset-0 -z-20 overflow-hidden">
-        {appearance.cover ? (
+        {shownCover ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={appearance.cover}
+            src={shownCover}
             alt=""
             className="h-full w-full object-cover"
           />
@@ -427,6 +463,60 @@ function ProfileHeader({
         aria-hidden="true"
         className="absolute inset-0 -z-10 bg-gradient-to-t from-black/90 via-black/60 to-black/10"
       />
+      {/* Compact cover actions: open only when the camera icon is clicked. */}
+      <div className="absolute right-4 top-4 z-10">
+        <input
+          ref={coverInputRef}
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          className="hidden"
+          aria-label="Choose a profile cover image"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (file) onUpload(file);
+            event.target.value = "";
+          }}
+        />
+        <details className="group relative">
+          <summary
+            aria-label="Cover image options"
+            className="flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-full bg-black/65 text-white shadow-md transition hover:bg-black/85 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white [&::-webkit-details-marker]:hidden"
+          >
+            <Camera className="h-4 w-4" aria-hidden="true" />
+          </summary>
+          <div className="absolute right-0 top-11 w-44 overflow-hidden rounded-xl border border-white/20 bg-slate-900 p-1 shadow-xl">
+            <button
+              type="button"
+              disabled={coverBusy}
+              onClick={(event) => {
+                event.currentTarget.closest("details")?.removeAttribute("open");
+                coverInputRef.current?.click();
+              }}
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-white hover:bg-white/10 disabled:opacity-50"
+            >
+              <ImagePlus className="h-4 w-4" /> Change cover
+            </button>
+            {shownCover && (
+              <button
+                type="button"
+                disabled={coverBusy}
+                onClick={(event) => {
+                  event.currentTarget.closest("details")?.removeAttribute("open");
+                  onRemove();
+                }}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-white hover:bg-white/10 disabled:opacity-50"
+              >
+                <Trash2 className="h-4 w-4" /> Remove cover
+              </button>
+            )}
+          </div>
+        </details>
+      </div>
+      {coverMessage && (
+        <p role="status" className="absolute bottom-2 right-4 z-10 max-w-xs rounded-lg bg-black/75 px-3 py-2 text-xs text-white">
+          {coverMessage}
+        </p>
+      )}
       {/* PROFILE DETAILS */}
       <div className="relative px-6 pb-8 pt-32 sm:px-10 sm:pt-40">
         <div className="mb-4 flex items-end justify-between">
@@ -471,6 +561,81 @@ export default function ProfilePage() {
   const [appearance, setAppearance] = useState<LocalProfile>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [coverUrl, setCoverUrl] = useState<string | null>(null);
+  const [coverBusy, setCoverBusy] = useState(false);
+  const [coverMessage, setCoverMessage] = useState("");
+
+  useEffect(() => {
+    return () => {
+      if (coverUrl) URL.revokeObjectURL(coverUrl);
+    };
+  }, [coverUrl]);
+
+  async function uploadCover(file: File) {
+    if (!(["image/jpeg", "image/png", "image/webp"].includes(file.type))) {
+      setCoverMessage("Choose a JPG, PNG, or WebP image.");
+      return;
+    }
+    if (file.size > MAX_COVER_BYTES) {
+      setCoverMessage("Cover images must be 5 MB or smaller.");
+      return;
+    }
+    setCoverBusy(true);
+    setCoverMessage("");
+    try {
+      const form = new FormData();
+      form.append("cover_image", file);
+      const response = await fetch(COVER_ENDPOINT, {
+        method: "POST",
+        credentials: "include",
+        headers: { "X-CSRFToken": getCsrfToken() },
+        body: form,
+      });
+      if (!response.ok) throw new Error(`Upload failed (${response.status}).`);
+      const url = await fetchCover();
+      setCoverUrl(url);
+      setAppearance((previous) => ({ ...previous, cover: "" }));
+      setCoverMessage("Cover image saved!");
+    } catch (caught) {
+      setCoverMessage(getErrorMessage(caught));
+    } finally {
+      setCoverBusy(false);
+    }
+  }
+
+  async function removeCover() {
+    setCoverBusy(true);
+    setCoverMessage("");
+    try {
+      const response = await fetch(COVER_ENDPOINT, {
+        method: "DELETE",
+        credentials: "include",
+        headers: { "X-CSRFToken": getCsrfToken() },
+      });
+      if (!response.ok) throw new Error(`Unable to remove cover (${response.status}).`);
+      setCoverUrl(null);
+      setAppearance((previous) => ({ ...previous, cover: "" }));
+      // Remove old local-only cover so it doesn't reappear after refresh.
+      localStorage.removeItem("userCover");
+      const saved = localStorage.getItem("userProfile");
+      if (saved) {
+        try {
+          const parsed: unknown = JSON.parse(saved);
+          if (isRecord(parsed)) {
+            delete parsed.cover;
+            localStorage.setItem("userProfile", JSON.stringify(parsed));
+          }
+        } catch {
+          // Ignore invalid legacy local profile data.
+        }
+      }
+      setCoverMessage("Cover image removed.");
+    } catch (caught) {
+      setCoverMessage(getErrorMessage(caught));
+    } finally {
+      setCoverBusy(false);
+    }
+  }
 
   useEffect(() => {
     const controller = new AbortController();
@@ -487,6 +652,16 @@ export default function ProfilePage() {
           ...savedAppearance,
           avatar: data.avatar || savedAppearance.avatar,
         });
+        try {
+          const savedCover = await fetchCover(controller.signal);
+          if (controller.signal.aborted) {
+            if (savedCover) URL.revokeObjectURL(savedCover);
+            return;
+          }
+          setCoverUrl(savedCover);
+        } catch (coverError) {
+          if (!controller.signal.aborted) setCoverMessage(getErrorMessage(coverError));
+        }
       } catch (err) {
         if (controller.signal.aborted) return;
 
@@ -570,7 +745,15 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        <ProfileHeader profile={profile} appearance={appearance} />
+        <ProfileHeader
+          profile={profile}
+          appearance={appearance}
+          coverUrl={coverUrl}
+          onUpload={(file) => void uploadCover(file)}
+          onRemove={() => void removeCover()}
+          coverBusy={coverBusy}
+          coverMessage={coverMessage}
+        />
 
         <PlayerStats />
 
@@ -579,3 +762,4 @@ export default function ProfilePage() {
     </main>
   );
 }
+

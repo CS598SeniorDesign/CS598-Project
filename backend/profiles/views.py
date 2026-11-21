@@ -4,16 +4,24 @@ API endpoints for the signed-in user's own profile, their friends, and finding o
 
 from __future__ import annotations
 
+import mimetypes
 from typing import cast
 
-from rest_framework import generics
+from django.http import FileResponse, Http404
+from rest_framework import generics, status
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.throttles import PlayerSearchRateThrottle
 from profiles.models import Profile
-from profiles.serializers import OwnProfileSerializer, PlayerSearchQuerySerializer, PlayerSummarySerializer
+from profiles.serializers import (
+    OwnProfileSerializer,
+    PlayerSearchQuerySerializer,
+    PlayerSummarySerializer,
+    ProfileCoverUploadSerializer,
+)
 from profiles.services import PlayerDirectoryService, ProfileService
 from users.models import User
 
@@ -43,6 +51,86 @@ class OwnProfileView(generics.RetrieveUpdateAPIView):
         """
         return ProfileService.profile_for(cast("User", self.request.user))
 
+
+class ProfileCoverView(APIView):
+    """Manage the signed-in user's uploaded profile cover."""
+
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def get_profile(self, request) -> Profile:
+        return ProfileService.profile_for(cast("User", request.user))
+
+    def get(self, request):
+        """Return the user's saved cover image."""
+
+        profile = self.get_profile(request)
+
+        if not profile.cover_image:
+            raise Http404("No cover image has been uploaded.")
+
+        try:
+            image_file = profile.cover_image.open("rb")
+        except (FileNotFoundError, OSError):
+            raise Http404("Cover image could not be found.") from None
+
+        content_type = (
+            mimetypes.guess_type(profile.cover_image.name)[0]
+            or "application/octet-stream"
+        )
+
+        response = FileResponse(
+            image_file,
+            content_type=content_type,
+        )
+        response["Cache-Control"] = "private, no-store"
+        response["X-Content-Type-Options"] = "nosniff"
+
+        return response
+
+    def post(self, request):
+        """Upload or replace the user's cover image."""
+
+        serializer = ProfileCoverUploadSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        profile = self.get_profile(request)
+        new_image = serializer.validated_data["cover_image"]
+
+        old_image_name = (
+            profile.cover_image.name if profile.cover_image else ""
+        )
+
+        profile.cover_image.save(
+            new_image.name,
+            new_image,
+            save=True,
+        )
+
+        if old_image_name and old_image_name != profile.cover_image.name:
+            profile.cover_image.storage.delete(old_image_name)
+
+        return Response(
+            {"detail": "Profile cover updated successfully."},
+            status=status.HTTP_200_OK,
+        )
+
+    def delete(self, request):
+        """Remove the user's saved cover image."""
+
+        profile = self.get_profile(request)
+
+        if not profile.cover_image:
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        old_image_name = profile.cover_image.name
+
+        profile.cover_image = ""
+        profile.save(update_fields=["cover_image"])
+
+        profile.cover_image.storage.delete(old_image_name)
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 class PlayerSearchView(APIView):
     """
