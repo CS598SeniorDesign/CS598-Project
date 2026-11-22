@@ -31,6 +31,7 @@ urlpatterns = [
     path("health/", HealthCheckView.as_view(), name="health-check"),
     path("ready/", ReadinessCheckView.as_view(), name="readiness-check"),
     path("metrics/", metrics_view, name="metrics"),
+    path(API_PREFIX, include("users.urls")),
     path(API_PREFIX, include("catalog.urls")),
     path(API_PREFIX, include("tracking.urls")),
     path(API_PREFIX, include("profiles.urls")),

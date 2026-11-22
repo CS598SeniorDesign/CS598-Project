@@ -32,6 +32,7 @@ from celery.result import AsyncResult
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
+from django.db import transaction
 from django.utils import timezone
 
 from catalog import bgg_client
@@ -191,7 +192,7 @@ def purge_removed_library_items() -> dict[str, int]:
 
 ImportRun = Callable[["User", str], tuple[dict[str, int], str]]
 
-
+@transaction.atomic
 def _run_import(task: Task, kind: ImportKind, user_id: str, run: ImportRun) -> dict[str, Any]:
     """
     Run an import for a user, retrying when BGG is unavailable, and always report a user-facing outcome.
@@ -203,7 +204,7 @@ def _run_import(task: Task, kind: ImportKind, user_id: str, run: ImportRun) -> d
     :returns: ``success``, ``detail``, and the import's counts.
     """
     task_id = task.request.id
-    user = get_user_model().objects.filter(pk=user_id, is_active=True).first()
+    user = (get_user_model().objects.select_for_update().filter(pk=user_id, is_active=True).first())
     bgg_username = _linked_bgg_username(user) if user is not None else ""
     if user is None or not bgg_username:
         return _finish(kind, user_id, task_id, success=False, detail=kind.no_username_message)
@@ -252,6 +253,7 @@ def _retry_or_fail(task: Task, kind: ImportKind, user_id: str, exception: Except
     return _finish(kind, user_id, task.request.id, success=False, detail=CONNECTION_FAILED_MESSAGE)
 
 
+@transaction.atomic
 def start_import(kind: ImportKind, task: Any, user: User) -> tuple[str | None, bool]:
     """
     Queue an import for the user, unless one of the same kind is already queued or running.
@@ -264,7 +266,10 @@ def start_import(kind: ImportKind, task: Any, user: User) -> tuple[str | None, b
         an existing one was returned).
     :rtype: tuple[str | None, bool]
     """
-    if not _linked_bgg_username(user):
+
+    #serializing import scheduling with account cleanup and reload potentially stale users.
+    user = get_user_model().objects.select_for_update().filter(pk=user.pk, is_active=True).first()
+    if user is None or not _linked_bgg_username(user):
         return None, False
 
     task_id = str(uuid.uuid4())

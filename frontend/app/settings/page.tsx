@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Settings,
   Shield,
@@ -1016,6 +1016,263 @@ function MFASettingsCard() {
   );
 }
 
+type AccountDataAction = "clear" | "delete";
+
+const accountDataActions = {
+  clear: {
+    title: "Clear Game Data",
+    endpoint: "/api/v1/account/clear-game-data/",
+    description:
+      "Permanently remove your library, wishlist, ratings, recommendation feedback and personal play history. Your account, profile, friends and recommendation preferences stay. Your BGG account will be unlinked; linking and importing it again can restore imported data. Shared sessions remain with an anonymous player entry.",
+  },
+  delete: {
+    title: "Delete Account",
+    endpoint: "/api/v1/account/delete/",
+    description:
+      "Permanently delete your QuestLog account and its personal data. Shared play sessions remain with an anonymous player entry. Group events and other people's RSVPs must be resolved before an account hosting those events can be deleted. This cannot be undone.",
+  },
+};
+
+function accountActionError(payload: unknown): string {
+  if (typeof payload !== "object" || payload === null) {
+    return "Unable to complete the action. Please try again.";
+  }
+  const messages = Object.values(payload)
+    .flat()
+    .filter((value) => typeof value === "string");
+  return (
+    messages.join(" ") || "Unable to complete the action. Please try again."
+  );
+}
+
+async function submitAccountAction(
+  action: AccountDataAction,
+  password: string,
+  confirmation: string,
+) {
+  const csrfToken = getCsrfToken();
+  if (!csrfToken)
+    throw new Error("Missing security token. Refresh the page and try again.");
+  const response = await fetch(accountDataActions[action].endpoint, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": csrfToken,
+      Accept: "application/json",
+    },
+    body: JSON.stringify({ password, confirmation }),
+  });
+  const payload: unknown = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(accountActionError(payload));
+}
+
+function clearDeletedAccountCache() {
+  // Remove only known account-specific keys; keep the user's browser theme preference.
+  try {
+    for (const key of ["userProfile", "userAvatar", "userCover"])
+      localStorage.removeItem(key);
+  } catch {
+    // Storage availability must not prevent redirecting after successful deletion.
+  }
+}
+
+function AccountActionDialog({
+  action,
+  busy,
+  error,
+  onSubmit,
+  onCancel,
+}: {
+  action: AccountDataAction;
+  busy: boolean;
+  error: string;
+  onSubmit: (password: string, confirmation: string) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  const [password, setPassword] = useState("");
+  const [confirmation, setConfirmation] = useState("");
+  const details = accountDataActions[action];
+  const canConfirm =
+    Boolean(password) && (action === "clear" || confirmation === "DELETE");
+
+  useEffect(() => {
+    const element = dialog.current;
+    if (!element) return;
+    element.showModal();
+    return () => element.close();
+  }, []);
+
+  return (
+    <dialog
+      ref={dialog}
+      aria-labelledby="account-action-title"
+      aria-describedby="account-action-description"
+      aria-busy={busy}
+      onCancel={(event) => {
+        event.preventDefault();
+        if (!busy) onCancel();
+      }}
+      className="m-auto max-h-[90vh] w-[calc(100%_-_2rem)] max-w-xl overflow-y-auto rounded-2xl border border-border bg-surface p-6 text-foreground backdrop:bg-black/70"
+    >
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (canConfirm && !busy) void onSubmit(password, confirmation);
+        }}
+        className="space-y-5"
+      >
+        <h3 id="account-action-title" className="text-xl font-bold">
+          Confirm: {details.title}
+        </h3>
+        <p id="account-action-description" className="text-sm text-subtle">
+          {details.description}
+        </p>
+        <label className="block space-y-2 text-sm font-semibold">
+          <span>Current password</span>
+          <input
+            type="password"
+            autoComplete="current-password"
+            required
+            disabled={busy}
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            className="w-full rounded-xl border border-border bg-input px-4 py-3 text-foreground"
+          />
+        </label>
+        {action === "delete" && (
+          <label className="block space-y-2 text-sm font-semibold">
+            <span>Type DELETE to confirm</span>
+            <input
+              type="text"
+              autoComplete="off"
+              spellCheck={false}
+              required
+              disabled={busy}
+              value={confirmation}
+              onChange={(event) => setConfirmation(event.target.value)}
+              className="w-full rounded-xl border border-border bg-input px-4 py-3 text-foreground"
+            />
+          </label>
+        )}
+        {error && (
+          <p
+            role="alert"
+            className="text-sm text-red-400 [html[data-theme=light]_&]:text-red-700"
+          >
+            {error}
+          </p>
+        )}
+        {busy && (
+          <p role="status" className="text-sm text-muted">
+            Processing your request...
+          </p>
+        )}
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="submit"
+            disabled={busy || !canConfirm}
+            className="rounded-xl bg-red-600 px-5 py-3 font-semibold text-white hover:bg-red-500 disabled:opacity-50"
+          >
+            {details.title}
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onCancel}
+            className="rounded-xl border border-border px-5 py-3 font-semibold disabled:opacity-50"
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
+    </dialog>
+  );
+}
+
+function AccountDataSettings() {
+  const [action, setAction] = useState<AccountDataAction | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const submitting = useRef(false);
+
+  function openAction(selected: AccountDataAction) {
+    setError("");
+    setMessage("");
+    setAction(selected);
+  }
+
+  async function handleSubmit(password: string, confirmation: string) {
+    if (!action || submitting.current) return;
+    submitting.current = true;
+    setBusy(true);
+    setError("");
+    try {
+      await submitAccountAction(action, password, confirmation);
+      if (action === "delete") {
+        clearDeletedAccountCache();
+        window.location.replace("/login");
+        return;
+      }
+      setAction(null);
+      setMessage(
+        "Your game data was cleared and your BGG account was unlinked. Refresh other open QuestLog pages to update their data.",
+      );
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Unable to complete the action. Please try again.",
+      );
+    } finally {
+      submitting.current = false;
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="rounded-2xl border border-border bg-surface p-6">
+      <h3 className="text-xl font-bold">Account and Game Data</h3>
+      <p className="mt-3 text-subtle">
+        Clear your personal game data or permanently delete your account. Both
+        actions require your current password.
+      </p>
+      <div className="mt-6 flex flex-wrap gap-4">
+        {(["clear", "delete"] as const).map((selected) => (
+          <button
+            key={selected}
+            type="button"
+            disabled={busy}
+            onClick={() => openAction(selected)}
+            className="rounded-xl border border-red-500 px-6 py-3 font-semibold text-red-400 hover:bg-red-500/10 disabled:opacity-50 [html[data-theme=light]_&]:text-red-700"
+          >
+            {accountDataActions[selected].title}
+          </button>
+        ))}
+      </div>
+      {message && (
+        <p
+          role="status"
+          className="mt-4 text-sm text-emerald-400 [html[data-theme=light]_&]:text-emerald-700"
+        >
+          {message}
+        </p>
+      )}
+      {action && (
+        <AccountActionDialog
+          action={action}
+          busy={busy}
+          error={error}
+          onSubmit={handleSubmit}
+          onCancel={() => setAction(null)}
+        />
+      )}
+    </div>
+  );
+}
+
 function SecuritySettings({
   emails,
   emailLoading,
@@ -1089,32 +1346,7 @@ function SecuritySettings({
 
         <MFASettingsCard />
 
-        <div className="rounded-2xl border border-border bg-surface p-6">
-          <h3 className="text-xl font-bold">Account and Game Data</h3>
-
-          <p className="mt-3 text-subtle">
-            Game-data clearing and account deletion are not yet available from
-            this page.
-          </p>
-
-          <div className="mt-6 flex flex-wrap gap-4">
-            <button
-              type="button"
-              disabled
-              className="cursor-not-allowed rounded-full bg-red-900/50 [html[data-theme=light]_&]:bg-red-100 px-6 py-3 font-semibold text-muted"
-            >
-              Clear Game Data
-            </button>
-
-            <button
-              type="button"
-              disabled
-              className="cursor-not-allowed rounded-full bg-red-900/50 [html[data-theme=light]_&]:bg-red-100 px-6 py-3 font-semibold text-muted"
-            >
-              Delete Account
-            </button>
-          </div>
-        </div>
+        <AccountDataSettings />
       </div>
     </section>
   );
