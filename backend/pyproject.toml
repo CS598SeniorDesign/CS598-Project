@@ -32,12 +32,12 @@ dev = [
     "pytest-cov>=7.1.0",
     "pytest-django>=4.14.0",
     "factory-boy>=3.3.1",
-    "ruff>=0.17.4",
+    "ruff>=0.17.6",
     "psycopg2-binary>=2.9.12",
     "whitenoise>=6.12.0",
     "django-migration-linter>=6.0.0",
     "complexipy>=8.3.0",
-    "pyotp>=2.10.0",
+    "pyotp>=2.12.1",
 ]
 [project.optional-dependencies]
 prod = [
@@ -46,7 +46,7 @@ prod = [
 ]
 monitoring = [
     "mlflow>=3.18.0",
-    "wandb>=0.21",
+    "wandb>=0.31.1",
 ]
 
 [tool.ruff]
