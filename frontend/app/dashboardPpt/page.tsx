@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import ShowMoreButton from "@/app/community/components/ShowMoreButton";
+import { ChatNavLink } from "@/components/chat/ChatProvider";
 import RecommendationStrip from "@/components/recommendations/RecommendationStrip";
 
 type ApiGame = {
@@ -391,6 +392,7 @@ function DashboardNavbar() {
         <Link href="/analytics" className="hover:text-foreground">
           Your Analytics
         </Link>
+        <ChatNavLink />
       </nav>
 
       <UserMenu />

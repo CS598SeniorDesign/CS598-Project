@@ -4,7 +4,7 @@ URL routing for the community app's API endpoints.
 
 from __future__ import annotations
 
-from django.urls import path
+from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from community.views import (
@@ -25,6 +25,7 @@ router.register("groups", GameGroupViewSet, basename="game-group")
 router.register("events", GameEventViewSet, basename="game-event")
 
 urlpatterns = [
+    path("", include("community.chat_urls")),
     path("friends/<uuid:user_id>/", FriendDetailView.as_view(), name="friend-detail"),
     path("friend-requests/", FriendRequestListView.as_view(), name="friend-request-list"),
     path("friend-requests/<int:request_id>/", FriendRequestDetailView.as_view(), name="friend-request-detail"),

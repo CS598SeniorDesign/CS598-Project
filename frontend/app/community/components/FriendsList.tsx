@@ -519,7 +519,7 @@ export default function FriendsList() {
             {visibleFriends.map((friend) => (
               <li
                 key={friend.user_id}
-                className="flex items-center justify-between gap-3"
+                className="flex flex-wrap items-center justify-between gap-3"
               >
                 {/* Clickable friend profile */}
                 <Link
@@ -546,6 +546,12 @@ export default function FriendsList() {
                   </div>
                 </Link>
 
+                <Link
+                  href={`/chat?user=${encodeURIComponent(friend.user_id)}`}
+                  className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+                >
+                  Message
+                </Link>
                 <button
                   type="button"
                   disabled={busy}

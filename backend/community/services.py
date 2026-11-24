@@ -130,6 +130,7 @@ class FriendshipService:
         return cls.friend_user_ids(user).filter(user_id=other_user_id).exists()
 
     @classmethod
+    @transaction.atomic
     def send_request(cls, sender: User, recipient_id: uuid.UUID) -> tuple[FriendRequest, str]:
         """
         Ask another player to be friends.
@@ -146,6 +147,10 @@ class FriendshipService:
         :raises ValidationError: If the recipient is the sender or already a friend.
         :raises Http404: If the sender cannot find the recipient in the player directory.
         """
+        from community.chat_services import check_friend_request, lock_users
+
+        lock_users(sender.pk, recipient_id)
+        check_friend_request(sender, recipient_id)
         if recipient_id == sender.pk:
             raise ValidationError("You can't send a friend request to yourself.")
         if cls.are_friends(sender, recipient_id):
@@ -184,6 +189,9 @@ class FriendshipService:
         """
         with transaction.atomic():
             request = cls._pending_request_to(recipient, request_id)
+            from community.chat_services import check_friend_accept
+
+            check_friend_accept(recipient, request.from_user)
             sender_profile = ProfileService.profile_for(request.from_user)
             sender_profile.friends.add(ProfileService.profile_for(recipient))
             cls._answer(request, FriendRequest.ACCEPTED)

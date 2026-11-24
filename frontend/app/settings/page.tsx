@@ -1,5 +1,6 @@
 "use client";
 
+import ChatSettings from "@/components/chat/ChatSettings";
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
@@ -16,7 +17,7 @@ import {
 
 import { useTheme } from "@/components/theme/ThemeProvider";
 
-type SettingsTab = "account" | "appearance" | "security" | "privacy";
+type SettingsTab = "account" | "appearance" | "security" | "privacy" | "chat";
 type PrivacyLevel = "PUBLIC" | "FRIENDS" | "PRIVATE";
 
 type UserProfile = {
@@ -1426,8 +1427,8 @@ function PrivacySettings({
         <h3 className="text-xl font-bold">Community Privacy</h3>
 
         <p className="mt-3 text-subtle">
-          Chat permissions, friend-request controls, mature-language filtering,
-          and blocked accounts are not yet connected to the backend.
+          Manage messaging permissions, online status, read receipts and blocked
+          accounts in the Chat &amp; Messaging tab.
         </p>
       </div>
     </section>
@@ -1527,6 +1528,12 @@ function SettingsFeedback({
   );
 }
 
+function requestedSettingsTab(): SettingsTab {
+  return new URLSearchParams(window.location.search).get("tab") === "chat"
+    ? "chat"
+    : "account";
+}
+
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>("account");
 
@@ -1554,6 +1561,7 @@ export default function SettingsPage() {
         if (controller.signal.aborted) return;
 
         setProfile(data);
+        setActiveTab(requestedSettingsTab());
         setPrivacyLevel(data.privacy_level);
       } catch (err) {
         if (controller.signal.aborted) return;
@@ -1670,6 +1678,15 @@ export default function SettingsPage() {
                 setSuccess("");
               }}
             />
+            <SidebarButton
+              active={activeTab === "chat"}
+              label="CHAT & MESSAGING"
+              onClick={() => {
+                setActiveTab("chat");
+                setError("");
+                setSuccess("");
+              }}
+            />
           </nav>
 
           <div className="min-w-0">
@@ -1730,6 +1747,7 @@ export default function SettingsPage() {
                   />
                 )}
 
+                {activeTab === "chat" && <ChatSettings />}
                 <SettingsFeedback error={error} success={success} />
               </>
             )}
