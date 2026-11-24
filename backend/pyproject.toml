@@ -36,7 +36,7 @@ dev = [
     "psycopg2-binary>=2.9.12",
     "whitenoise>=6.12.0",
     "django-migration-linter>=7.0.0",
-    "complexipy>=8.3.0",
+    "complexipy>=9.0.0",
     "pyotp>=2.12.1",
 ]
 [project.optional-dependencies]
