@@ -1,15 +1,18 @@
 """Weeple Chat privacy, ownership, pagination and account-deletion tests."""
 
+import logging
 import uuid
 from datetime import timedelta
+from threading import Event, Thread
 from unittest.mock import patch
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.core.exceptions import PermissionDenied
+from django.db import close_old_connections, transaction
 from django.middleware.csrf import _get_new_csrf_string
-from django.test import TestCase, override_settings
+from django.test import TestCase, TransactionTestCase, override_settings, skipUnlessDBFeature
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APIClient
@@ -315,11 +318,6 @@ class WeepleChatTests(TestCase):
         self.assertEqual(self.client.get(self.url("chat-summary")).data["unread_count"], 0)
 
 
-import logging
-from threading import Event, Thread
-
-from django.db import close_old_connections, transaction
-from django.test import TransactionTestCase, skipUnlessDBFeature
 
 logger = logging.getLogger(__name__)
 

@@ -127,6 +127,7 @@ class EventRSVP(models.Model):
         """
         return f"{self.user} is {self.get_status_display().lower()} to {self.event}"
 
+
 class ChatPreferences(models.Model):
     """Server-enforced messaging choices. Missing rows use these same defaults."""
 
@@ -143,6 +144,9 @@ class ChatPreferences(models.Model):
     mature_language_filter = models.BooleanField(default=False)
     last_active_at = models.DateTimeField(null=True, blank=True)
 
+    def __str__(self) -> str:
+        return f"Chat preferences for user {self.user_id}"
+
     class Meta:
         constraints: ClassVar[list[models.BaseConstraint]] = [
             models.CheckConstraint(
@@ -157,6 +161,9 @@ class UserBlock(models.Model):
     blocker = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="chat_blocks")
     blocked = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="chat_blocked_by")
     created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self) -> str:
+        return f"User {self.blocker_id} blocks user {self.blocked_id}"
 
     class Meta:
         constraints: ClassVar[list[models.BaseConstraint]] = [
@@ -179,6 +186,9 @@ class DirectConversation(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
+    def __str__(self) -> str:
+        return f"Direct conversation {self.pk}"
+
     class Meta:
         constraints: ClassVar[list[models.BaseConstraint]] = [
             models.UniqueConstraint(fields=["user_a", "user_b"], name="unique_direct_chat_pair"),
@@ -197,6 +207,9 @@ class DirectMessage(models.Model):
     body = models.TextField(max_length=2000)
     client_id = models.UUIDField()
     created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self) -> str:
+        return f"Message {self.pk} in conversation {self.conversation_id}"
 
     class Meta:
         constraints: ClassVar[list[models.BaseConstraint]] = [
