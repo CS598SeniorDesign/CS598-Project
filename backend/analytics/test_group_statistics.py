@@ -1,17 +1,21 @@
 from __future__ import annotations
 
 from datetime import timedelta
+from io import StringIO
 
 import pytest
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
+from django.core.management import call_command
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
 
+from analytics.group_statistics import GroupStatisticsService
 from analytics.services import MONTHS_OF_ACTIVITY
 from catalog.models import BoardGame
+from core.management.commands.seed import DEMONSTRATION_USER_EMAIL, GROUP_GAME_NIGHT_COUNT
 from profiles.models import GameGroup, Profile
 from tracking.models import PlaySession, SessionPlayer
 
@@ -225,3 +229,17 @@ class TestMonthlyActivity:
         assert len(activity) == MONTHS_OF_ACTIVITY
         assert activity[-1] == {"month": f"{today.year:04d}-{today.month:02d}", "sessions": 2, "plays": 3}
         assert sum(month["sessions"] for month in activity) == 2
+
+
+def test_the_seeded_group_has_game_nights_to_show():
+    call_command("seed", stdout=StringIO())
+    demonstration_user = get_user_model().objects.get(email=DEMONSTRATION_USER_EMAIL)
+    group = GameGroup.objects.get(name="Weeknight Gamers")
+
+    summary = GroupStatisticsService.build_summary(demonstration_user, group.pk)
+
+    assert summary.total_sessions == GROUP_GAME_NIGHT_COUNT
+    assert len(summary.leaderboard) == group.members.count()
+    assert sum(standing.wins for standing in summary.leaderboard) >= GROUP_GAME_NIGHT_COUNT
+    assert summary.most_played_games
+    assert all(month.sessions > 0 for month in summary.monthly_activity[-10:-1])

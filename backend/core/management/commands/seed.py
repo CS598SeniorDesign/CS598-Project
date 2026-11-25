@@ -25,6 +25,10 @@ DEMONSTRATION_USER_PASSWORD = "password123"
 DEMONSTRATION_FRIEND_COUNT = 6
 MINIMUM_SEEDED_FRIENDS = 2
 MAXIMUM_SEEDED_FRIENDS = 3
+GROUP_GAME_NIGHT_COUNT = 24
+GROUP_GAME_NIGHT_INTERVAL_DAYS = 14
+GROUP_FAVOURITE_GAME_COUNT = 4
+GROUP_FAVOURITE_GAME_WEIGHTS = (5, 3, 2, 1)
 
 
 @dataclass(frozen=True)
@@ -248,6 +252,7 @@ class Command(BaseCommand):
             name="Weeknight Gamers", description="Board games every other Thursday.", created_by=demonstration_user
         )
         group.members.add(demonstration_user, *group_members)
+        Command._seed_group_play_sessions(group, [demonstration_user, *group_members], games)
 
         now = timezone.now()
         group_night = GameEvent.objects.create(
@@ -274,6 +279,48 @@ class Command(BaseCommand):
         requester = next((profile for profile in profiles if profile.pk not in friend_ids), None)
         if requester is not None:
             FriendRequest.objects.create(from_user=requester.user, to_user=demonstration_user)
+
+    @staticmethod
+    def _seed_group_play_sessions(group: GameGroup, members: list, games: list[BoardGame]) -> None:
+        """
+        Log a game night for the group every two weeks going back about a year, so its statistics have a leaderboard,
+        favourite games and monthly activity to show.
+
+        The group mostly plays a few favourite games. Each night one member may sit out, sometimes the game is played
+        twice, and the highest score wins. The first member (the demonstration login) logs every session.
+
+        :param group: The game group the sessions belong to.
+        :type group: profiles.models.GameGroup
+        :param members: The group's members; the first one logs the sessions.
+        :type members: list[users.models.User]
+        :param games: The seeded games to choose the group's favourites from.
+        :type games: list[catalog.models.BoardGame]
+        :returns: None
+        """
+        favourite_games = random.sample(games, GROUP_FAVOURITE_GAME_COUNT)  # NOSONAR (S2245)
+        today = timezone.localdate()
+
+        for night in range(GROUP_GAME_NIGHT_COUNT):
+            attendees = list(members)
+            if len(attendees) > 2 and random.random() < 0.4:  # NOSONAR (S2245)
+                attendees.remove(random.choice(attendees[1:]))  # NOSONAR (S2245)
+
+            session = PlaySession.objects.create(
+                game=random.choices(favourite_games, weights=GROUP_FAVOURITE_GAME_WEIGHTS)[0],  # NOSONAR (S2245)
+                created_by=members[0],
+                group=group,
+                play_date=today - timedelta(days=3 + night * GROUP_GAME_NIGHT_INTERVAL_DAYS),
+                play_time_minutes=random.randint(45, 180),  # NOSONAR (S2245)
+                quantity=random.choice([1, 1, 1, 2]),  # NOSONAR (S2245)
+                location="Game Café",
+            )
+
+            scores = {attendee: random.randint(20, 120) for attendee in attendees}  # NOSONAR (S2245)
+            highest_score = max(scores.values())
+            SessionPlayer.objects.bulk_create(
+                SessionPlayer(session=session, user=attendee, score=score, is_winner=score == highest_score)
+                for attendee, score in scores.items()
+            )
 
     @staticmethod
     def _seed_friendships(profiles: list[Profile]) -> None:
