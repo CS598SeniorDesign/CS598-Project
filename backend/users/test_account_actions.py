@@ -2,13 +2,20 @@
 
 import logging
 from datetime import date, timedelta
+from threading import Event, Thread
 from unittest.mock import Mock, patch
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
+from django.db import close_old_connections
 from django.middleware.csrf import _get_new_csrf_string
-from django.test import TestCase, override_settings
+from django.test import (
+    TestCase,
+    TransactionTestCase,
+    override_settings,
+    skipUnlessDBFeature,
+)
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APIClient
@@ -320,10 +327,6 @@ class AccountActionTests(TestCase):
 
 
 # SQLite cannot prove row-lock behavior. These run against the project's PostgreSQL database.
-from threading import Event, Thread
-
-from django.db import close_old_connections
-from django.test import TransactionTestCase, skipUnlessDBFeature
 
 
 @override_settings(

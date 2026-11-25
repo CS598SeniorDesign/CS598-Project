@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 from django.db import IntegrityError, transaction
+from PIL import Image, UnidentifiedImageError
 from rest_framework import serializers
 
 from profiles.services import MAXIMUM_SEARCH_LENGTH, MINIMUM_SEARCH_LENGTH
 
 from .models import Profile
-
-from PIL import Image, UnidentifiedImageError
 
 ROLE_HIERARCHY: tuple[str, ...] = ("admin", "moderator", "user")
 

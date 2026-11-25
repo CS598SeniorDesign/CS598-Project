@@ -144,15 +144,16 @@ class ChatPreferences(models.Model):
     mature_language_filter = models.BooleanField(default=False)
     last_active_at = models.DateTimeField(null=True, blank=True)
 
-    def __str__(self) -> str:
-        return f"Chat preferences for user {self.user_id}"
-
     class Meta:
         constraints: ClassVar[list[models.BaseConstraint]] = [
             models.CheckConstraint(
                 condition=Q(who_can_message__in=["EVERYONE", "FRIENDS", "NOBODY"]), name="chat_message_permission_valid"
             )
         ]
+
+
+    def __str__(self) -> str:
+        return f"Chat preferences for user {self.user_id}"
 
 
 class UserBlock(models.Model):
@@ -162,14 +163,15 @@ class UserBlock(models.Model):
     blocked = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="chat_blocked_by")
     created_at = models.DateTimeField(auto_now_add=True)
 
-    def __str__(self) -> str:
-        return f"User {self.blocker_id} blocks user {self.blocked_id}"
-
     class Meta:
         constraints: ClassVar[list[models.BaseConstraint]] = [
             models.UniqueConstraint(fields=["blocker", "blocked"], name="unique_chat_user_block"),
             models.CheckConstraint(condition=~Q(blocker=F("blocked")), name="chat_block_not_self"),
         ]
+
+
+    def __str__(self) -> str:
+        return f"User {self.blocker_id} blocks user {self.blocked_id}"
 
 
 class DirectConversation(models.Model):
@@ -186,9 +188,6 @@ class DirectConversation(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
-    def __str__(self) -> str:
-        return f"Direct conversation {self.pk}"
-
     class Meta:
         constraints: ClassVar[list[models.BaseConstraint]] = [
             models.UniqueConstraint(fields=["user_a", "user_b"], name="unique_direct_chat_pair"),
@@ -197,6 +196,10 @@ class DirectConversation(models.Model):
                 name="direct_chat_ordered_pair",
             ),
         ]
+
+
+    def __str__(self) -> str:
+        return f"Direct conversation {self.pk}"
 
 
 class DirectMessage(models.Model):
@@ -208,9 +211,6 @@ class DirectMessage(models.Model):
     client_id = models.UUIDField()
     created_at = models.DateTimeField(auto_now_add=True)
 
-    def __str__(self) -> str:
-        return f"Message {self.pk} in conversation {self.conversation_id}"
-
     class Meta:
         constraints: ClassVar[list[models.BaseConstraint]] = [
             models.UniqueConstraint(fields=["sender", "client_id"], name="unique_chat_send_attempt")
@@ -218,3 +218,7 @@ class DirectMessage(models.Model):
         indexes: ClassVar[list[models.Index]] = [
             models.Index(fields=["conversation", "id"], name="chat_message_cursor_idx")
         ]
+
+
+    def __str__(self) -> str:
+        return f"Message {self.pk} in conversation {self.conversation_id}"
