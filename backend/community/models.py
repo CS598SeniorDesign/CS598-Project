@@ -151,7 +151,6 @@ class ChatPreferences(models.Model):
             )
         ]
 
-
     def __str__(self) -> str:
         return f"Chat preferences for user {self.user_id}"
 
@@ -168,7 +167,6 @@ class UserBlock(models.Model):
             models.UniqueConstraint(fields=["blocker", "blocked"], name="unique_chat_user_block"),
             models.CheckConstraint(condition=~Q(blocker=F("blocked")), name="chat_block_not_self"),
         ]
-
 
     def __str__(self) -> str:
         return f"User {self.blocker_id} blocks user {self.blocked_id}"
@@ -197,7 +195,6 @@ class DirectConversation(models.Model):
             ),
         ]
 
-
     def __str__(self) -> str:
         return f"Direct conversation {self.pk}"
 
@@ -218,7 +215,6 @@ class DirectMessage(models.Model):
         indexes: ClassVar[list[models.Index]] = [
             models.Index(fields=["conversation", "id"], name="chat_message_cursor_idx")
         ]
-
 
     def __str__(self) -> str:
         return f"Message {self.pk} in conversation {self.conversation_id}"

@@ -318,7 +318,6 @@ class WeepleChatTests(TestCase):
         self.assertEqual(self.client.get(self.url("chat-summary")).data["unread_count"], 0)
 
 
-
 logger = logging.getLogger(__name__)
 
 

@@ -194,6 +194,7 @@ class PlayerSummarySerializer(serializers.ModelSerializer[Profile]):
         )
         read_only_fields = fields
 
+
 class ProfileCoverUploadSerializer(serializers.Serializer):
     """Validate an uploaded profile cover image."""
 
@@ -208,9 +209,7 @@ class ProfileCoverUploadSerializer(serializers.Serializer):
         max_size = 5 * 1024 * 1024
 
         if image.size > max_size:
-            raise serializers.ValidationError(
-                "Cover images must be 5 MB or smaller."
-            )
+            raise serializers.ValidationError("Cover images must be 5 MB or smaller.")
 
         try:
             image.seek(0)
@@ -222,23 +221,15 @@ class ProfileCoverUploadSerializer(serializers.Serializer):
             image.seek(0)
 
         except (UnidentifiedImageError, OSError, ValueError):
-            raise serializers.ValidationError(
-                "Please upload a valid image."
-            ) from None
+            raise serializers.ValidationError("Please upload a valid image.") from None
 
         if image_format not in {"JPEG", "PNG", "WEBP"}:
-            raise serializers.ValidationError(
-                "Only JPEG, PNG, and WebP images are supported."
-            )
+            raise serializers.ValidationError("Only JPEG, PNG, and WebP images are supported.")
 
         return image
 
     def create(self, validated_data):
-        raise NotImplementedError(
-            "ProfileCoverUploadSerializer only validates uploads."
-        )
+        raise NotImplementedError("ProfileCoverUploadSerializer only validates uploads.")
 
     def update(self, instance, validated_data):
-        raise NotImplementedError(
-            "ProfileCoverUploadSerializer only validates uploads."
-        )
+        raise NotImplementedError("ProfileCoverUploadSerializer only validates uploads.")

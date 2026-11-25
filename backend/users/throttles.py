@@ -1,4 +1,4 @@
-""""Limit password confirmation attempts independently of ordinary API traffic."""
+""" "Limit password confirmation attempts independently of ordinary API traffic."""
 
 from rest_framework.throttling import UserRateThrottle
 

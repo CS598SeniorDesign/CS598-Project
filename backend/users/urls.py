@@ -1,4 +1,4 @@
-""""Self-service account security routes; no caller-supplied user IDs."""
+""" "Self-service account security routes; no caller-supplied user IDs."""
 
 from django.urls import path
 

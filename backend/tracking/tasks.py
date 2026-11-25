@@ -192,6 +192,7 @@ def purge_removed_library_items() -> dict[str, int]:
 
 ImportRun = Callable[["User", str], tuple[dict[str, int], str]]
 
+
 @transaction.atomic
 def _run_import(task: Task, kind: ImportKind, user_id: str, run: ImportRun) -> dict[str, Any]:
     """
@@ -204,7 +205,7 @@ def _run_import(task: Task, kind: ImportKind, user_id: str, run: ImportRun) -> d
     :returns: ``success``, ``detail``, and the import's counts.
     """
     task_id = task.request.id
-    user = (get_user_model().objects.select_for_update().filter(pk=user_id, is_active=True).first())
+    user = get_user_model().objects.select_for_update().filter(pk=user_id, is_active=True).first()
     bgg_username = _linked_bgg_username(user) if user is not None else ""
     if user is None or not bgg_username:
         return _finish(kind, user_id, task_id, success=False, detail=kind.no_username_message)
@@ -267,7 +268,7 @@ def start_import(kind: ImportKind, task: Any, user: User) -> tuple[str | None, b
     :rtype: tuple[str | None, bool]
     """
 
-    #serializing import scheduling with account cleanup and reload potentially stale users.
+    # serializing import scheduling with account cleanup and reload potentially stale users.
     user = get_user_model().objects.select_for_update().filter(pk=user.pk, is_active=True).first()
     if user is None or not _linked_bgg_username(user):
         return None, False

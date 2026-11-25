@@ -74,10 +74,7 @@ class ProfileCoverView(APIView):
         except (FileNotFoundError, OSError):
             raise Http404("Cover image could not be found.") from None
 
-        content_type = (
-            mimetypes.guess_type(profile.cover_image.name)[0]
-            or "application/octet-stream"
-        )
+        content_type = mimetypes.guess_type(profile.cover_image.name)[0] or "application/octet-stream"
 
         response = FileResponse(
             image_file,
@@ -97,9 +94,7 @@ class ProfileCoverView(APIView):
         profile = self.get_profile(request)
         new_image = serializer.validated_data["cover_image"]
 
-        old_image_name = (
-            profile.cover_image.name if profile.cover_image else ""
-        )
+        old_image_name = profile.cover_image.name if profile.cover_image else ""
 
         profile.cover_image.save(
             new_image.name,
@@ -131,6 +126,7 @@ class ProfileCoverView(APIView):
         profile.cover_image.storage.delete(old_image_name)
 
         return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class PlayerSearchView(APIView):
     """
