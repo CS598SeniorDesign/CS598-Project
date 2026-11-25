@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import {
+  ChartColumn,
   Check,
   Crown,
   LoaderCircle,
@@ -19,6 +20,7 @@ import {
   X,
   LogOut,
 } from "lucide-react";
+import GroupStatsPanel from "./GroupStatsPanel";
 import ShowMoreButton from "./ShowMoreButton";
 
 type Player = {
@@ -235,14 +237,14 @@ function Modal({
   children: ReactNode;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/75 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4">
       <div
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="w-full max-w-lg rounded-2xl border border-border bg-surface p-6 text-foreground shadow-2xl"
+        className="flex max-h-full w-full max-w-lg flex-col rounded-2xl border border-border bg-surface p-6 text-foreground shadow-2xl"
       >
-        <div className="mb-5 flex items-start justify-between gap-3">
+        <div className="mb-5 flex shrink-0 items-start justify-between gap-3">
           <div>
             <h3 className="text-xl font-bold">{title}</h3>
             {subtitle && <p className="mt-1 text-sm text-muted">{subtitle}</p>}
@@ -258,7 +260,7 @@ function Modal({
           </button>
         </div>
 
-        {children}
+        <div className="-m-1 min-h-0 overflow-y-auto p-1">{children}</div>
       </div>
     </div>
   );
@@ -1087,10 +1089,12 @@ function GroupMembersModal({
 function GroupCard({
   group,
   onMembers,
+  onStats,
   onEdit,
 }: {
   group: GameGroup;
   onMembers: (group: GameGroup) => void;
+  onStats: (group: GameGroup) => void;
   onEdit: (group: GameGroup) => void;
 }) {
   const artwork = getGroupArtwork(group.cover_theme);
@@ -1159,6 +1163,15 @@ function GroupCard({
               View Members
             </button>
 
+            <button
+              type="button"
+              onClick={() => onStats(group)}
+              className="inline-flex items-center gap-2 rounded-lg border border-white/20 [html[data-theme=light]_&]:border-slate-300 bg-slate-900/70 [html[data-theme=light]_&]:bg-white/90 px-3 py-2 text-xs font-semibold text-foreground backdrop-blur-sm transition-colors hover:border-indigo-400 hover:bg-slate-800 [html[data-theme=light]_&]:hover:bg-slate-100"
+            >
+              <ChartColumn className="h-3.5 w-3.5" />
+              View Stats
+            </button>
+
             {group.is_owner && (
               <>
                 <button
@@ -1194,6 +1207,7 @@ function GroupsContent({
   expanded,
   onCreate,
   onMembers,
+  onStats,
   onEdit,
 }: {
   groups: GameGroup[];
@@ -1202,6 +1216,7 @@ function GroupsContent({
   expanded: boolean;
   onCreate: () => void;
   onMembers: (group: GameGroup) => void;
+  onStats: (group: GameGroup) => void;
   onEdit: (group: GameGroup) => void;
 }) {
   if (loading) {
@@ -1243,6 +1258,7 @@ function GroupsContent({
           key={group.id}
           group={group}
           onMembers={onMembers}
+          onStats={onStats}
           onEdit={onEdit}
         />
       ))}
@@ -1259,6 +1275,7 @@ export default function GameGroups() {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<GameGroup | null>(null);
+  const [statsGroup, setStatsGroup] = useState<GameGroup | null>(null);
   const [editingGroup, setEditingGroup] = useState<GameGroup | null>(null);
 
   const [expanded, setExpanded] = useState(false);
@@ -1312,6 +1329,7 @@ export default function GameGroups() {
         expanded={expanded}
         onCreate={() => setCreateOpen(true)}
         onMembers={setSelectedGroup}
+        onStats={setStatsGroup}
         onEdit={setEditingGroup}
       />
 
@@ -1337,6 +1355,16 @@ export default function GameGroups() {
           onClose={() => setSelectedGroup(null)}
           onUpdated={refreshGroups}
         />
+      )}
+
+      {statsGroup && (
+        <Modal
+          title={statsGroup.name}
+          subtitle="Stats from the games logged for this group."
+          onClose={() => setStatsGroup(null)}
+        >
+          <GroupStatsPanel groupId={statsGroup.id} />
+        </Modal>
       )}
 
       {editingGroup && (
