@@ -157,8 +157,7 @@ def search(query: str) -> list[SearchResult]:
             continue
 
         if bgg_id in results_by_id:
-            if item_type == EXPANSION_ITEM_TYPE:
-                results_by_id[bgg_id] = replace(results_by_id[bgg_id], item_type=EXPANSION_ITEM_TYPE)
+            _mark_search_expansion(results_by_id, bgg_id, item_type)
             continue
 
         year_published = parse_optional_integer(get_attribute(item, "yearpublished", "value"))
@@ -171,6 +170,12 @@ def search(query: str) -> list[SearchResult]:
         )
 
     return list(results_by_id.values())
+
+
+def _mark_search_expansion(results_by_id: dict[int, SearchResult], bgg_id: int, item_type: str) -> None:
+    """Preserve the first match while retaining expansion metadata from duplicate entries."""
+    if item_type == EXPANSION_ITEM_TYPE:
+        results_by_id[bgg_id] = replace(results_by_id[bgg_id], item_type=EXPANSION_ITEM_TYPE)
 
 
 def fetch_plays_page(bgg_username: str, page: int) -> Element:
