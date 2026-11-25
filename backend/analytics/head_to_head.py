@@ -129,7 +129,7 @@ class HeadToHeadService:
             raise HeadToHeadWithYourselfError
 
         opponent = cls._comparable_opponent(viewer, opponent_user_id)
-        sessions = cls._load_shared_sessions(viewer, opponent)
+        sessions = cls.load_shared_sessions(viewer, opponent)
         completed = sessions[~sessions["is_incomplete"]]
 
         return HeadToHeadSummary(
@@ -188,7 +188,7 @@ class HeadToHeadService:
         return SessionPlayer.objects.filter(user=viewer, session_id__in=opponent_session_ids)
 
     @classmethod
-    def _load_shared_sessions(cls, viewer: User, opponent: User) -> pd.DataFrame:
+    def load_shared_sessions(cls, viewer: User, opponent: User) -> pd.DataFrame:
         """
         Load one row per shared session, with who won and a column for each outcome.
 
@@ -235,7 +235,7 @@ class HeadToHeadService:
         """
         Summarize the games the two players played together most.
 
-        :param sessions: The shared sessions, as returned by ``_load_shared_sessions``.
+        :param sessions: The shared sessions, as returned by ``load_shared_sessions``.
         :type sessions: pandas.DataFrame
         :returns: Up to ``HEAD_TO_HEAD_GAMES_LIMIT`` games, most sessions first, ties broken by name.
         :rtype: list[analytics.head_to_head.HeadToHeadGame]

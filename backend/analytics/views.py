@@ -9,7 +9,14 @@ from rest_framework.views import APIView
 
 from analytics.group_statistics import GroupStatisticsService
 from analytics.head_to_head import HeadToHeadService, HeadToHeadWithYourselfError
-from analytics.serializers import GroupSummarySerializer, HeadToHeadSummarySerializer, PlayerSummarySerializer
+from analytics.relationship_tags import RelationshipTagService
+from analytics.serializers import (
+    FriendTagsSerializer,
+    GroupSummarySerializer,
+    HeadToHeadSummarySerializer,
+    PlayerSummarySerializer,
+    RelationshipTagQuerySerializer,
+)
 from analytics.services import PlayerStatisticsService
 
 if TYPE_CHECKING:
@@ -89,3 +96,32 @@ class GroupStatisticsView(APIView):
         """
         summary = GroupStatisticsService.build_summary(cast("User", request.user), group_id)
         return Response(GroupSummarySerializer(summary).data)
+
+
+class RelationshipTagListView(APIView):
+    """
+    The relationship tags the signed-in user holds about their friends, such as "Mortal Enemy" or "Sidekick",
+    assigned automatically from the games they played together.
+
+    Tags are private: users only ever see the tags they hold, never the tags others hold about them. ``?user_id=``
+    limits the list to one friend.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """
+        List the signed-in user's tags, grouped by friend.
+
+        :param request: The authenticated request, optionally with ``?user_id=``.
+        :type request: rest_framework.request.Request
+        :returns: 200 with one entry per friend who has tags (alphabetically), or 400 for an invalid ``user_id``.
+        :rtype: rest_framework.response.Response
+        """
+        query_serializer = RelationshipTagQuerySerializer(data=request.query_params)
+        query_serializer.is_valid(raise_exception=True)
+
+        friend_tags = RelationshipTagService.tags_held_by(
+            cast("User", request.user), query_serializer.validated_data.get("user_id")
+        )
+        return Response(FriendTagsSerializer(friend_tags, many=True).data)

@@ -3,7 +3,7 @@ from typing import ClassVar
 from django.conf import settings
 from django.db import models
 from django.db.models import Q
-from django.db.models.functions import Lower
+from django.db.models.functions import Lower, Now
 
 
 class Profile(models.Model):
@@ -79,12 +79,33 @@ class GameGroup(models.Model):
 
 class PlayerTag(models.Model):
     """
-    Allows social relationships between players to be assigned.
+    A relationship label one player holds about a friend, such as "Mortal Enemy", based on their shared play history.
+
+    Tags are assigned automatically from the sessions the two played together (see
+    ``analytics.relationship_tags.RelationshipTagService``) and are private to ``assigning_user``: they describe the
+    friend from that user's point of view.
     """
 
     MORTAL_ENEMY = "MORTAL_ENEMY"
+    PUNCHING_BAG = "PUNCHING_BAG"
+    RIVAL = "RIVAL"
     SIDEKICK = "SIDEKICK"
-    TAG_TYPE_CHOICES = ((MORTAL_ENEMY, "Mortal Enemy"), (SIDEKICK, "Sidekick"))
+    DOOMED_DUO = "DOOMED_DUO"
+    REGULAR = "REGULAR"
+    LUCKY_CHARM = "LUCKY_CHARM"
+    JINX = "JINX"
+    LONG_TIME_NO_SEE = "LONG_TIME_NO_SEE"
+    TAG_TYPE_CHOICES = (
+        (MORTAL_ENEMY, "Mortal Enemy"),
+        (PUNCHING_BAG, "Punching Bag"),
+        (RIVAL, "Rival"),
+        (SIDEKICK, "Sidekick"),
+        (DOOMED_DUO, "Doomed Duo"),
+        (REGULAR, "Regular"),
+        (LUCKY_CHARM, "Lucky Charm"),
+        (JINX, "Jinx"),
+        (LONG_TIME_NO_SEE, "Long Time No See"),
+    )
 
     assigning_user = models.ForeignKey(to=settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="tags_given")
     target_user = models.ForeignKey(
@@ -93,6 +114,7 @@ class PlayerTag(models.Model):
         related_name="tags_received",
     )
     tag_type = models.CharField(max_length=20, choices=TAG_TYPE_CHOICES)
+    assigned_at = models.DateTimeField(auto_now_add=True, db_default=Now())
 
     class Meta:
         unique_together = ("assigning_user", "target_user", "tag_type")

@@ -1,0 +1,32 @@
+meta {
+  name: List Relationship Tags
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/analytics/tags/
+  body: none
+  auth: none
+}
+
+docs {
+  The relationship tags the signed-in user holds about their friends (Mortal Enemy, Punching Bag, Rival, Sidekick,
+  Doomed Duo, Regular, Lucky Charm, Jinx, Long Time No See), grouped by friend. Tags are assigned automatically from
+  the games played together and are private to the user holding them. Add `?user_id=<uuid>` for one friend.
+
+  After `manage.py seed`, the demo login holds every tag: Morgan, Pat, Riley, Sam, Dana, Lucy, Jordan, Reese and Logan
+  each earn one.
+}
+
+tests {
+  test("returns tags grouped by friend", function () {
+    expect(res.getStatus()).to.equal(200);
+    for (const entry of res.getBody()) {
+      expect(entry).to.have.all.keys("friend", "tags");
+      for (const tag of entry.tags) {
+        expect(tag).to.have.all.keys("tag_type", "name", "description", "assigned_at");
+      }
+    }
+  });
+}

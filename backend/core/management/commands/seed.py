@@ -1,4 +1,5 @@
 import random
+from dataclasses import dataclass
 from datetime import timedelta
 
 import environ
@@ -8,9 +9,10 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 from faker import Faker
 
+from analytics.relationship_tags import RelationshipTagService
 from catalog.models import BoardGame, Category, Mechanic
 from community.models import EventRSVP, FriendRequest, GameEvent
-from profiles.models import GameGroup, Profile
+from profiles.models import GameGroup, PlayerTag, Profile
 from recommendations.models import RecommendationProfile
 from tracking.models import LibraryItem, PlaySession, Rating, SessionPlayer
 from tracking.services import PlaySessionDetails, PlaySessionService, SessionPlayerDetails
@@ -23,6 +25,37 @@ DEMONSTRATION_USER_PASSWORD = "password123"
 DEMONSTRATION_FRIEND_COUNT = 6
 MINIMUM_SEEDED_FRIENDS = 2
 MAXIMUM_SEEDED_FRIENDS = 3
+
+
+@dataclass(frozen=True)
+class RelationshipTagScenario:
+    """
+    A friend whose games with the demonstration login earn it one relationship tag.
+
+    :param display_name: The friend's display name.
+    :param expected_tag: The ``PlayerTag`` type the demonstration login gives this friend.
+    :param oldest_game_days_ago: How many days ago their first game was; later games follow every four days.
+    :param winners: Who won each game: ``"demo"``, ``"friend"``, ``"both"`` (a cooperative win) or ``"guest"``.
+    """
+
+    display_name: str
+    expected_tag: str
+    oldest_game_days_ago: int
+    winners: tuple[str, ...]
+
+
+# Games 95-115 days ago are neither recent (Regular: last 90 days) nor long ago (Long Time No See: over 120 days).
+RELATIONSHIP_TAG_SCENARIOS = (
+    RelationshipTagScenario("Morgan", PlayerTag.MORTAL_ENEMY, 115, ("friend", "friend", "friend", "friend", "demo")),
+    RelationshipTagScenario("Pat", PlayerTag.PUNCHING_BAG, 115, ("demo", "demo", "demo", "demo", "friend")),
+    RelationshipTagScenario("Riley", PlayerTag.RIVAL, 115, ("demo", "friend", "demo", "friend", "demo", "friend")),
+    RelationshipTagScenario("Sam", PlayerTag.SIDEKICK, 115, ("both", "both", "both", "both", "both")),
+    RelationshipTagScenario("Dana", PlayerTag.DOOMED_DUO, 115, ("guest", "guest", "guest", "guest", "guest")),
+    RelationshipTagScenario("Lucy", PlayerTag.LUCKY_CHARM, 115, ("both", "both", "both", "demo", "demo")),
+    RelationshipTagScenario("Jordan", PlayerTag.JINX, 115, ("guest", "guest", "guest", "guest", "friend")),
+    RelationshipTagScenario("Reese", PlayerTag.REGULAR, 50, ("demo", "friend", "both", "guest", "guest")),
+    RelationshipTagScenario("Logan", PlayerTag.LONG_TIME_NO_SEE, 170, ("demo", "demo", "friend", "friend", "guest")),
+)
 
 # A handful of real BGG categories and mechanics (ID, name), so recommendations have tags to compare games by.
 SEED_CATEGORIES = [(1021, "Economic"), (1030, "Party Game"), (1028, "Puzzle"), (1019, "Wargame"), (1089, "Animals")]
@@ -144,9 +177,54 @@ class Command(BaseCommand):
         self.stdout.write("Seeding game groups, events and friend requests for the demonstration login...")
         self._seed_community(demonstration_profile, seeded_profiles, games)
 
+        self.stdout.write("Seeding friends who earn the demonstration login every relationship tag...")
+        self._seed_relationship_tag_scenarios(demonstration_profile, games)
+
         self._seed_superuser()
 
+        self.stdout.write("Assigning relationship tags...")
+        RelationshipTagService.refresh_tags_for_users(User.objects.filter(is_active=True))
+
         self.stdout.write(self.style.SUCCESS("Successfully seeded database with synthetic data!"))
+
+    @staticmethod
+    def _seed_relationship_tag_scenarios(demonstration_profile: Profile, games: list[BoardGame]) -> None:
+        """
+        Add one friend per relationship tag, with a shared play history that earns the demonstration login that tag.
+
+        The sessions are stored directly with fixed outcomes and dates (see ``RELATIONSHIP_TAG_SCENARIOS``), so the
+        tags do not depend on the random data seeded elsewhere. Tags are assigned once seeding finishes.
+
+        :param demonstration_profile: The demonstration login's profile.
+        :type demonstration_profile: profiles.models.Profile
+        :param games: The seeded board games to choose from.
+        :type games: list[catalog.models.BoardGame]
+        :returns: None
+        """
+        demonstration_user = demonstration_profile.user
+        today = timezone.localdate()
+
+        for scenario in RELATIONSHIP_TAG_SCENARIOS:
+            email = f"{scenario.display_name.lower()}@questlog.local"
+            friend = User.objects.create_user(email=email, password=DEMONSTRATION_USER_PASSWORD)
+            EmailAddress.objects.create(user=friend, email=email, verified=True, primary=True)
+            friend_profile = Profile.objects.create(
+                user=friend, display_name=scenario.display_name, privacy_level=Profile.PUBLIC
+            )
+            demonstration_profile.friends.add(friend_profile)
+
+            for index, winner in enumerate(scenario.winners):
+                session = PlaySession.objects.create(
+                    game=random.choice(games),  # NOSONAR (S2245)
+                    created_by=demonstration_user,
+                    play_date=today - timedelta(days=scenario.oldest_game_days_ago - index * 4),
+                )
+                demonstration_won = winner in ("demo", "both")
+                friend_won = winner in ("friend", "both")
+                SessionPlayer.objects.create(session=session, user=demonstration_user, is_winner=demonstration_won)
+                SessionPlayer.objects.create(session=session, user=friend, is_winner=friend_won)
+                if winner == "guest":
+                    SessionPlayer.objects.create(session=session, guest_name="Guest", is_winner=True)
 
     @staticmethod
     def _seed_community(demonstration_profile: Profile, profiles: list[Profile], games: list[BoardGame]) -> None:

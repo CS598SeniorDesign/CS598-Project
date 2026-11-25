@@ -155,3 +155,31 @@ class GroupSummarySerializer(ReadOnlySerializer):
     most_played_games = GroupGameSummarySerializer(many=True)
     leaderboard = GroupMemberStandingSerializer(many=True)
     monthly_activity = GroupMonthlyActivitySerializer(many=True)
+
+
+class HeldTagSerializer(ReadOnlySerializer):
+    """
+    One relationship tag the user holds about a friend.
+    """
+
+    tag_type = serializers.CharField(source="definition.tag_type")
+    name = serializers.CharField(source="definition.label")
+    description = serializers.CharField(source="definition.description")
+    assigned_at = serializers.DateTimeField()
+
+
+class FriendTagsSerializer(ReadOnlySerializer):
+    """
+    Every relationship tag the user holds about one friend.
+    """
+
+    friend = PlayerReferenceSerializer()
+    tags = HeldTagSerializer(many=True)
+
+
+class RelationshipTagQuerySerializer(ReadOnlySerializer):
+    """
+    Validates the optional ``?user_id=`` filter of the relationship tag list.
+    """
+
+    user_id = serializers.UUIDField(required=False)
