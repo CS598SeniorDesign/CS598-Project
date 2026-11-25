@@ -30,6 +30,7 @@ class Profile(models.Model):
         upload_to="profile_covers/",
         blank=True,
         default="",
+        db_default="",
     )
     privacy_level = models.CharField(max_length=10, choices=PRIVACY_LEVEL_CHOICES, default=PUBLIC)
     friends = models.ManyToManyField(to="self", blank=True)
