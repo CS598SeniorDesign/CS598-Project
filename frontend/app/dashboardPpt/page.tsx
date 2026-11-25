@@ -370,7 +370,7 @@ function UserMenu() {
 function DashboardNavbar() {
   return (
     <header className="flex flex-wrap items-center justify-between gap-4 bg-gradient-to-r from-surface to-background px-4 py-4 shadow-xl sm:px-8">
-      <Link href="/" className="text-xl font-bold">
+      <Link href="/dashboardPpt" className="text-xl font-bold">
         QuestLog
       </Link>
 
