@@ -1,0 +1,28 @@
+meta {
+  name: Head To Head
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/v1/analytics/head-to-head/{{friendUserId}}/
+  body: none
+  auth: none
+}
+
+docs {
+  The signed-in user's record against another player, from the sessions both played in. Run **List Friends** first;
+  it saves the first friend as `friendUserId`.
+
+  `you_won`, `they_won`, `both_won` and `neither_won` count completed sessions and add up to `completed_sessions`.
+  Returns 400 for your own ID, and 404 for a player you cannot find in the player search and have never played with.
+}
+
+tests {
+  test("returns the record against the friend", function () {
+    expect(res.getStatus()).to.equal(200);
+    const record = res.getBody();
+    expect(record.opponent.user_id).to.equal(bru.getVar("friendUserId"));
+    expect(record.you_won + record.they_won + record.both_won + record.neither_won).to.equal(record.completed_sessions);
+  });
+}

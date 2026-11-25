@@ -1,0 +1,27 @@
+meta {
+  name: Group Statistics
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{baseUrl}}/api/v1/analytics/groups/{{groupId}}/
+  body: none
+  auth: none
+}
+
+docs {
+  Statistics for one of the signed-in user's groups, from the sessions logged for it: totals, most played games, a
+  leaderboard of current members, and sessions per month for the last year. Uses the group from **Create Game Group**,
+  so it runs before **Delete Game Group**. Returns 404 for groups the user is not a member of.
+}
+
+tests {
+  test("returns the group's statistics", function () {
+    expect(res.getStatus()).to.equal(200);
+    const summary = res.getBody();
+    expect(summary.group_name).to.equal("Bruno Test Group");
+    expect(summary.leaderboard).to.have.lengthOf(summary.member_count);
+    expect(summary.monthly_activity).to.have.lengthOf(12);
+  });
+}

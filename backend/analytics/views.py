@@ -2,11 +2,21 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
 
+from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from analytics.serializers import PlayerSummarySerializer
+from analytics.group_statistics import GroupStatisticsService
+from analytics.head_to_head import HeadToHeadService, HeadToHeadWithYourselfError
+from analytics.relationship_tags import RelationshipTagService
+from analytics.serializers import (
+    FriendTagsSerializer,
+    GroupSummarySerializer,
+    HeadToHeadSummarySerializer,
+    PlayerSummarySerializer,
+    RelationshipTagQuerySerializer,
+)
 from analytics.services import PlayerStatisticsService
 
 if TYPE_CHECKING:
@@ -32,3 +42,86 @@ class PlayerSummaryView(APIView):
         """
         summary = PlayerStatisticsService.build_summary(cast("User", request.user))
         return Response(PlayerSummarySerializer(summary).data)
+
+
+class HeadToHeadView(APIView):
+    """
+    The signed-in user's record against one other player, from the sessions both played in: who won how often,
+    overall and per game.
+
+    Available for players the user can find in the player search or has played with; anyone else is not found.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, user_id):
+        """
+        Return the signed-in user's record against another player.
+
+        :param request: The authenticated request.
+        :type request: rest_framework.request.Request
+        :param user_id: The other player's user ID.
+        :type user_id: uuid.UUID
+        :returns: 200 with the record (zeros if they have not played together), 400 for the user's own ID, or 404 if
+            the player does not exist or may not be compared against.
+        :rtype: rest_framework.response.Response
+        """
+        try:
+            summary = HeadToHeadService.build_summary(cast("User", request.user), user_id)
+        except HeadToHeadWithYourselfError:
+            return Response({"detail": "Choose another player to compare against."}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(HeadToHeadSummarySerializer(summary).data)
+
+
+class GroupStatisticsView(APIView):
+    """
+    Statistics for one of the signed-in user's game groups, from the sessions logged for the group: totals, most
+    played games, a leaderboard of current members, and sessions per month for the last year.
+
+    Groups are private to their members, so anyone else is told the group does not exist.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, group_id):
+        """
+        Return a group's statistics.
+
+        :param request: The authenticated request.
+        :type request: rest_framework.request.Request
+        :param group_id: The group's ID.
+        :type group_id: int
+        :returns: 200 with the statistics, or 404 if there is no such group or the user is not a member.
+        :rtype: rest_framework.response.Response
+        """
+        summary = GroupStatisticsService.build_summary(cast("User", request.user), group_id)
+        return Response(GroupSummarySerializer(summary).data)
+
+
+class RelationshipTagListView(APIView):
+    """
+    The relationship tags the signed-in user holds about their friends, such as "Mortal Enemy" or "Sidekick",
+    assigned automatically from the games they played together.
+
+    Tags are private: users only ever see the tags they hold, never the tags others hold about them. ``?user_id=``
+    limits the list to one friend.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """
+        List the signed-in user's tags, grouped by friend.
+
+        :param request: The authenticated request, optionally with ``?user_id=``.
+        :type request: rest_framework.request.Request
+        :returns: 200 with one entry per friend who has tags (alphabetically), or 400 for an invalid ``user_id``.
+        :rtype: rest_framework.response.Response
+        """
+        query_serializer = RelationshipTagQuerySerializer(data=request.query_params)
+        query_serializer.is_valid(raise_exception=True)
+
+        friend_tags = RelationshipTagService.tags_held_by(
+            cast("User", request.user), query_serializer.validated_data.get("user_id")
+        )
+        return Response(FriendTagsSerializer(friend_tags, many=True).data)

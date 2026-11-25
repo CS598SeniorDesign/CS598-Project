@@ -3,6 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { RelationshipTagList } from "@/components/stats/RelationshipTagBadge";
+import { useRelationshipTags } from "@/components/stats/useRelationshipTags";
 import ShowMoreButton from "./ShowMoreButton";
 
 interface Player {
@@ -251,6 +253,7 @@ function RequestRow({ name, busy, actions }: RequestRowProps) {
 // eslint-disable-next-line complexity
 export default function FriendsList() {
   const [friends, setFriends] = useState<Player[]>([]);
+  const tags = useRelationshipTags();
   const [requests, setRequests] = useState<FriendRequests>({
     incoming: [],
     outgoing: [],
@@ -543,6 +546,15 @@ export default function FriendsList() {
                     <span className="text-xs text-muted group-hover:text-link">
                       View Profile
                     </span>
+
+                    {tags[friend.user_id] && (
+                      <div className="mt-1.5">
+                        <RelationshipTagList
+                          tags={tags[friend.user_id]}
+                          compact
+                        />
+                      </div>
+                    )}
                   </div>
                 </Link>
 

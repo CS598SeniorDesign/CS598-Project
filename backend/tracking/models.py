@@ -488,32 +488,66 @@ class PlaySession(models.Model):
         session_players: list[SessionPlayer] = []
 
         for player_node in players_node.findall("player"):
-            player_username = (get_attribute(player_node, ".", "username") or "").strip()
-            display_name = (get_attribute(player_node, ".", "name") or "").strip()
-
-            is_syncing_user = (
-                not syncing_user_already_added
-                and player_username != ""
-                and player_username.casefold() == normalized_syncing_username
+            is_syncing_user = not syncing_user_already_added and PlaySession._is_bgg_user(
+                player_node, normalized_syncing_username
             )
-
-            if is_syncing_user:
-                syncing_user_already_added = True
-                guest_name = ""
-            else:
-                guest_name = (display_name or player_username or UNKNOWN_PLAYER_NAME)[:100]
-
+            syncing_user_already_added = syncing_user_already_added or is_syncing_user
             session_players.append(
-                SessionPlayer(
-                    session=instance,
-                    user=user if is_syncing_user else None,
-                    guest_name=guest_name,
-                    score=parse_optional_float(get_attribute(player_node, ".", "score")),
-                    is_winner=get_attribute(player_node, ".", "win") == "1",
-                )
+                PlaySession._session_player_from_xml(instance, player_node, user if is_syncing_user else None)
             )
 
         SessionPlayer.objects.bulk_create(session_players)
+
+    @staticmethod
+    def _is_bgg_user(player_node: Element, normalized_bgg_username: str) -> bool:
+        """
+        Whether a ``<player>`` is the given BGG user, comparing usernames case-insensitively.
+
+        :param player_node: The ``<player>`` element.
+        :type player_node: xml.etree.ElementTree.Element
+        :param normalized_bgg_username: The BGG username to match, already case-folded.
+        :type normalized_bgg_username: str
+        :returns: True if the player's BGG username matches.
+        :rtype: bool
+        """
+
+        player_username = (get_attribute(player_node, ".", "username") or "").strip()
+        return player_username != "" and player_username.casefold() == normalized_bgg_username
+
+    @staticmethod
+    def _session_player_from_xml(
+        instance: PlaySession, player_node: Element, linked_user: User | None
+    ) -> SessionPlayer:
+        """
+        Build the participant for one ``<player>``, unsaved.
+
+        A player linked to a QuestLog user has no guest name. Anyone else is a guest under their display name, falling
+        back to their BGG username.
+
+        :param instance: The PlaySession the participant belongs to.
+        :type instance: tracking.models.PlaySession
+        :param player_node: The ``<player>`` element.
+        :type player_node: xml.etree.ElementTree.Element
+        :param linked_user: The QuestLog user this player is, or None for a guest.
+        :type linked_user: users.models.User | None
+        :returns: The participant, ready for ``bulk_create``.
+        :rtype: tracking.models.SessionPlayer
+        """
+
+        if linked_user is not None:
+            guest_name = ""
+        else:
+            player_username = (get_attribute(player_node, ".", "username") or "").strip()
+            display_name = (get_attribute(player_node, ".", "name") or "").strip()
+            guest_name = (display_name or player_username or UNKNOWN_PLAYER_NAME)[:100]
+
+        return SessionPlayer(
+            session=instance,
+            user=linked_user,
+            guest_name=guest_name,
+            score=parse_optional_float(get_attribute(player_node, ".", "score")),
+            is_winner=get_attribute(player_node, ".", "win") == "1",
+        )
 
 
 class SessionPlayer(models.Model):

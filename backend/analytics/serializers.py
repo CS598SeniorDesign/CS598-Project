@@ -65,3 +65,121 @@ class PlayerSummarySerializer(ReadOnlySerializer):
     most_played_games = GameSummarySerializer(many=True)
     top_categories = CategorySummarySerializer(many=True)
     monthly_activity = MonthlyActivitySerializer(many=True)
+
+
+class PlayerReferenceSerializer(ReadOnlySerializer):
+    """
+    Who a statistic is about: a registered player's user ID and display name.
+    """
+
+    user_id = serializers.UUIDField()
+    display_name = serializers.CharField()
+
+
+class HeadToHeadGameSerializer(ReadOnlySerializer):
+    """
+    How two players' sessions of one game turned out.
+    """
+
+    bgg_id = serializers.IntegerField()
+    name = serializers.CharField()
+    sessions = serializers.IntegerField()
+    you_won = serializers.IntegerField()
+    they_won = serializers.IntegerField()
+
+
+class HeadToHeadSummarySerializer(ReadOnlySerializer):
+    """
+    The requesting user's record against one other player. ``you_won``, ``they_won``, ``both_won`` and
+    ``neither_won`` add up to ``completed_sessions``.
+    """
+
+    opponent = PlayerReferenceSerializer()
+    sessions_together = serializers.IntegerField()
+    plays_together = serializers.IntegerField()
+    completed_sessions = serializers.IntegerField()
+    you_won = serializers.IntegerField()
+    they_won = serializers.IntegerField()
+    both_won = serializers.IntegerField()
+    neither_won = serializers.IntegerField()
+    your_win_rate = serializers.FloatField(allow_null=True)
+    their_win_rate = serializers.FloatField(allow_null=True)
+    last_played = serializers.DateField(allow_null=True)
+    games = HeadToHeadGameSerializer(many=True)
+
+
+class GroupGameSummarySerializer(ReadOnlySerializer):
+    """
+    One of the games a group plays most.
+    """
+
+    bgg_id = serializers.IntegerField()
+    name = serializers.CharField()
+    sessions = serializers.IntegerField()
+    plays = serializers.IntegerField()
+
+
+class GroupMemberStandingSerializer(ReadOnlySerializer):
+    """
+    One member's place on a group's leaderboard.
+    """
+
+    player = PlayerReferenceSerializer()
+    sessions = serializers.IntegerField()
+    wins = serializers.IntegerField()
+    win_rate = serializers.FloatField(allow_null=True)
+
+
+class GroupMonthlyActivitySerializer(ReadOnlySerializer):
+    """
+    A group's sessions and plays in one month (``YYYY-MM``).
+    """
+
+    month = serializers.CharField()
+    sessions = serializers.IntegerField()
+    plays = serializers.IntegerField()
+
+
+class GroupSummarySerializer(ReadOnlySerializer):
+    """
+    The statistics for a game group's page.
+    """
+
+    group_id = serializers.IntegerField()
+    group_name = serializers.CharField()
+    member_count = serializers.IntegerField()
+    total_sessions = serializers.IntegerField()
+    total_plays = serializers.IntegerField()
+    total_play_time_minutes = serializers.IntegerField()
+    last_played = serializers.DateField(allow_null=True)
+    most_played_games = GroupGameSummarySerializer(many=True)
+    leaderboard = GroupMemberStandingSerializer(many=True)
+    monthly_activity = GroupMonthlyActivitySerializer(many=True)
+
+
+class HeldTagSerializer(ReadOnlySerializer):
+    """
+    One relationship tag the user holds about a friend.
+    """
+
+    tag_type = serializers.CharField(source="definition.tag_type")
+    name = serializers.CharField(source="definition.label")
+    description = serializers.CharField(source="definition.description")
+    assigned_at = serializers.DateTimeField()
+
+
+class FriendTagsSerializer(ReadOnlySerializer):
+    """
+    Every relationship tag the user holds about one friend.
+    """
+
+    friend = PlayerReferenceSerializer()
+    tags = HeldTagSerializer(many=True)
+
+
+class RelationshipTagQuerySerializer(ReadOnlySerializer):
+    """
+    Validates the optional ``?user_id=`` filter of the relationship tag list.
+    """
+
+    user_id = serializers.UUIDField(required=False)

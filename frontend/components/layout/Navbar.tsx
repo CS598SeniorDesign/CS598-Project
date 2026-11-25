@@ -99,7 +99,7 @@ export default function Navbar() {
         className="mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-5 py-4 lg:px-8"
       >
         <Link
-          href="/"
+          href={isAuthenticated ? "/dashboardPpt" : "/"}
           className="text-2xl font-extrabold tracking-tight text-foreground transition hover:text-link"
         >
           QuestLog

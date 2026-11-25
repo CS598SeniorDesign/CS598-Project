@@ -4,7 +4,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Gamepad2, ShieldCheck, UserRound } from "lucide-react";
+import { ArrowLeft, ShieldCheck, UserRound } from "lucide-react";
+import HeadToHeadSection from "@/components/stats/HeadToHeadSection";
+import { RelationshipTagList } from "@/components/stats/RelationshipTagBadge";
+import { useRelationshipTags } from "@/components/stats/useRelationshipTags";
 
 type Friend = {
   user_id: string;
@@ -86,6 +89,7 @@ export default function FriendProfilePage() {
   const [friend, setFriend] = useState<Friend | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const tags = useRelationshipTags(userId);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -194,6 +198,8 @@ export default function FriendProfilePage() {
                     <ShieldCheck className="h-4 w-4" />
                     Friends
                   </span>
+
+                  <RelationshipTagList tags={tags[friend.user_id]} />
                 </div>
 
                 <p className="mt-3 text-muted">
@@ -217,26 +223,10 @@ export default function FriendProfilePage() {
               </p>
             </section>
 
-            <section className="mt-8 rounded-2xl border border-border bg-surface p-6">
-              <div className="mb-4 flex items-center gap-2">
-                <Gamepad2 className="h-6 w-6 text-link" />
-
-                <h2 className="text-xl font-bold text-foreground">
-                  Gaming Stats
-                </h2>
-              </div>
-
-              <div className="rounded-xl border border-dashed border-border bg-background p-8 text-center">
-                <p className="text-subtle">
-                  Player statistics are not available yet.
-                </p>
-
-                <p className="mt-2 text-sm text-muted">
-                  Games played, wins, and recent activity can be displayed here
-                  soon.
-                </p>
-              </div>
-            </section>
+            <HeadToHeadSection
+              userId={friend.user_id}
+              friendName={friend.display_name}
+            />
           </>
         )}
       </div>

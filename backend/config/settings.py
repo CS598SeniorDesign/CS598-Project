@@ -233,6 +233,11 @@ CELERY_BEAT_SCHEDULE = {
         "task": "catalog.tasks.refresh_stale_board_games",
         "schedule": crontab(hour=5, minute=0),
     },
+    # Keeps date-based relationship tags (Regular, Long Time No See) current and removes tags for ended friendships.
+    "refresh-relationship-tags-nightly": {
+        "task": "analytics.tasks.refresh_all_relationship_tags",
+        "schedule": crontab(hour=5, minute=30),
+    },
 }
 
 CHANNEL_LAYERS = {

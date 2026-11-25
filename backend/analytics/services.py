@@ -136,7 +136,7 @@ class PlayerStatisticsService:
 
         sessions = cls._load_sessions(user)
         today = timezone.localdate()
-        month_keys = cls._recent_month_keys(today, MONTHS_OF_ACTIVITY)
+        month_keys = recent_month_keys(today, MONTHS_OF_ACTIVITY)
         completed_sessions = sessions[~sessions["is_incomplete"]]
         wins = int(completed_sessions["is_winner"].sum())
         known_play_times = sessions["play_time_minutes"].dropna()
@@ -147,7 +147,7 @@ class PlayerStatisticsService:
             plays_this_month=int(sessions.loc[sessions["month"] == month_keys[-1], "quantity"].sum()),
             wins=wins,
             losses=len(completed_sessions) - wins,
-            win_rate=cls._percentage(wins, len(completed_sessions)),
+            win_rate=percentage(wins, len(completed_sessions)),
             total_play_time_minutes=int(known_play_times.sum()),
             average_session_minutes=round(float(known_play_times.mean()), 1) if len(known_play_times) else None,
             games_played=int(sessions["game_id"].nunique()),
@@ -222,7 +222,7 @@ class PlayerStatisticsService:
                 sessions=int(game.sessions),
                 plays=int(game.plays),
                 wins=int(game.wins),
-                win_rate=cls._percentage(int(game.wins), int(game.completed)),
+                win_rate=percentage(int(game.wins), int(game.completed)),
             )
             for game in games.itertuples(index=False)
         ]
@@ -284,42 +284,42 @@ class PlayerStatisticsService:
             for month, row in totals.iterrows()
         ]
 
-    @staticmethod
-    def _recent_month_keys(today: date, count: int) -> list[str]:
-        """
-        List the current month and the months before it in ``YYYY-MM`` format.
 
-        :param today: The date whose month is the most recent one listed.
-        :type today: datetime.date
-        :param count: How many months to list.
-        :type count: int
-        :returns: ``count`` month keys, oldest first, ending with the month of ``today``.
-        :rtype: list[str]
-        """
+def recent_month_keys(today: date, count: int) -> list[str]:
+    """
+    List the current month and the months before it in ``YYYY-MM`` format.
 
-        year, month = today.year, today.month
-        month_keys: list[str] = []
+    :param today: The date whose month is the most recent one listed.
+    :type today: datetime.date
+    :param count: How many months to list.
+    :type count: int
+    :returns: ``count`` month keys, oldest first, ending with the month of ``today``.
+    :rtype: list[str]
+    """
 
-        for _ in range(count):
-            month_keys.append(f"{year:04d}-{month:02d}")
-            month -= 1
-            if month == 0:
-                month = 12
-                year -= 1
+    year, month = today.year, today.month
+    month_keys: list[str] = []
 
-        return list(reversed(month_keys))
+    for _ in range(count):
+        month_keys.append(f"{year:04d}-{month:02d}")
+        month -= 1
+        if month == 0:
+            month = 12
+            year -= 1
 
-    @staticmethod
-    def _percentage(part: int, whole: int) -> float | None:
-        """
-        Express ``part`` as a percentage of ``whole``, rounded to one decimal place.
+    return list(reversed(month_keys))
 
-        :param part: The count being measured, such as wins.
-        :type part: int
-        :param whole: The total it is measured against, such as completed sessions.
-        :type whole: int
-        :returns: The percentage, or None when ``whole`` is zero.
-        :rtype: float | None
-        """
 
-        return round(part / whole * 100, 1) if whole else None
+def percentage(part: int, whole: int) -> float | None:
+    """
+    Express ``part`` as a percentage of ``whole``, rounded to one decimal place.
+
+    :param part: The count being measured, such as wins.
+    :type part: int
+    :param whole: The total it is measured against, such as completed sessions.
+    :type whole: int
+    :returns: The percentage, or None when ``whole`` is zero.
+    :rtype: float | None
+    """
+
+    return round(part / whole * 100, 1) if whole else None

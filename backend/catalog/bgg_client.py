@@ -149,28 +149,60 @@ def search(query: str) -> list[SearchResult]:
     results_by_id: dict[int, SearchResult] = {}
 
     for item in root.findall("item"):
-        bgg_id = parse_optional_integer(item.get("id"))
-        name = get_attribute(item, "name", "value")
-        item_type = item.get("type") or BOARD_GAME_ITEM_TYPE
-
-        if bgg_id is None or not name:
+        result = _parse_search_item(item)
+        if result is None:
             continue
 
-        if bgg_id in results_by_id:
-            if item_type == EXPANSION_ITEM_TYPE:
-                results_by_id[bgg_id] = replace(results_by_id[bgg_id], item_type=EXPANSION_ITEM_TYPE)
-            continue
-
-        year_published = parse_optional_integer(get_attribute(item, "yearpublished", "value"))
-        results_by_id[bgg_id] = SearchResult(
-            bgg_id=bgg_id,
-            item_type=item_type,
-            name=name,
-            is_primary_name=get_attribute(item, "name", "type") == "primary",
-            year_published=year_published or None,
+        earlier_result = results_by_id.get(result.bgg_id)
+        results_by_id[result.bgg_id] = (
+            result if earlier_result is None else _merge_duplicate_search_result(earlier_result, result)
         )
 
     return list(results_by_id.values())
+
+
+def _parse_search_item(item: Element) -> SearchResult | None:
+    """
+    Read one ``<item>`` of a BGG search response.
+
+    :param item: The item element.
+    :type item: xml.etree.ElementTree.Element
+    :returns: The match, or None if the item has no valid ID or no name.
+    :rtype: catalog.bgg_client.SearchResult | None
+    """
+
+    bgg_id = parse_optional_integer(item.get("id"))
+    name = get_attribute(item, "name", "value")
+
+    if bgg_id is None or not name:
+        return None
+
+    year_published = parse_optional_integer(get_attribute(item, "yearpublished", "value"))
+    return SearchResult(
+        bgg_id=bgg_id,
+        item_type=item.get("type") or BOARD_GAME_ITEM_TYPE,
+        name=name,
+        is_primary_name=get_attribute(item, "name", "type") == "primary",
+        year_published=year_published or None,
+    )
+
+
+def _merge_duplicate_search_result(earlier_result: SearchResult, duplicate: SearchResult) -> SearchResult:
+    """
+    Combine a game's second search entry into its first: the first keeps its position and name, and the game is
+    marked as an expansion if either entry says so (BGG lists every expansion under both types).
+
+    :param earlier_result: The game's first entry.
+    :type earlier_result: catalog.bgg_client.SearchResult
+    :param duplicate: A later entry for the same game.
+    :type duplicate: catalog.bgg_client.SearchResult
+    :returns: The combined entry.
+    :rtype: catalog.bgg_client.SearchResult
+    """
+
+    if duplicate.item_type == EXPANSION_ITEM_TYPE:
+        return replace(earlier_result, item_type=EXPANSION_ITEM_TYPE)
+    return earlier_result
 
 
 def fetch_plays_page(bgg_username: str, page: int) -> Element:

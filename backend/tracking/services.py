@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 import uuid
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import date
 from typing import TYPE_CHECKING
@@ -11,6 +11,7 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 
+from analytics.tasks import queue_relationship_tag_refresh
 from profiles.services import PlayerDirectoryService
 from tracking.models import PlaySession, SessionPlayer
 
@@ -105,6 +106,7 @@ class PlaySessionService:
             cls._apply_session_details(session, session_details)
             session.save()
             cls._create_players(session, players)
+            cls._refresh_tags_after_commit(player.user.pk for player in players if player.user is not None)
 
         return session
 
@@ -154,6 +156,9 @@ class PlaySessionService:
                 locked_session.players.all().delete()
                 cls._create_players(locked_session, players)
 
+            new_player_user_ids = {player.user.pk for player in players or () if player.user is not None}
+            cls._refresh_tags_after_commit(current_player_user_ids | new_player_user_ids)
+
         return locked_session
 
     @classmethod
@@ -171,6 +176,9 @@ class PlaySessionService:
         :raises tracking.models.PlaySession.DoesNotExist: If the session has already been deleted.
         """
 
+        player_user_ids = list(
+            SessionPlayer.objects.filter(session_id=session.pk, user__isnull=False).values_list("user_id", flat=True)
+        )
         deleted_at = timezone.now()
         updated_row_count = PlaySession.objects.filter(pk=session.pk).update(deleted_at=deleted_at)
 
@@ -178,6 +186,24 @@ class PlaySessionService:
             raise PlaySession.DoesNotExist(f"Play session {session.pk} does not exist or was already deleted.")
 
         session.deleted_at = deleted_at
+        cls._refresh_tags_after_commit(player_user_ids)
+
+    @staticmethod
+    def _refresh_tags_after_commit(user_ids: Iterable[uuid.UUID]) -> None:
+        """
+        Queue a recalculation of the relationship tags of a session's registered players once the change is committed.
+
+        A session's result changes both its players' shared records and their overall win rates, so each player's
+        tags toward every friend are recalculated (see ``analytics.relationship_tags``).
+
+        :param user_ids: The registered players whose tags may have changed.
+        :type user_ids: collections.abc.Iterable[uuid.UUID]
+        :returns: None
+        """
+
+        affected_user_ids = frozenset(user_ids)
+        if affected_user_ids:
+            transaction.on_commit(lambda: queue_relationship_tag_refresh(affected_user_ids))
 
     @classmethod
     def _validate(
