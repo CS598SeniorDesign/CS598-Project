@@ -31,6 +31,12 @@ RATING_DIMENSION_NAMES = ("experience", "mechanics", "replayability", "enjoyment
 RATING_SCORE_VALIDATORS = [MinValueValidator(MINIMUM_RATING_SCORE), MaxValueValidator(MAXIMUM_RATING_SCORE)]
 
 
+def _imported_guest_name(player_node: Element, player_username: str) -> str:
+    """Choose a bounded guest name using the BGG display name, username, then a fallback."""
+    display_name = (get_attribute(player_node, ".", "name") or "").strip()
+    return (display_name or player_username or UNKNOWN_PLAYER_NAME)[:100]
+
+
 class LibraryItemQuerySet(models.QuerySet["LibraryItem"]):
     """Query helpers for filtering library items by ownership and play status."""
 
@@ -489,7 +495,6 @@ class PlaySession(models.Model):
 
         for player_node in players_node.findall("player"):
             player_username = (get_attribute(player_node, ".", "username") or "").strip()
-            display_name = (get_attribute(player_node, ".", "name") or "").strip()
 
             is_syncing_user = (
                 not syncing_user_already_added
@@ -501,7 +506,7 @@ class PlaySession(models.Model):
                 syncing_user_already_added = True
                 guest_name = ""
             else:
-                guest_name = (display_name or player_username or UNKNOWN_PLAYER_NAME)[:100]
+                guest_name = _imported_guest_name(player_node, player_username)
 
             session_players.append(
                 SessionPlayer(

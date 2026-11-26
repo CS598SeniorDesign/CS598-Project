@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from django.db import IntegrityError, transaction
+from PIL import Image, UnidentifiedImageError
 from rest_framework import serializers
 
 from profiles.services import MAXIMUM_SEARCH_LENGTH, MINIMUM_SEARCH_LENGTH
@@ -192,3 +193,43 @@ class PlayerSummarySerializer(serializers.ModelSerializer[Profile]):
             "avatar",
         )
         read_only_fields = fields
+
+
+class ProfileCoverUploadSerializer(serializers.Serializer):
+    """Validate an uploaded profile cover image."""
+
+    cover_image = serializers.ImageField(
+        required=True,
+        allow_empty_file=False,
+    )
+
+    def validate_cover_image(self, image):
+        """Allow JPEG, PNG, or WebP images up to 5 MB."""
+
+        max_size = 5 * 1024 * 1024
+
+        if image.size > max_size:
+            raise serializers.ValidationError("Cover images must be 5 MB or smaller.")
+
+        try:
+            image.seek(0)
+
+            with Image.open(image) as picture:
+                picture.verify()
+                image_format = picture.format
+
+            image.seek(0)
+
+        except (UnidentifiedImageError, OSError, ValueError):
+            raise serializers.ValidationError("Please upload a valid image.") from None
+
+        if image_format not in {"JPEG", "PNG", "WEBP"}:
+            raise serializers.ValidationError("Only JPEG, PNG, and WebP images are supported.")
+
+        return image
+
+    def create(self, validated_data):
+        raise NotImplementedError("ProfileCoverUploadSerializer only validates uploads.")
+
+    def update(self, instance, validated_data):
+        raise NotImplementedError("ProfileCoverUploadSerializer only validates uploads.")

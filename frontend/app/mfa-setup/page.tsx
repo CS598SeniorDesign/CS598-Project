@@ -173,10 +173,28 @@ function MFALoadingScreen() {
   );
 }
 
+function returnDestination() {
+  return new URLSearchParams(window.location.search).get("from") === "settings"
+    ? "/settings"
+    : "/avatar-selection";
+}
+
+function loginDestination() {
+  return new URLSearchParams(window.location.search).get("from") === "settings"
+    ? "/login"
+    : "/login?setup=mfa";
+}
+
+function skipLabel() {
+  const search = typeof window === "undefined" ? "" : window.location.search;
+  return new URLSearchParams(search).get("from") === "settings"
+    ? "Back to Settings"
+    : "Skip for Now";
+}
+
 // eslint-disable-next-line complexity
 export default function MFASetup() {
   const router = useRouter();
-
   const [secret, setSecret] = useState("");
   const [totpUrl, setTotpUrl] = useState("");
   const [code, setCode] = useState("");
@@ -202,12 +220,12 @@ export default function MFASetup() {
         }
 
         if (result.action === "login") {
-          router.push("/login?setup=mfa");
+          router.push(loginDestination());
           return;
         }
 
         if (result.action === "configured") {
-          router.push("/avatar-selection");
+          router.push(returnDestination());
           return;
         }
 
@@ -304,7 +322,7 @@ export default function MFASetup() {
       const result = await activateTOTP(code);
 
       if (result === "success") {
-        router.push("/avatar-selection");
+        router.push(returnDestination());
         return;
       }
 
@@ -325,7 +343,7 @@ export default function MFASetup() {
       }
 
       if (result === "login") {
-        router.push("/login?setup=mfa");
+        router.push(loginDestination());
         return;
       }
 
@@ -344,7 +362,7 @@ export default function MFASetup() {
   };
 
   const handleSkip = () => {
-    router.push("/avatar-selection");
+    router.push(returnDestination());
   };
 
   const handleBack = () => {
@@ -395,7 +413,7 @@ export default function MFASetup() {
                 onClick={handleSkip}
                 className="rounded-lg border border-border bg-surface px-7 py-3 font-medium text-foreground transition hover:border-link hover:bg-surface-hover"
               >
-                Skip for Now
+                {skipLabel()}
               </button>
             </div>
 

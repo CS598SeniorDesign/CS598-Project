@@ -108,14 +108,19 @@ export default function Navbar() {
         {!isLoading && (
           <div className="flex items-center gap-4 text-sm">
             {isAuthenticated ? (
-              <button
-                type="button"
-                onClick={() => void handleLogout()}
-                disabled={isLoggingOut}
-                className="rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white transition hover:bg-indigo-500 disabled:opacity-50"
-              >
-                {isLoggingOut ? "Logging Out..." : "Log Out"}
-              </button>
+              <>
+                <Link href="/dashboardPpt" className="font-semibold text-link">
+                  Dashboard
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => void handleLogout()}
+                  disabled={isLoggingOut}
+                  className="rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white transition hover:bg-indigo-500 disabled:opacity-50"
+                >
+                  {isLoggingOut ? "Logging Out..." : "Log Out"}
+                </button>
+              </>
             ) : (
               <>
                 <Link
